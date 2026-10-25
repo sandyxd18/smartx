@@ -1,85 +1,85 @@
-# SmartX: spesifikasi produk
+# SmartX: product specification
 
-## Tujuan
+## Goal
 
-SmartX adalah aplikasi web lokal untuk satu orang (pemiliknya) yang ingin belajar desain chip digital dari nol sampai tapeout. Satu desain Verilog yang sama dibawa melewati enam langkah:
+SmartX is a local web app for one person (its owner) who wants to learn digital chip design from scratch all the way to tapeout. The same Verilog design is carried through six steps:
 
-| Langkah | Pertanyaan yang dijawab | Modul di aplikasi |
+| Step | Question it answers | Module in the app |
 |---|---|---|
-| 1. Latihan Verilog | Bagaimana mendeskripsikan hardware? | Exercises |
-| 2. Simulasi & verifikasi | Apakah logikanya benar? | Workspace: Sim |
-| 3. FPGA | Apakah bisa berjalan di hardware nyata? | Workspace: FPGA |
-| 4. Proyek bertahap | Bisakah saya membangun sistem utuh? | Projects |
-| 5. ASIC flow | Bagaimana desain menjadi geometri chip? | Workspace: ASIC |
-| 6. Tapeout | Apakah bekerja di silikon? | Tapeout export |
+| 1. Verilog exercises | How do I describe hardware? | Exercises |
+| 2. Simulation & verification | Is the logic correct? | Workspace: Sim |
+| 3. FPGA | Does it run on real hardware? | Workspace: FPGA |
+| 4. Step-by-step projects | Can I build a whole system? | Projects |
+| 5. ASIC flow | How does a design become chip geometry? | Workspace: ASIC |
+| 6. Tapeout | Does it work in silicon? | Tapeout export |
 
-Aplikasi ini membungkus tool open-source yang sudah ada. Tidak ada tool EDA yang ditulis ulang.
+The app wraps existing open-source tools. No EDA tool is rewritten.
 
-## Pengguna
+## Users
 
-Satu pengguna, di jaringan lokal. Tidak ada login, tidak ada multi-tenant. Aplikasi bisa dijalankan di laptop atau di VM Linux, diakses lewat browser.
+One user, on a local network. No login, no multi-tenancy. The app runs on a laptop or a Linux VM and is used from a browser.
 
-## Kebutuhan fungsional
+## Functional requirements
 
-### F1. Exercises (langkah 1)
-- Daftar soal dikelompokkan per topik dan level, dengan status: belum, gagal, lulus.
-- Halaman soal: teks soal (Markdown), editor Verilog (Monaco, syntax highlight), tombol **Run**.
-- Hasil run: status per test, pesan error yang mudah dibaca, log kompilasi, dan waveform.
-- Hint dibuka satu per satu. Solusi bisa dibuka setelah lulus atau setelah N kali gagal (N bisa diatur).
-- Kode terakhir per soal tersimpan otomatis.
+### F1. Exercises (step 1)
+- Exercise list grouped by topic and level, with a status: not started, failed, passed.
+- Exercise page: statement (Markdown), Verilog editor (Monaco, syntax highlighting), **Run** button.
+- Run result: status per test, readable error messages, compile log, and waveform.
+- Hints open one at a time. The solution can be opened after passing or after N failures (N is configurable).
+- The latest code of each exercise is saved automatically.
 
-### F2. Workspace simulasi (langkah 2)
-- Proyek berisi banyak file (`.v`, `.sv`, `.py`, `.yaml`), dengan file tree.
-- Aksi: Lint (Verilator `--lint-only`), Simulate (Icarus atau Verilator), Run cocotb tests.
-- Waveform viewer di browser untuk file `.fst`/`.vcd`.
-- Riwayat run per proyek, bisa membandingkan hasil dua run.
+### F2. Simulation workspace (step 2)
+- Projects with many files (`.v`, `.sv`, `.py`, `.yaml`) and a file tree.
+- Actions: Lint (Verilator `--lint-only`), Simulate (Icarus or Verilator), run cocotb tests.
+- In-browser waveform viewer for `.fst`/`.vcd` files.
+- Run history per project, with a comparison of two runs.
 
-### F3. FPGA (langkah 3)
-- Pilih board target (profil board). Default: Tang Nano 9K; tambahan: iCE40 (iCEBreaker/UPduino).
-- Editor constraint (`.cst` untuk Gowin, `.pcf` untuk iCE40) dengan template per board.
-- Aksi: Synthesize (Yosys), Place & Route (nextpnr), Pack (bitstream).
-- Laporan: utilisasi resource (LUT, FF, BRAM), Fmax per clock, warning penting (latch, multi-driven, sinyal tidak terpakai).
-- Bitstream bisa diunduh. Flashing dilakukan dengan skrip helper di host (`smartx-flash`), karena USB ke container tidak andal.
+### F3. FPGA (step 3)
+- Pick a target board (board profile). Default: Tang Nano 9K; additional: iCE40 (iCEBreaker/UPduino).
+- Constraint editor (`.cst` for Gowin, `.pcf` for iCE40) with a template per board.
+- Actions: Synthesize (Yosys), Place & Route (nextpnr), Pack (bitstream).
+- Reports: resource utilization (LUT, FF, BRAM), Fmax per clock, important warnings (latch, multi-driven, unused signals).
+- The bitstream can be downloaded. Flashing is done with a helper script on the host (`smartx-flash`), because USB access from a container is unreliable.
 
-### F4. Projects (langkah 4)
-- Proyek terpandu: UART TX/RX, SPI master, I2C master, RV32I single-cycle, RV32I pipeline, mini-SoC.
-- Tiap proyek punya milestone. Tiap milestone punya teks penjelasan, file starter, dan test cocotb yang harus lulus sebelum lanjut.
-- Proyek RISC-V: toolchain `riscv64-unknown-elf-gcc` untuk compile program C/ASM, dan integrasi `riscv-tests`.
+### F4. Projects (step 4)
+- Guided projects: UART TX/RX, SPI master, I2C master, single-cycle RV32I, pipelined RV32I, mini-SoC.
+- Each project has milestones. Each milestone has an explanation, starter files, and cocotb tests that must pass before moving on.
+- RISC-V projects: the `riscv64-unknown-elf-gcc` toolchain to compile C/assembly programs, and `riscv-tests` integration.
 
-### F5. ASIC flow (langkah 5)
-- Konfigurasi LibreLane per proyek (`config.yaml`) dengan form sederhana + editor mentah.
-- PDK: SKY130 dan IHP SG13G2 (GF180MCU opsional).
-- Job berjalan di background, log tampil live, bisa dibatalkan.
-- Ringkasan hasil: area, jumlah cell, WNS/TNS per corner, jumlah pelanggaran DRC/LVS/antenna.
-- Render layout GDS sebagai gambar PNG (KLayout batch), bisa di-zoom.
+### F5. ASIC flow (step 5)
+- LibreLane configuration per project (`config.yaml`) with a simple form plus a raw editor.
+- PDKs: SKY130 and IHP SG13G2 (GF180MCU optional).
+- Jobs run in the background, logs are shown live, and jobs can be cancelled.
+- Result summary: area, cell count, WNS/TNS per corner, number of DRC/LVS/antenna violations.
+- GDS layout rendered as PNG images (KLayout in batch mode), with zoom.
 
-### F6. Tapeout export (langkah 6)
-- Generator proyek Tiny Tapeout dari desain yang sudah lolos langkah 5: `info.yaml`, `src/`, `test/`, `docs/info.md`.
-- Pengecekan pin (8 input, 8 output, 8 bidir, clk, rst_n, ena) dan nama top `tt_um_*`.
-- Menjalankan hardening lokal dengan `tt-support-tools` sesuai shuttle yang dipilih.
-- Checklist submit. Submit dan pembayaran tetap dilakukan manual di situs Tiny Tapeout.
+### F6. Tapeout export (step 6)
+- Tiny Tapeout project generator from a design that passed step 5: `info.yaml`, `src/`, `test/`, `docs/info.md`.
+- Pin check (8 inputs, 8 outputs, 8 bidirectional, clk, rst_n, ena) and a `tt_um_*` top name.
+- Local hardening with `tt-support-tools` for the chosen shuttle.
+- Submission checklist. Submission and payment stay manual on the Tiny Tapeout site.
 
-### F7. Umum
-- Progres belajar per langkah (dashboard sederhana).
-- Semua data ada di satu folder (`data/`), mudah di-backup.
-- Export/import proyek sebagai `.zip` atau repo Git.
+### F7. General
+- Learning progress per step (simple dashboard).
+- All data in one folder (`data/`), easy to back up.
+- Project export/import as `.zip` or a Git repository.
 
-## Kebutuhan non-fungsional
+## Non-functional requirements
 
-- **Waktu respons**: grading soal kecil < 5 detik dari klik sampai hasil (setelah image toolchain ada).
-- **Isolasi**: setiap job di container baru, `--network none`, batas CPU/RAM/waktu, user non-root.
-- **Reproducible**: versi tool dipin (tanggal OSS CAD Suite, tag image ASIC). Versi tool dicatat di setiap hasil run.
-- **Pulih dari restart**: job yang sedang berjalan saat backend mati ditandai `failed` dengan alasan jelas.
-- **Bahasa**: UI dan materi dalam Bahasa Indonesia; kode, identifier, dan commit dalam bahasa Inggris.
+- **Response time**: grading a small exercise takes < 5 seconds from click to result (once the toolchain image exists).
+- **Isolation**: every job runs in a fresh container, `--network none`, with CPU/RAM/time limits, as a non-root user.
+- **Reproducible**: tool versions are pinned (OSS CAD Suite date, ASIC image tag). Tool versions are recorded with every run result.
+- **Survives restarts**: jobs that were running when the backend stopped are marked `failed` with a clear reason.
+- **Language**: UI and learning material in Indonesian; code, identifiers, commits, and documentation in English.
 
-## Di luar cakupan
+## Out of scope
 
-- Multi-user, autentikasi, kuota.
-- Desain analog (Xschem/ngspice). Bisa jadi ekspansi setelah v1.
-- Tool komersial (Cadence, Synopsys).
-- Simulasi di browser lewat WebAssembly. Semua tool berjalan di backend; ini bisa dipertimbangkan nanti.
-- Submit otomatis ke Tiny Tapeout.
+- Multiple users, authentication, quotas.
+- Analog design (Xschem/ngspice). Possible expansion after v1.
+- Commercial tools (Cadence, Synopsys).
+- In-browser simulation via WebAssembly. All tools run in the backend; this may be considered later.
+- Automatic submission to Tiny Tapeout.
 
-## Definisi "v1 selesai"
+## Definition of "v1 done"
 
-Satu desain (misalnya UART TX) bisa dibawa dari soal latihan → testbench cocotb → bitstream FPGA → GDS lewat LibreLane → repo Tiny Tapeout yang lolos hardening lokal, seluruhnya dari UI SmartX.
+One design (for example a UART TX) can be carried from an exercise → cocotb testbench → FPGA bitstream → GDS with LibreLane → Tiny Tapeout repository that passes local hardening, entirely from the SmartX UI.

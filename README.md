@@ -1,61 +1,75 @@
 # SmartX
 
-Lab pribadi untuk belajar desain chip digital: dari latihan Verilog, simulasi dan verifikasi, FPGA, proyek bertahap sampai CPU RISC-V, ASIC flow dengan LibreLane, hingga repo yang siap dikirim ke Tiny Tapeout. Semua dari satu aplikasi web lokal.
+A personal lab for learning digital chip design: from Verilog exercises, through simulation and verification, FPGA, step-by-step projects up to a RISC-V CPU, and the ASIC flow with LibreLane, to a repository that is ready to submit to Tiny Tapeout. All from one local web app.
 
-Status: rancangan + fondasi awal. Pengembangan dilakukan bersama Claude Code mengikuti `docs/ROADMAP.md`.
+SmartX wraps existing open-source tools (Icarus Verilog, Verilator, cocotb, Yosys, nextpnr, LibreLane, KLayout) behind one UI. It does not reimplement any EDA tool. The user interface and the learning material are in Indonesian; code and documentation are in English.
 
-## Kebutuhan
+## Status
 
-- Linux, macOS, atau Windows dengan Docker Desktop; GNU Make, Git, Python 3.10+
-- Node.js 22.22+ dan [uv](https://docs.astral.sh/uv/) (untuk `make test`/`make lint` di host)
-- Fase 5–6: RAM 12–16 GB, ruang disk kosong ±30 GB
+Developed with Claude Code, phase by phase, following [docs/ROADMAP.md](docs/ROADMAP.md).
+
+| Phase | Content | Status |
+|---|---|---|
+| 0 | Foundation: repo, backend, frontend, Docker runner, toolchain image | done |
+| 1 | Exercises: exercise list, editor, grading, waveforms, 23 exercises | done |
+| 2 | Simulation workspace: multi-file projects, lint, sim, cocotb, run history | done |
+| 3 | FPGA: board profiles, synthesis, place & route, reports, bitstream, flash helper | in progress |
+| 4 | Guided projects: UART, SPI, I2C, RV32I, mini-SoC | planned |
+| 5 | ASIC: LibreLane, PDK, sign-off reports, GDS render | planned |
+| 6 | Tapeout export: Tiny Tapeout repo generator, local hardening, checklist | planned |
+
+## Requirements
+
+- Linux, macOS, or Windows with Docker Desktop; GNU Make, Git, Python 3.10+
+- Node.js 22.22+ and [uv](https://docs.astral.sh/uv/) (for `make test` / `make lint` on the host)
+- Phases 5–6: 12–16 GB RAM, about 30 GB of free disk space
 
 ### Windows
 
-Perintah `make` bisa dijalankan dari PowerShell maupun Git Bash. Yang dibutuhkan:
+`make` works from PowerShell and from Git Bash. You need:
 
-- [Git for Windows](https://git-scm.com/download/win) di lokasi default (`C:\Program Files\Git`). Makefile memakai bash-nya. Kalau Git dipasang di tempat lain, set `GIT_BASH` ke path `bash.exe` tanpa spasi.
-- GNU Make: `winget install ezwinports.make`, lalu buka terminal baru.
-- Docker Desktop dalam keadaan menyala.
+- [Git for Windows](https://git-scm.com/download/win) in its default location (`C:\Program Files\Git`). The Makefile uses its bash. If Git is installed elsewhere, set `GIT_BASH` to the path of `bash.exe` (without spaces).
+- GNU Make: `winget install ezwinports.make`, then open a new terminal.
+- Docker Desktop, running.
 
-## Mulai
-
-```bash
-make toolchain          # build image toolchain (sekali, beberapa menit; versi dipin di .env)
-make tool-versions      # pastikan tool terpasang
-make dev                # backend + frontend lewat docker compose
-```
-
-Lalu buka http://127.0.0.1:8080. Dashboard menampilkan status backend dan Docker, dan tombol "Jalankan echo job" menguji pipa job dari awal sampai akhir.
-
-Perintah lain (`make help` untuk daftar lengkap):
+## Getting started
 
 ```bash
-make check              # semua pemeriksaan: lint, test, test Docker, check-content
-make surfer             # build viewer waveform Surfer (web) ke frontend/public/surfer, sekali saja (±5 menit)
-make pin-toolchain      # naikkan OSS CAD Suite ke rilis terbaru (lalu make toolchain && make check)
+make toolchain          # build the toolchain image (once, a few minutes; versions are pinned in .env)
+make tool-versions      # check that the tools are installed
+make dev                # backend + frontend via docker compose
 ```
 
-`make test` dan `make lint` berjalan di host, jadi butuh [uv](https://docs.astral.sh/uv/) dan Node.js 22.22+. Setelah mengubah API backend, jalankan `npm run gen:api` di `frontend/`; `make lint` gagal kalau tipe API frontend tertinggal.
+Then open http://127.0.0.1:8080. The dashboard shows the status of the backend and Docker, and the "Jalankan echo job" button tests the job pipeline end to end.
 
-Tanpa Docker, grader bisa dicoba langsung di host jika `iverilog` sudah terpasang:
+Other commands (`make help` lists them all):
+
+```bash
+make check              # every check: lint, tests, Docker tests, check-content
+make surfer             # build the Surfer waveform viewer (web) into frontend/public/surfer, once (about 5 minutes)
+make pin-toolchain      # move OSS CAD Suite to the latest release (then make toolchain && make check)
+```
+
+`make test` and `make lint` run on the host, so they need [uv](https://docs.astral.sh/uv/) and Node.js 22.22+. After changing the backend API, run `npm run gen:api` in `frontend/`; `make lint` fails when the frontend API types are out of date.
+
+Without Docker, the grader can be tried on the host if `iverilog` is installed:
 
 ```bash
 pip install -r tools/grader/requirements.txt
-python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-solution   # lulus
-python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-starter    # gagal
+python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-solution   # passes
+python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-starter    # fails
 ```
 
-## Melanjutkan dengan Claude Code
+To load a bitstream onto an FPGA board, see [tools/flash/README.md](tools/flash/README.md).
 
-Folder ini sudah berupa repo Git dengan satu commit awal. Masuk ke foldernya lalu jalankan:
+## Working with Claude Code
 
-```bash
-claude
-```
+Run `claude` in the repository, then ask: *"Read CLAUDE.md and the ROADMAP, then work on the next task."* Or use the `/next-task` and `/phase-review` commands in `.claude/commands/`.
 
-Lalu minta: *"Baca CLAUDE.md dan ROADMAP, lalu kerjakan Fase 0."* Atau pakai perintah `/next-task` dan `/phase-review` yang ada di `.claude/commands/`.
+## Layout
 
-## Struktur
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). In short: `backend/` (FastAPI), `frontend/` (React), `content/` (exercises, lessons, templates, board profiles), `tools/` (grader, FPGA build, flash helper), `docker/` (toolchain image), `docs/` (specification and plans).
 
-Lihat `docs/ARCHITECTURE.md`. Ringkasnya: `backend/` (FastAPI), `frontend/` (React), `content/` (soal, proyek, profil board), `tools/` (grader, helper flashing), `docker/` (image toolchain), `docs/` (spesifikasi dan rencana).
+## License
+
+[MIT](LICENSE)

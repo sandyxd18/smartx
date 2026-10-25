@@ -1,8 +1,8 @@
-# Image ASIC (Fase 5)
+# ASIC image (Phase 5)
 
-Image heavy untuk LibreLane + PDK tidak dibangun di repo ini. Default: `hpretl/iic-osic-tools` dengan tag yang dipin di `.env` (`ASIC_IMAGE`).
+The heavy image for LibreLane + PDKs is not built in this repository. Default: `hpretl/iic-osic-tools` with the tag pinned in `.env` (`ASIC_IMAGE`).
 
-Sebelum Fase 5 dimulai:
-1. Pilih tag terbaru yang stabil dan pin di `.env`.
-2. Cek versi LibreLane dan lokasi PDK di dalam image, catat di `docs/notes/asic-manual-run.md`.
-3. Jika versi LibreLane tidak cocok dengan kebutuhan shuttle Tiny Tapeout yang dituju, pakai metode instalasi resmi LibreLane dan perbarui `DECISIONS.md` (D07).
+Before Phase 5 starts:
+1. Pick the latest stable tag and pin it in `.env`.
+2. Check the LibreLane version and the PDK location inside the image, and record them in `docs/notes/asic-manual-run.md`.
+3. If that LibreLane version does not match what the target Tiny Tapeout shuttle needs, use LibreLane's official installation method and update `DECISIONS.md` (D07).

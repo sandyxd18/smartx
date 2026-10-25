@@ -1,48 +1,48 @@
-# Fase 0: Fondasi
+# Phase 0: Foundation
 
-Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, sebelum fitur apa pun dibangun.
+Goal: an app skeleton that runs end to end for one simple job kind, before any feature is built.
 
-## Task
+## Tasks
 
-1. [x] **Image toolchain**
-   - `make pin-toolchain && make toolchain` berhasil.
-   - `make tool-versions` mencetak versi yosys, iverilog, verilator, nextpnr-himbaechel, cocotb.
-   - `make check-content` hijau di dalam image (soal `counter-4bit` valid).
-   - Jika nama binary/argumen di OSS CAD Suite berbeda dari dugaan di Dockerfile, perbaiki Dockerfile dan catat di `DECISIONS.md`.
+1. [x] **Toolchain image**
+   - `make pin-toolchain && make toolchain` succeed.
+   - `make tool-versions` prints the versions of yosys, iverilog, verilator, nextpnr-himbaechel, cocotb.
+   - `make check-content` is green inside the image (the `counter-4bit` exercise is valid).
+   - If binary names or arguments in OSS CAD Suite differ from what the Dockerfile assumes, fix the Dockerfile and record it in `DECISIONS.md`.
 
 2. [x] **Backend skeleton** (`backend/`)
    - `pyproject.toml` (Python 3.12, fastapi, uvicorn, sqlmodel, pydantic-settings, docker, pyyaml, sse-starlette; dev: pytest, pytest-asyncio, httpx, ruff).
-   - `app/config.py` membaca `.env`.
-   - `app/db.py` + `app/models.py` sesuai ARCHITECTURE (Project, File, Run, ExerciseProgress).
-   - `GET /api/health` mengembalikan versi app dan status Docker (bisa ping daemon atau tidak).
+   - `app/config.py` reads `.env`.
+   - `app/db.py` + `app/models.py` as in ARCHITECTURE (Project, File, Run, ExerciseProgress).
+   - `GET /api/health` returns the app version and the Docker status (whether the daemon can be pinged).
 
 3. [x] **Job system**
-   - `jobs/runner.py`: interface `JobRunner` (`start`, `stream_logs`, `wait`, `kill`).
-   - `jobs/docker_runner.py`: implementasi Docker dengan semua batasan di ARCHITECTURE (network none, user, memory, cpus, pids, timeout).
-   - `jobs/fake_runner.py`: runner palsu untuk unit test (menulis `result.json` dari fixture).
-   - `jobs/queue.py`: dua antrian (light/heavy) dengan concurrency dari `.env`.
-   - Pemulihan saat startup: run `running`/`queued` → `failed`.
-   - Job pertama: `kind=echo` yang menjalankan `yosys -V` di image toolchain. Hanya untuk membuktikan pipa jalan.
+   - `jobs/runner.py`: the `JobRunner` interface (`start`, `stream_logs`, `wait`, `kill`).
+   - `jobs/docker_runner.py`: the Docker implementation with every limit in ARCHITECTURE (network none, user, memory, cpus, pids, timeout).
+   - `jobs/fake_runner.py`: a fake runner for unit tests (writes `result.json` from a fixture).
+   - `jobs/queue.py`: two queues (light/heavy) with concurrency from `.env`.
+   - Recovery at startup: `running`/`queued` runs → `failed`.
+   - First job: `kind=echo`, which runs `yosys -V` in the toolchain image. Only to prove the pipeline works.
 
-4. [x] **API run**
-   - `POST /api/runs` (sementara, untuk `echo`), `GET /api/runs/{id}`, `GET /api/runs/{id}/events` (SSE), `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/files/{path}` dengan pencegahan path traversal + test-nya.
+4. [x] **Run API**
+   - `POST /api/runs` (temporary, for `echo`), `GET /api/runs/{id}`, `GET /api/runs/{id}/events` (SSE), `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/files/{path}` with path traversal protection and its tests.
 
 5. [x] **Frontend skeleton** (`frontend/`)
-   - Vite + React + TypeScript, React Router, satu library UI yang ringan (mis. Tailwind; shadcn/ui opsional).
-   - Client API typed dari OpenAPI (`openapi-typescript`), dengan skrip `npm run gen:api`.
-   - Halaman Dashboard yang menampilkan `/api/health` dan tombol "Run echo job" yang menampilkan log live dari SSE.
-   - Layout dasar: sidebar navigasi (Dashboard, Latihan, Workspace, Proyek, Tapeout), bahasa Indonesia.
+   - Vite + React + TypeScript, React Router, one light UI library (for example Tailwind; shadcn/ui optional).
+   - Typed API client from OpenAPI (`openapi-typescript`), with an `npm run gen:api` script.
+   - A Dashboard page showing `/api/health` and a "Run echo job" button that shows the live log from SSE.
+   - Basic layout: navigation sidebar (Dashboard, Latihan, Workspace, Proyek, Tapeout), in Indonesian.
 
-6. [x] **Compose & perintah**
-   - `docker-compose.yml`: service `backend` (mount docker.sock, `content/` ro, `data/`), service `frontend` (dev server Vite dengan proxy `/api`).
-   - Isi target `make dev`, `make test`, `make lint`, `make check` (hapus `TODO` di Makefile).
-   - `scripts/` atau target make untuk mengunduh build web Surfer ke `frontend/public/surfer/` (dipakai Fase 1).
+6. [x] **Compose & commands**
+   - `docker-compose.yml`: a `backend` service (mounts docker.sock, `content/` ro, `data/`), a `frontend` service (Vite dev server proxying `/api`).
+   - Fill in the `make dev`, `make test`, `make lint`, `make check` targets (remove the `TODO`s in the Makefile).
+   - `scripts/` or a make target to download the Surfer web build into `frontend/public/surfer/` (used in Phase 1).
 
-## Kriteria selesai
+## Done criteria
 
-- [x] `make dev` lalu buka `http://127.0.0.1:8080`: Dashboard tampil, health OK, Docker terdeteksi.
-- [x] Klik "Run echo job": log versi Yosys muncul live, status berakhir `succeeded`.
-- [x] Cancel job panjang (mis. `sleep 60` di test) mengubah status jadi `cancelled` dan container hilang.
-- [x] Restart backend saat job berjalan: run ditandai `failed` dengan alasan.
-- [x] `make check` hijau (ruff, pytest, eslint, vitest, check-content).
-- [x] Unit test untuk: path traversal, queue concurrency, pemulihan startup (pakai `FakeRunner`).
+- [x] `make dev`, then open `http://127.0.0.1:8080`: the Dashboard shows, health is OK, Docker is detected.
+- [x] Click "Run echo job": the Yosys version log appears live, and the status ends as `succeeded`.
+- [x] Cancelling a long job (for example `sleep 60` in a test) sets the status to `cancelled` and removes the container.
+- [x] Restarting the backend while a job runs: the run is marked `failed` with a reason.
+- [x] `make check` is green (ruff, pytest, eslint, vitest, check-content).
+- [x] Unit tests for: path traversal, queue concurrency, startup recovery (with `FakeRunner`).

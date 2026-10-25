@@ -1,24 +1,24 @@
-# Fase 6: Tapeout export (langkah 6)
+# Phase 6: Tapeout export (step 6)
 
-Tujuan: dari desain yang lolos Fase 5, hasilkan repo yang siap dikirim ke shuttle Tiny Tapeout, dan buktikan dengan hardening lokal memakai alat resmi TT.
+Goal: from a design that passed Phase 5, generate a repository ready for a Tiny Tapeout shuttle, and prove it with a local hardening run using the official TT tools.
 
-## Sebelum mulai
+## Before starting
 
-Cek shuttle yang sedang buka di tinytapeout.com dan template repo-nya (SKY, IHP, atau GF). Tiap shuttle memakai branch `tt-support-tools` sendiri dan bisa mengubah aturan pin, ukuran tile, atau versi flow. Simpan sebagai profil di `content/tapeout/shuttles/<id>.yaml` (template repo, branch tools, flag PDK seperti `--ihp`, ukuran tile yang tersedia). Jangan hardcode di kode.
+Check which shuttle is open on tinytapeout.com and its repository template (SKY, IHP, or GF). Every shuttle uses its own `tt-support-tools` branch and may change the pin rules, tile sizes, or flow version. Store this as a profile in `content/tapeout/shuttles/<id>.yaml` (repo template, tools branch, PDK flag such as `--ihp`, available tile sizes). Do not hard-code it.
 
-## Task
+## Tasks
 
-1. **Pembungkus `tt_um_*`**: wizard untuk memetakan port desain ke antarmuka standar TT (`ui_in[7:0]`, `uo_out[7:0]`, `uio_in/out/oe[7:0]`, `clk`, `rst_n`, `ena`). Hasilkan modul wrapper Verilog, dan pastikan output yang tidak dipakai di-tie ke 0.
-2. **Generator repo**: dari template shuttle, isi `info.yaml` (judul, author, deskripsi, jumlah tile, frekuensi clock, pinout), `src/`, `test/` (testbench cocotb untuk wrapper), `docs/info.md`. Hasil bisa diunduh `.zip` atau di-`git init` dengan commit pertama.
-3. **Pemeriksaan sebelum hardening**: nama top diawali `tt_um_`, semua pin terdokumentasi di `info.yaml`, test cocotb wrapper lulus, tidak ada latch, lint bersih.
-4. **Job `tt_harden`** (heavy): di dalam repo hasil generate, clone `tt-support-tools` (branch sesuai profil) ke `tt/`, lalu jalankan `tt_tool.py --create-user-config` dan `tt_tool.py --harden` (dengan flag PDK sesuai shuttle), lalu `--print-warnings`. Catatan: `tt_tool.py --harden` sendiri memakai container, jadi job ini butuh pendekatan khusus (Docker-in-Docker, atau menjalankan langkah ini lewat helper di host). Putuskan dan catat di `DECISIONS.md`.
-5. **Gate-level test**: jalankan test cocotb terhadap netlist hasil hardening, seperti yang diminta TT.
-6. **Render**: `tt_tool.py --create-png` untuk gambar GDS tile.
-7. **Checklist submit** di UI: tautan ke halaman submit TT, langkah push ke GitHub, verifikasi GitHub Actions di repo hasil (gds, docs, test) hijau.
+1. **`tt_um_*` wrapper**: a wizard that maps the design's ports to the standard TT interface (`ui_in[7:0]`, `uo_out[7:0]`, `uio_in/out/oe[7:0]`, `clk`, `rst_n`, `ena`). Generate the Verilog wrapper module, and tie unused outputs to 0.
+2. **Repository generator**: from the shuttle template, fill in `info.yaml` (title, author, description, tile count, clock frequency, pinout), `src/`, `test/` (cocotb testbench for the wrapper), `docs/info.md`. The result can be downloaded as a `.zip` or `git init`-ed with a first commit.
+3. **Checks before hardening**: the top name starts with `tt_um_`, every pin is documented in `info.yaml`, the wrapper's cocotb tests pass, no latches, clean lint.
+4. **`tt_harden` job** (heavy): inside the generated repository, clone `tt-support-tools` (branch from the profile) into `tt/`, then run `tt_tool.py --create-user-config` and `tt_tool.py --harden` (with the shuttle's PDK flag), then `--print-warnings`. Note: `tt_tool.py --harden` itself uses a container, so this job needs a special approach (Docker-in-Docker, or running this step through a helper on the host). Decide and record it in `DECISIONS.md`.
+5. **Gate-level test**: run the cocotb tests against the hardened netlist, as TT requires.
+6. **Render**: `tt_tool.py --create-png` for an image of the tile GDS.
+7. **Submission checklist** in the UI: link to the TT submission page, steps to push to GitHub, and checking that the GitHub Actions of the generated repository (gds, docs, test) are green.
 
-## Kriteria selesai
+## Done criteria
 
-- [ ] `uart-tx` (atau desain kecil lain) menjadi repo TT, hardening lokal sukses, warning dibaca dan dijelaskan.
-- [ ] Gate-level test lulus.
-- [ ] Repo yang di-push ke GitHub lolos semua GitHub Actions template TT.
-- [ ] Definisi "v1 selesai" di `SPEC.md` terpenuhi.
+- [ ] `uart-tx` (or another small design) becomes a TT repository, local hardening succeeds, and the warnings are read and explained.
+- [ ] The gate-level test passes.
+- [ ] The repository pushed to GitHub passes every GitHub Action of the TT template.
+- [ ] The "v1 done" definition in `SPEC.md` is met.

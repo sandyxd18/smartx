@@ -1,60 +1,60 @@
 # CLAUDE.md
 
-Panduan kerja untuk Claude Code di repo ini. Baca file ini dulu di setiap sesi.
+Working guide for Claude Code in this repository. Read this file first in every session.
 
-## Proyek
+## Project
 
-SmartX: aplikasi web lokal, satu pengguna, untuk belajar desain chip digital dari latihan Verilog sampai tapeout Tiny Tapeout. Membungkus tool open-source (Icarus, Verilator, cocotb, Yosys, nextpnr, LibreLane, KLayout) di balik satu UI.
+SmartX: a local, single-user web app for learning digital chip design, from Verilog exercises to a Tiny Tapeout tapeout. It wraps open-source tools (Icarus, Verilator, cocotb, Yosys, nextpnr, LibreLane, KLayout) behind one UI.
 
-Dokumen acuan, dibaca sesuai kebutuhan:
-- `docs/SPEC.md`: apa yang dibangun dan apa yang tidak.
-- `docs/ARCHITECTURE.md`: struktur repo, model data, job system, API.
-- `docs/DECISIONS.md`: keputusan teknis dan alasannya.
-- `docs/CONTENT-FORMAT.md`: format soal, proyek, profil board.
-- `docs/ROADMAP.md`: status fase dan log kemajuan.
-- `docs/phases/phase-N-*.md`: task dan kriteria selesai per fase.
+Reference documents, read as needed:
+- `docs/SPEC.md`: what is built and what is not.
+- `docs/ARCHITECTURE.md`: repository layout, data model, job system, API.
+- `docs/DECISIONS.md`: technical decisions and their reasons.
+- `docs/CONTENT-FORMAT.md`: format of exercises, projects, board profiles.
+- `docs/ROADMAP.md`: phase status and progress log.
+- `docs/phases/phase-N-*.md`: tasks and done criteria per phase.
 
-## Cara bekerja
+## How to work
 
-1. Di awal sesi: buka `docs/ROADMAP.md`, cari fase pertama yang belum `[x]`, lalu buka file fasenya.
-2. Kerjakan **satu fase dalam satu waktu**, task demi task sesuai urutan di file fase. Jangan mulai fase berikutnya sebelum semua kriteria selesai fase saat ini tercentang.
-3. Untuk setiap task: tulis/ubah test dulu jika memungkinkan, implementasikan, jalankan `make check` (atau bagian yang relevan), baru anggap selesai.
-4. Setelah task selesai: centang di file fase, commit dengan pesan bahasa Inggris (`feat(jobs): add docker runner with resource limits`).
-5. Di akhir sesi: tambahkan satu baris di "Log kemajuan" `ROADMAP.md`.
-6. Jika ada keputusan teknis baru atau mengubah keputusan lama: tambahkan entri di `DECISIONS.md`.
-7. Jika spesifikasi tidak jelas atau bertentangan, tanyakan ke pemilik proyek sebelum membangun hal yang mahal diulang. Hal kecil: ambil pilihan paling masuk akal dan catat.
+1. At the start of a session: open `docs/ROADMAP.md`, find the first phase not marked `[x]`, then open its phase file.
+2. Work on **one phase at a time**, task by task in the order of the phase file. Do not start the next phase before every done criterion of the current phase is ticked.
+3. For every task: write or update tests first where possible, implement, run `make check` (or the relevant part), and only then consider it done.
+4. When a task is done: tick it in the phase file and commit with an English message (`feat(jobs): add docker runner with resource limits`).
+5. At the end of a session: add one line to the "Progress log" in `ROADMAP.md`.
+6. For a new technical decision, or a change to an old one: add an entry to `DECISIONS.md`.
+7. If the specification is unclear or contradictory, ask the project owner before building something expensive to redo. For small things: take the most reasonable option and record it.
 
-## Perintah
+## Commands
 
 ```
-make help                 daftar target
-make pin-toolchain        pin versi OSS CAD Suite ke .env
-make toolchain            build image toolchain
-make check-content        uji semua soal di dalam image
-make check-content-local  uji soal dengan tool di host
-make dev                  jalankan aplikasi (setelah Fase 0)
-make test | lint | check  (setelah Fase 0)
+make help                 list targets
+make pin-toolchain        pin the OSS CAD Suite version in .env
+make toolchain            build the toolchain image
+make check-content        test every exercise inside the image
+make check-content-local  test exercises with the tools on the host
+make dev                  run the app
+make test | lint | check
 ```
 
-Uji satu soal secara manual:
+Test one exercise by hand:
 ```
 python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-solution
 ```
 
-## Konvensi
+## Conventions
 
-- **Bahasa**: UI, materi, pesan error untuk pengguna, dan dokumen dalam Bahasa Indonesia. Kode, identifier, komentar kode, nama commit dalam bahasa Inggris.
-- **Backend**: Python 3.12, FastAPI, SQLModel, type hints di semua fungsi publik, `ruff` untuk lint + format, `pytest` untuk test. Fungsi yang memanggil Docker diuji dengan `FakeRunner`, bukan Docker sungguhan.
-- **Frontend**: React + TypeScript strict, komponen fungsi, client API di-generate dari OpenAPI (jangan tulis tipe API manual), `eslint` + `vitest`.
-- **Job baru**: satu modul di `backend/app/jobs/kinds/` dengan `prepare()` dan `collect()`; tambahkan fixture folder run untuk test `collect()`.
-- **Konten**: setiap soal/proyek baru wajib lolos `check_content` (solusi lulus, starter gagal). Ikuti aturan testbench di `CONTENT-FORMAT.md`.
-- **Versi tool**: jangan pakai `latest` untuk image atau toolchain. Pin, dan catat versi di hasil run.
+- **Language**: the UI, learning material (`content/`), and user-facing error messages are in Indonesian. Code, identifiers, code comments, commit messages, and documentation (`README.md`, `CLAUDE.md`, `docs/`, tool READMEs) are in English.
+- **Backend**: Python 3.12, FastAPI, SQLModel, type hints on every public function, `ruff` for lint + format, `pytest` for tests. Functions that call Docker are tested with `FakeRunner`, not real Docker.
+- **Frontend**: React + strict TypeScript, function components, API client generated from OpenAPI (never write API types by hand), `eslint` + `vitest`.
+- **New job kind**: one module in `backend/app/jobs/kinds/` with `prepare()` and `collect()`; add a run-folder fixture to test `collect()`.
+- **Content**: every new exercise or project must pass `check_content` (the solution passes, the starter fails). Follow the testbench rules in `CONTENT-FORMAT.md`.
+- **Tool versions**: never use `latest` for images or the toolchain. Pin them, and record the versions in run results.
 
-## Batasan penting
+## Important limits
 
-- Jangan pernah mengirim `solution.v` ke frontend kecuali lewat endpoint solusi yang sudah memeriksa syarat buka.
-- Job container: selalu `--network none`, user non-root, batas memori/CPU/pids/waktu. Jangan mount Docker socket ke job container dan jangan `--privileged`.
-- Semua path dari request dinormalisasi dan dicek tetap di dalam folder proyek/run (ada test path traversal).
-- Backend bind ke `127.0.0.1` secara default.
-- Jangan salin soal HDLBits atau materi berhak cipta lain ke `content/`. Tulis sendiri.
-- Ekosistem tool chip berubah cepat (OpenLane → LibreLane, shuttle TT berganti). Sebelum menulis kode yang bergantung pada CLI/format file sebuah tool, cek dokumentasi versi yang dipin atau jalankan `--help` di dalam image; jangan andalkan ingatan.
+- Never send `solution.v` to the frontend except through the solution endpoint that checks the unlock condition.
+- Job containers: always `--network none`, a non-root user, and memory/CPU/pids/time limits. Never mount the Docker socket into a job container and never use `--privileged`.
+- Every path from a request is normalized and checked to stay inside the project/run folder (there are path traversal tests).
+- The backend binds to `127.0.0.1` by default.
+- Do not copy HDLBits exercises or other copyrighted material into `content/`. Write your own.
+- The chip tool ecosystem changes fast (OpenLane → LibreLane, Tiny Tapeout shuttles change). Before writing code that depends on a tool's CLI or file format, check the documentation of the pinned version or run `--help` inside the image; do not rely on memory.

@@ -1,11 +1,11 @@
 ---
-description: Periksa apakah fase aktif sudah memenuhi semua kriteria selesai
+description: Check whether the active phase meets all of its done criteria
 ---
 
-1. Tentukan fase aktif dari `docs/ROADMAP.md` (atau fase yang disebut di argumen).
-2. Untuk setiap butir di bagian "Kriteria selesai" file fase itu, kumpulkan bukti: jalankan perintah/test terkait dan kutip hasilnya. Butir yang hanya bisa dicek manusia (UI, hardware) ditandai "perlu dicek manual" beserta langkah ceknya.
-3. Jalankan `make check`.
-4. Laporkan tabel: kriteria, status (terbukti / gagal / perlu dicek manual), bukti.
-5. Jangan menandai fase `[x]` di ROADMAP kecuali semua kriteria terbukti atau sudah dikonfirmasi pemilik.
+1. Find the active phase in `docs/ROADMAP.md` (or use the phase named in the arguments).
+2. For every item under "Done criteria" in that phase's file, collect evidence: run the related command or test and quote the result. Items only a person can check (UI, hardware) are marked "needs a manual check", with the steps to check them.
+3. Run `make check`.
+4. Report a table: criterion, status (proven / failed / needs a manual check), evidence.
+5. Do not mark the phase `[x]` in the ROADMAP unless every criterion is proven or confirmed by the owner.
 
 $ARGUMENTS

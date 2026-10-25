@@ -1,6 +1,6 @@
-# Arsitektur SmartX
+# SmartX architecture
 
-## Gambaran
+## Overview
 
 ```
 Browser (React)
@@ -9,146 +9,147 @@ Browser (React)
 Backend (FastAPI, Python)  ── SQLite (data/smartx.db)
   │  Docker API (socket)
   ▼
-Job container (sekali pakai, per run)
-  ├─ image light: smartx/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
-  └─ image heavy: ASIC_IMAGE         (LibreLane + PDK)
+Job container (single use, one per run)
+  ├─ light image: smartx/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
+  └─ heavy image: ASIC_IMAGE         (LibreLane + PDK)
         │
         ▼
-  data/runs/<run_id>/   (input, log, artefak: result.json, .fst, .bit, .gds, report)
+  data/runs/<run_id>/   (inputs, logs, artifacts: result.json, .fst, .bit, .gds, reports)
 ```
 
-Backend tidak menjalankan tool EDA sendiri. Backend menyiapkan folder run, menyalakan container, mengalirkan log ke browser, lalu membaca `result.json` dan artefak.
+The backend never runs EDA tools itself. It prepares a run folder, starts a container, streams the log to the browser, then reads `result.json` and the artifacts.
 
-## Struktur repo
+## Repository layout
 
 ```
 smartx/
-├─ CLAUDE.md                 aturan kerja untuk Claude Code
-├─ Makefile                  semua perintah (make help)
-├─ docker-compose.yml        backend + frontend (dibuat di Fase 0)
+├─ CLAUDE.md                 working rules for Claude Code
+├─ Makefile                  every command (make help)
+├─ docker-compose.yml        backend + frontend (built in Phase 0)
 ├─ docker/
-│  ├─ toolchain/Dockerfile   image light
-│  └─ asic/                  catatan/pin image heavy (Fase 5)
+│  ├─ toolchain/Dockerfile   light image
+│  └─ asic/                  notes/pin for the heavy image (Phase 5)
 ├─ backend/
 │  ├─ pyproject.toml
 │  ├─ app/
-│  │  ├─ main.py             FastAPI app, mount router
-│  │  ├─ config.py           baca .env (pydantic-settings)
+│  │  ├─ main.py             FastAPI app, mounts the routers
+│  │  ├─ config.py           reads .env (pydantic-settings)
 │  │  ├─ db.py               SQLite (SQLModel)
-│  │  ├─ models.py           tabel: Project, File, Run, ExerciseProgress
-│  │  ├─ api/                router per domain: exercises, projects, runs, fpga, asic, tapeout
-│  │  ├─ content/            loader soal & proyek dari folder content/
+│  │  ├─ models.py           tables: Project, File, Folder, Run, ExerciseProgress
+│  │  ├─ api/                one router per domain: exercises, projects, runs, boards, lessons, ...
+│  │  ├─ content/            loaders for exercises, lessons, and board profiles from content/
 │  │  ├─ jobs/
-│  │  │  ├─ queue.py         antrian asyncio, dua kelas: light & heavy
-│  │  │  ├─ runner.py        interface JobRunner
-│  │  │  ├─ docker_runner.py implementasi pakai docker SDK
-│  │  │  └─ kinds/           satu file per jenis job (grade, sim, lint, fpga, asic, tt)
-│  │  └─ reports/            parser laporan: yosys.py (warning sintesis), nextpnr.py (utilisasi, Fmax, jalur kritis); librelane menyusul
+│  │  │  ├─ queue.py         asyncio queue, two classes: light & heavy
+│  │  │  ├─ runner.py        JobRunner interface
+│  │  │  ├─ docker_runner.py implementation with the docker SDK
+│  │  │  └─ kinds/           one file per job kind (grade, lint, sim, fpga, asic, tt)
+│  │  └─ reports/            report parsers: yosys.py (synthesis warnings), nextpnr.py (utilization, Fmax, critical paths); librelane later
 │  └─ tests/
 ├─ frontend/
 │  ├─ package.json           Vite + React + TypeScript
-│  ├─ public/surfer/         build web Surfer (diunduh oleh skrip, di-gitignore)
+│  ├─ public/surfer/         Surfer web build (built by a script, gitignored)
 │  └─ src/
 │     ├─ pages/              Dashboard, Exercises, Exercise, Workspace, Projects, Tapeout
 │     ├─ components/         Editor, FileTree, RunPanel, WaveView, FpgaPanel, FpgaReport, GdsView
-│     └─ api/                client typed (dibuat dari OpenAPI backend)
+│     └─ api/                typed client (generated from the backend's OpenAPI)
 ├─ content/
-│  ├─ exercises/<id>/        soal langkah 1 (format: docs/CONTENT-FORMAT.md)
-│  ├─ projects/<id>/         proyek terpandu langkah 4
-│  └─ boards/<id>.yaml       profil board FPGA
+│  ├─ exercises/<id>/        step 1 exercises (format: docs/CONTENT-FORMAT.md)
+│  ├─ projects/<id>/         step 4 guided projects
+│  └─ boards/<id>.yaml       FPGA board profiles
 ├─ tools/
-│  ├─ grader/                grade.py, check_content.py (sudah jalan)
-│  └─ flash/smartx-flash    helper flashing di host (Python stdlib + openFPGALoader; README untuk instalasi)
-└─ data/                     runtime, di-gitignore
+│  ├─ grader/                grade.py, sim.py, check_content.py
+│  ├─ fpga/build.py          runs the FPGA build stages inside the image
+│  └─ flash/smartx-flash     flashing helper on the host (Python stdlib + openFPGALoader; README for installation)
+└─ data/                     runtime data, gitignored
 ```
 
-## Model data (SQLite)
+## Data model (SQLite)
 
 - **Project**: `id, name, kind (exercise|sandbox|guided|tt), source (exercise_id/project_id), created_at`
-- **File**: `project_id, path, content, updated_at`. File proyek disimpan di DB supaya autosave sederhana; saat run, file ditulis ke folder run.
-- **Folder**: `project_id, path`. Setiap folder di tree punya baris (termasuk induk setiap file), jadi folder kosong tetap ada. Path divalidasi di `app/projects/paths.py` dan unik tanpa membedakan huruf besar/kecil.
+- **File**: `project_id, path, content, updated_at`. Project files live in the DB to keep autosave simple; on a run they are written to the run folder.
+- **Folder**: `project_id, path`. Every folder in the tree has a row (including the parents of every file), so empty folders persist. Paths are validated in `app/projects/paths.py` and are unique regardless of letter case.
 - **Run**: `id, project_id, kind, status, params (JSON), result (JSON), tool_versions (JSON), created_at, started_at, finished_at, exit_code, error`
 - **ExerciseProgress**: `exercise_id, status, attempts, last_code, solved_at, hints_opened`
 
-Status run: `queued → running → succeeded | failed | cancelled | timeout`.
+Run status: `queued → running → succeeded | failed | cancelled | timeout`.
 
-## Jenis job
+## Job kinds
 
-| kind | Image | Kelas | Input | Output utama |
+| kind | Image | Class | Input | Main output |
 |---|---|---|---|---|
-| `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
-| `lint` | light | light | salinan file proyek (`project/`) + config | `lint.sarif` → diagnostic (file, baris, kolom, severity, kode, pesan) |
-| `sim` | light | light | salinan file proyek (`project/`) + `sim.json` (config) | `result.json` (test per modul, error kompilasi, versi simulator), `.fst` |
-| `fpga` | light | light | salinan file proyek (`project/`) + `fpga.json` (perintah tiap tahap dari profil board) | `result.json` (status per tahap, error pertama, diagnostics Yosys, versi tool); `collect()` menambah warning sintesis, utilisasi, Fmax, dan jalur kritis (`app/reports/`); `build/`: bitstream, `report.json` nextpnr, `stat`, log per tahap |
-| `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
-| `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |
+| `grade` | light | light | user code + exercise folder | `result.json` (tests, Icarus diagnostics, Verilator lint), `.fst` |
+| `lint` | light | light | copy of the project files (`project/`) + config | `lint.sarif` → diagnostics (file, line, column, severity, code, message) |
+| `sim` | light | light | copy of the project files (`project/`) + `sim.json` (config) | `result.json` (tests per module, compile errors, simulator version), `.fst` |
+| `fpga` | light | light | copy of the project files (`project/`) + `fpga.json` (one command per stage, from the board profile) | `result.json` (status per stage, first error, Yosys diagnostics, tool versions); `collect()` adds synthesis warnings, utilization, Fmax, and critical paths (`app/reports/`); `build/`: bitstream, nextpnr `report.json`, `stat`, a log per stage |
+| `asic` | ASIC_IMAGE | heavy | files + `config.yaml` + PDK | GDS, metrics, reports, layout PNG |
+| `tt_harden` | ASIC_IMAGE | heavy | TT repository from the generator | TT GDS, warnings |
 
-Setiap jenis job adalah satu modul di `backend/app/jobs/kinds/` dengan `JOB_CLASS`, `OK_EXIT_CODES`, model `Params`, serta dua fungsi: `prepare(run_dir, params, ctx) -> ContainerSpec` dan `collect(run_dir) -> dict`. `ctx` (`JobContext`) memberi akses ke settings dan katalog soal. Ini membuat jenis job baru mudah ditambah dan mudah dites tanpa Docker (test unit untuk `prepare` dan `collect` memakai folder fixture).
+Each job kind is one module in `backend/app/jobs/kinds/` with `JOB_CLASS`, `OK_EXIT_CODES`, a `Params` model, and two functions: `prepare(run_dir, params, ctx) -> ContainerSpec` and `collect(run_dir) -> dict`. `ctx` (`JobContext`) gives access to the settings and the exercise catalog. This keeps new job kinds easy to add and easy to test without Docker (unit tests for `prepare` and `collect` use fixture folders).
 
 ## Docker runner
 
-- Pakai Python `docker` SDK lewat `/var/run/docker.sock` yang di-mount ke container backend.
-- Setiap job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, mount `data/runs/<id>` sebagai `/work` (rw). Mount lain diminta lewat `ContainerSpec`: `tools/` di `/tools` (ro), subfolder run yang di-mount ulang read-only, dan `content/` di `/content` (ro). Job yang menjalankan kode user **tidak boleh** me-mount `content/`, karena di sana ada `solution.v`; file soal yang dibutuhkan disalin ke folder run.
-- Path folder run harus berupa path di **host**, karena container job dibuat oleh daemon host. Simpan `SMARTX_DATA_DIR` host di config dan terjemahkan path.
-- Log stdout/stderr dibaca streaming dan ditulis ke `run.log` serta diteruskan ke SSE.
-- Timeout per kelas (`JOB_LIGHT_TIMEOUT_S`, `JOB_HEAVY_TIMEOUT_S`). Saat timeout atau cancel: `container.kill()`, status `timeout`/`cancelled`.
-- Saat backend start: run berstatus `running`/`queued` diubah ke `failed` dengan error "backend restarted".
+- Uses the Python `docker` SDK through `/var/run/docker.sock`, mounted into the backend container.
+- Every job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, with `data/runs/<id>` mounted at `/work` (rw). Other mounts are requested through `ContainerSpec`: `tools/` at `/tools` (ro), run subfolders mounted again read-only, and `content/` at `/content` (ro). Jobs that run user code **must not** mount `content/`, because it holds `solution.v`; the exercise files they need are copied into the run folder.
+- Run folder paths must be **host** paths, because job containers are created by the host's daemon. The host `SMARTX_DATA_DIR` is kept in the config and paths are translated.
+- stdout/stderr are read as a stream, written to `run.log`, and forwarded over SSE.
+- Timeout per class (`JOB_LIGHT_TIMEOUT_S`, `JOB_HEAVY_TIMEOUT_S`). On timeout or cancel: `container.kill()`, status `timeout`/`cancelled`.
+- On backend start: runs that are `running`/`queued` become `failed` with the error "backend restarted".
 
-## API (ringkas)
+## API (summary)
 
 ```
 GET  /api/health
-GET  /api/exercises                       daftar + progres
-GET  /api/exercises/{id}                  teks, starter/kode terakhir, hint terbuka
+GET  /api/exercises                       list + progress
+GET  /api/exercises/{id}                  statement, starter/latest code, opened hints
 POST /api/exercises/{id}/runs             {code} -> run
 POST /api/exercises/{id}/hints/next
-GET  /api/exercises/{id}/solution         403 sampai syarat terpenuhi
+GET  /api/exercises/{id}/solution         403 until the unlock condition is met
 
 GET  /api/project-templates
-GET  /api/snippets                        snippet testbench cocotb (content/snippets/*.yaml)
-GET  /api/lessons?step=2                  materi singkat (content/lessons/*.md)
+GET  /api/snippets                        cocotb testbench snippets (content/snippets/*.yaml)
+GET  /api/lessons?step=2                  short lessons (content/lessons/*.md)
 GET  /api/projects | POST /api/projects       {name, template | exercise_id}
-GET | PATCH | DELETE /api/projects/{id}       detail + tree | ganti nama | hapus
-POST /api/projects/{id}/files                {path, content} (409 kalau sudah ada)
-GET | PUT | DELETE /api/projects/{id}/files/{path}   PUT = simpan (autosave), DELETE folder = rekursif
+GET | PATCH | DELETE /api/projects/{id}       detail + tree | rename | delete
+POST /api/projects/{id}/files                {path, content} (409 if it exists)
+GET | PUT | DELETE /api/projects/{id}/files/{path}   PUT = save (autosave), DELETE on a folder = recursive
 POST /api/projects/{id}/folders              {path}
-POST /api/projects/{id}/move                 {from_path, to_path}: ganti nama/pindah file atau folder
-GET | PUT /api/projects/{id}/config           smartx.yaml: teks + hasil parse + masalah | simpan dari form
-POST /api/projects/{id}/config/check          {text}: periksa YAML yang sedang diketik (tidak disimpan)
-POST /api/projects/{id}/runs              {kind: lint|sim|fpga}: salin file proyek ke folder run, ambil params dari smartx.yaml
-GET  /api/projects/{id}/runs?limit=50     riwayat: waktu, jenis, status, durasi, ringkasan (terbaru dulu)
-GET  /api/projects/{id}/runs/compare?a=&b=  test yang berubah status antara dua simulasi
-GET  /api/projects/{id}/runs/{run_id}     run + hasil sesuai jenisnya (lint, sim)
+POST /api/projects/{id}/move                 {from_path, to_path}: rename/move a file or folder
+GET | PUT /api/projects/{id}/config           smartx.yaml: text + parse result + problems | save from the form
+POST /api/projects/{id}/config/check          {text}: check YAML that is still being typed (not saved)
+POST /api/projects/{id}/runs              {kind: lint|sim|fpga}: copy the project files into the run folder, take params from smartx.yaml
+GET  /api/projects/{id}/runs?limit=50     history: time, kind, status, duration, summary (newest first)
+GET  /api/projects/{id}/runs/compare?a=&b=  tests whose status changed between two simulations
+GET  /api/projects/{id}/runs/{run_id}     run + the result for its kind (lint, sim, fpga)
 GET  /api/runs/{id}
 GET  /api/runs/{id}/events                SSE: log, status
 POST /api/runs/{id}/cancel
-GET  /api/runs/{id}/files/{path}          artefak (cegah path traversal!)
+GET  /api/runs/{id}/files/{path}          artifacts (path traversal is blocked)
 
-GET  /api/boards                          profil board FPGA + template constraint + perintah flash (content/boards/)
+GET  /api/boards                          FPGA board profiles + constraint template + flash command (content/boards/)
 POST /api/projects/{id}/tapeout/generate
 ```
 
-Frontend memakai client yang di-generate dari OpenAPI backend (`openapi-typescript`), supaya tipe tidak ditulis dua kali.
+The frontend uses a client generated from the backend's OpenAPI (`openapi-typescript`), so types are not written twice.
 
 ## Waveform viewer
 
-Pakai **Surfer** versi web (WASM), di-host sendiri di `frontend/public/surfer/` dan ditampilkan lewat `<iframe>`. Surfer mendukung pemuatan file lewat URL dan kontrol lewat `postMessage`; API-nya didokumentasikan di `surfer/assets/integration.js` di repo Surfer dan masih bisa berubah, jadi bungkus semua interaksi di satu komponen `WaveView` dan pin versi Surfer yang dipakai.
+Uses the web (WASM) build of **Surfer**, self-hosted in `frontend/public/surfer/` and shown in an `<iframe>`. Surfer can load files from a URL and be controlled with `postMessage`; that API is documented in `surfer/assets/integration.js` in the Surfer repository and may still change, so every interaction is wrapped in one `WaveView` component and the Surfer version is pinned.
 
-Fallback jika integrasi bermasalah: tombol unduh `.fst` untuk dibuka di GTKWave/Surfer desktop.
+Fallback if the integration breaks: a button to download the `.fst` and open it in desktop GTKWave/Surfer.
 
-## Viewer layout GDS
+## GDS layout viewer
 
-Fase 5 cukup memakai PNG yang dirender KLayout dalam mode batch (`klayout -zz -r render.py`) di container ASIC, dengan beberapa level zoom. Viewer interaktif (misalnya konversi GDS → glTF untuk tampilan 3D) adalah ekstensi opsional.
+For Phase 5, PNGs rendered by KLayout in batch mode (`klayout -zz -r render.py`) in the ASIC container, at several zoom levels, are enough. An interactive viewer (for example a GDS → glTF conversion for a 3D view) is an optional extension.
 
-## Keamanan (single user)
+## Security (single user)
 
-- Backend bind ke `127.0.0.1` secara default. Akses dari jaringan lain harus lewat reverse proxy yang punya autentikasi.
-- Akses ke Docker socket setara root di host. Ini diterima karena aplikasi ini pribadi, tapi tetap: job container tidak pernah mendapat socket, selalu `--network none`, dan tidak berjalan `--privileged`.
-- Semua path dari user dinormalisasi dan dicek tetap di dalam folder proyek/run.
+- The backend binds to `127.0.0.1` by default. Access from other networks must go through a reverse proxy with authentication.
+- Access to the Docker socket is equivalent to root on the host. This is accepted because the app is personal, but still: job containers never get the socket, always run with `--network none`, and never run `--privileged`.
+- Every path from the user is normalized and checked to stay inside the project/run folder.
 
-## Kebutuhan mesin
+## Machine requirements
 
-| Fase | CPU | RAM | Disk |
+| Phase | CPU | RAM | Disk |
 |---|---|---|---|
-| 0–4 | 2 core | 4 GB | ~5 GB (image toolchain ~2 GB) |
-| 5–6 | 4+ core | 12–16 GB | +25 GB (image ASIC ~4 GB + PDK + hasil run) |
+| 0–4 | 2 cores | 4 GB | ~5 GB (toolchain image ~2 GB) |
+| 5–6 | 4+ cores | 12–16 GB | +25 GB (ASIC image ~4 GB + PDK + run results) |

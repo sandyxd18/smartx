@@ -1,151 +1,153 @@
-# Format konten
+# Content format
 
-Semua materi belajar ada di `content/` sebagai file biasa (YAML, Markdown, Verilog, Python), supaya mudah ditulis, di-review, dan dites otomatis. Backend hanya membaca folder ini; UI tidak pernah mengirim `solution.v` ke browser kecuali syarat buka solusi terpenuhi.
+All learning material lives in `content/` as plain files (YAML, Markdown, Verilog, Python), so it is easy to write, review, and test automatically. The backend only reads this folder; the UI never sends `solution.v` to the browser unless the unlock condition is met.
 
-## Soal latihan: `content/exercises/<id>/`
+The content itself (exercise statements, hints, lessons, test messages) is written in Indonesian, like the UI.
+
+## Exercises: `content/exercises/<id>/`
 
 ```
 counter-4bit/
 ├─ exercise.yaml      metadata
-├─ README.md          teks soal (Markdown, boleh tabel port)
-├─ starter.v          kode awal di editor
-├─ solution.v         solusi resmi (rahasia)
-└─ test_<top>.py      testbench cocotb
+├─ README.md          statement (Markdown, port tables allowed)
+├─ starter.v          initial code in the editor
+├─ solution.v         official solution (secret)
+└─ test_<top>.py      cocotb testbench
 ```
 
 `exercise.yaml`:
 
 ```yaml
-id: counter-4bit          # = nama folder, kebab-case
+id: counter-4bit          # = folder name, kebab-case
 title: Counter 4-bit dengan enable dan reset sinkron
-step: 1                   # langkah kurikulum 1-6
-level: 1                  # 1 dasar, 2 menengah, 3 lanjut
-topics: [sequential, register, counter]   # topik pertama = grup di daftar soal
-toplevel: counter4        # modul yang diuji
+step: 1                   # curriculum step 1-6
+level: 1                  # 1 basic, 2 intermediate, 3 advanced
+topics: [sequential, register, counter]   # first topic = group in the exercise list
+toplevel: counter4        # module under test
 language: verilog         # verilog | systemverilog
 files: {starter: starter.v, solution: solution.v, test: test_counter4.py, statement: README.md}
 timeout_s: 30
-hints: ["...", "..."]     # dibuka berurutan
-order: 120                # opsional, urutan tampil dalam topik
-requires: [dff-basic]     # opsional, soal prasyarat
+hints: ["...", "..."]     # opened in order
+order: 120                # optional, display order within the topic
+requires: [dff-basic]     # optional, prerequisite exercises
 ```
 
-### Topik
+### Topics
 
-Halaman daftar soal mengelompokkan soal menurut **topik pertama** di `topics`. Pakai salah satu id ini agar soal masuk grup kurikulum yang benar (urutan grup juga mengikuti tabel ini):
+The exercise list groups exercises by the **first topic** in `topics`. Use one of these ids so the exercise lands in the right curriculum group (the group order follows this table):
 
-| id | Grup |
+| id | Group (shown in the UI) |
 |---|---|
 | `combinational` | Kombinasional |
 | `sequential` | Sekuensial |
 | `fsm` | FSM |
 | `pitfalls` | Jebakan umum |
 
-Topik lain boleh dipakai sebagai topik kedua dan seterusnya (misalnya `mux`, `counter`). Topik pertama di luar tabel tetap tampil, tetapi sebagai grup sendiri di akhir daftar.
+Other topics may be used as the second topic onwards (for example `mux`, `counter`). A first topic outside the table still shows up, but as its own group at the end of the list.
 
-### Aturan testbench
+### Testbench rules
 
-1. Bandingkan DUT dengan **model referensi Python** siklus demi siklus. Hindari daftar nilai hardcode yang panjang.
-2. Pesan assert dalam Bahasa Indonesia dan menyebut siklus, input, nilai didapat, nilai seharusnya.
-3. Baca sinyal lewat helper `read_int()` (lihat contoh `counter-4bit`) agar nilai X/Z dijelaskan dengan bahasa manusia.
-4. Ada minimal satu test acak dengan seed tetap, supaya hasil bisa diulang.
-5. Ubah input di sisi turun clock dan cek output di sisi turun berikutnya. Ini menghindari race antara testbench dan DUT.
-6. Jangan andalkan `timescale` di file user; grader memaksa `1ns/1ps`.
-7. Pakai `assert kondisi, "pesan"` dengan pesan lengkap. Yang ditampilkan ke pengguna hanya pesan itu; introspeksi assertion dari cocotb dibuang oleh grader.
-8. Untuk soal "jebakan umum", pesan gagal starter sebaiknya mengarahkan ke penyebab bug (contoh: `pitfall-latch`).
-9. `solution.v` harus bersih dari warning `verilator --lint-only -Wall` (dicek `make check-content`). Sinyal yang memang sengaja tidak dipakai beri nama dengan kata `unused`, atau bungkus dengan `/* verilator lint_off ... */`.
+1. Compare the DUT with a **Python reference model**, cycle by cycle. Avoid long hard-coded value lists.
+2. Assert messages are in Indonesian and name the cycle, the inputs, the value read, and the expected value.
+3. Read signals through the `read_int()` helper (see the `counter-4bit` example) so X/Z values are explained in plain language.
+4. At least one random test with a fixed seed, so results are repeatable.
+5. Change inputs on the falling clock edge and check outputs on the next falling edge. This avoids races between the testbench and the DUT.
+6. Do not rely on a `timescale` in the user's file; the grader forces `1ns/1ps`.
+7. Use `assert condition, "message"` with a complete message. Only that message is shown to the user; cocotb's assertion introspection is dropped by the grader.
+8. For "common pitfall" exercises, the starter's failure message should point at the cause of the bug (example: `pitfall-latch`).
+9. `solution.v` must be free of `verilator --lint-only -Wall` warnings (checked by `make check-content`). Signals that are intentionally unused get the word `unused` in their name, or are wrapped in `/* verilator lint_off ... */`.
 
-### Validasi
+### Validation
 
-`make check-content` (atau `check-content-local`) menjalankan setiap soal dua kali: `solution.v` wajib lulus, `starter.v` wajib gagal. Soal yang tidak lolos tidak boleh di-commit.
+`make check-content` (or `check-content-local`) runs every exercise twice: `solution.v` must pass and `starter.v` must fail. An exercise that does not pass this check must not be committed.
 
-## Kurikulum langkah 1 (target Fase 1)
+## Step 1 curriculum (Phase 1 target)
 
-Urutan disarankan; tiap baris satu soal. Target minimal 20 soal.
+Suggested order; one exercise per item. Target: at least 20 exercises.
 
-| Topik | Soal |
+| Topic | Exercises |
 |---|---|
-| Kombinasional | wire & assign, gerbang dasar, mux 2:1, mux 4:1 (case), decoder 3→8, priority encoder, adder 4-bit, comparator, 7-segment decoder |
-| Sekuensial | D flip-flop (reset sinkron/asinkron), register dengan enable, counter 4-bit, counter up/down + load, shift register, LFSR |
-| FSM | deteksi pola `1011` (Moore), deteksi pola (Mealy), lampu lalu lintas, debouncer, edge detector |
-| Jebakan umum | latch tak sengaja (soal "perbaiki kode ini"), blocking vs non-blocking, multi-driven net |
+| Combinational | wire & assign, basic gates, 2:1 mux, 4:1 mux (case), 3→8 decoder, priority encoder, 4-bit adder, comparator, 7-segment decoder |
+| Sequential | D flip-flop (sync/async reset), register with enable, 4-bit counter, up/down counter + load, shift register, LFSR |
+| FSM | `1011` pattern detector (Moore), pattern detector (Mealy), traffic light, debouncer, edge detector |
+| Common pitfalls | accidental latch ("fix this code" exercise), blocking vs non-blocking, multi-driven net |
 
-## Template proyek: `content/templates/<id>/` (Fase 2)
+## Project templates: `content/templates/<id>/` (Phase 2)
 
 ```
 cocotb-basic/
 ├─ template.yaml      title, description, order
-└─ files/             isi proyek baru, apa adanya (src/, test/, smartx.yaml, README.md)
+└─ files/             contents of the new project, as is (src/, test/, smartx.yaml, README.md)
 ```
 
-Nama file dan folder di `files/` harus lolos aturan path proyek: huruf, angka, `_`, `-`, `.`; tidak diawali `.`; tidak memakai nama yang dicadangkan Windows (`con`, `nul`, `aux`, dan sejenisnya). Testbench template mengikuti aturan testbench di atas dan harus gagal untuk desain yang salah. Untuk `cocotb-basic` hal ini dicek dengan dua mutan (enable diabaikan, `wrap` tanpa `en`).
+File and folder names in `files/` must follow the project path rules: letters, digits, `_`, `-`, `.`; not starting with `.`; not a name reserved by Windows (`con`, `nul`, `aux`, and so on). Template testbenches follow the testbench rules above and must fail for a wrong design. For `cocotb-basic` this is checked with two mutants (enable ignored, `wrap` without `en`).
 
-"Salin dari soal X" membuat proyek berisi `src/<toplevel>.v` (kode terakhir pengguna, atau starter), `test/<test_*.py>` (testbench soal), `README.md` (teks soal), dan `smartx.yaml`. `solution.v` tidak pernah ikut.
+"Copy from exercise X" creates a project with `src/<toplevel>.v` (the user's latest code, or the starter), `test/<test_*.py>` (the exercise testbench), `README.md` (the statement), and `smartx.yaml`. `solution.v` is never included.
 
-## Proyek workspace: `smartx.yaml`
+## Workspace project: `smartx.yaml`
 
-File di root proyek. Divalidasi oleh `backend/app/projects/config.py`, dan bisa diedit lewat form atau sebagai YAML.
+A file at the project root. Validated by `backend/app/projects/config.py`, and editable through a form or as YAML.
 
 ```yaml
-top: counter              # wajib: modul top (identifier Verilog)
-sources:                  # glob relatif ke root proyek; default [src/**/*.v]
+top: counter              # required: top module (Verilog identifier)
+sources:                  # globs relative to the project root; default [src/**/*.v]
   - src/**/*.v
-tests:                    # file testbench cocotb (.py); default []
+tests:                    # cocotb testbench files (.py); default []
   - test/test_counter.py
 simulator: icarus         # icarus | verilator; default icarus
-parameters:               # opsional: parameter modul top
+parameters:               # optional: parameters of the top module
   WIDTH: 8
-  INIT: 8'hFF             # selain angka bulat, teks diteruskan apa adanya
-defines:                  # opsional: -DNAMA=nilai
+  INIT: 8'hFF             # anything other than an integer is passed on as text
+defines:                  # optional: -DNAME=value
   SIM: 1
-fpga:                     # opsional: build FPGA (Fase 3)
-  board: tang-nano-9k     # id profil di content/boards/
-  constraints: constraints/tang-nano-9k.cst   # file constraint di proyek
-  freq_mhz: 27            # opsional: target --freq nextpnr; default clock board
+fpga:                     # optional: FPGA build (Phase 3)
+  board: tang-nano-9k     # profile id in content/boards/
+  constraints: constraints/tang-nano-9k.cst   # constraint file in the project
+  freq_mhz: 27            # optional: nextpnr --freq target; default is the board clock
 ```
 
-Aturan:
+Rules:
 
-- Kunci yang tidak dikenal ditolak, supaya salah ketik (`simulater`) langsung terlihat.
-- Pola `sources` boleh memakai `*` dan `?` (dalam satu folder) serta `**` sebagai satu segmen utuh (lintas folder, termasuk nol folder). Pola harus relatif, tanpa `..` dan tanpa `\`. File yang cocok dipakai sesuai urutan pola, tanpa duplikat.
-- `tests` berisi path file `.py` di proyek. Nama file harus berupa nama modul Python yang valid (`test_fifo.py`). Dua file tidak boleh punya nama modul yang sama, karena cocotb memuat test berdasarkan nama modul.
-- Nilai `parameters` dan `defines` berupa angka bulat atau teks. `true`/`false`, daftar, dan nilai kosong ditolak, karena cocotb runner (versi yang dipin) menulisnya apa adanya ke perintah simulator (`-P`/`-G`/`-D`). Untuk define tanpa nilai, isi `1`.
-- Peringatan, yang tidak menghalangi penyimpanan: pola yang tidak cocok dengan file mana pun, modul top yang tidak ditemukan di file sumber, file test yang tidak ada, dan `tests` yang kosong.
-- Menyimpan dari form menulis ulang file dari isi form, sehingga komentar buatan sendiri hilang. Hanya baris judul yang dipertahankan. Bagian `fpga` tidak diedit di form simulasi, tetapi ikut disimpan apa adanya.
-- `fpga.board` yang tidak dikenal dan file `fpga.constraints` yang tidak ada menjadi peringatan; tombol Build menolaknya dengan pesan yang sama. Build FPGA memakai `top`, `sources`, `parameters`, dan `defines` yang sama dengan simulasi.
+- Unknown keys are rejected, so a typo (`simulater`) shows up immediately.
+- `sources` patterns may use `*` and `?` (within one folder) and `**` as a whole segment (across folders, including zero folders). Patterns must be relative, without `..` and without `\`. Matched files are used in pattern order, without duplicates.
+- `tests` holds paths of `.py` files in the project. The file name must be a valid Python module name (`test_fifo.py`). Two files may not share a module name, because cocotb loads tests by module name.
+- `parameters` and `defines` values are integers or text. `true`/`false`, lists, and empty values are rejected, because the cocotb runner (pinned version) writes them as they are onto the simulator command line (`-P`/`-G`/`-D`). For a define without a value, use `1`.
+- Warnings, which do not block saving: a pattern that matches no file, a top module not found in the source files, a missing test file, and an empty `tests`.
+- Saving from the form rewrites the file from the form's contents, so hand-written comments are lost. Only the header line is kept. The `fpga` section is not edited in the simulation form, but it is saved along unchanged.
+- An unknown `fpga.board` and a missing `fpga.constraints` file are warnings; the Build button refuses them with the same message. The FPGA build uses the same `top`, `sources`, `parameters`, and `defines` as the simulation.
 
-## Snippet testbench: `content/snippets/*.yaml` (Fase 2)
+## Testbench snippets: `content/snippets/*.yaml` (Phase 2)
 
 ```yaml
 snippets:
-  - id: scoreboard            # huruf kecil, angka, '-'
+  - id: scoreboard            # lowercase letters, digits, '-'
     title: Scoreboard
     description: Bandingkan keluaran DUT dengan urutan data yang diharapkan.
-    imports:                  # baris import yang dibutuhkan body
+    imports:                  # import lines the body needs
       - from collections import deque
-    body: |                   # kode tingkat modul (kelas, fungsi, test)
+    body: |                   # module-level code (classes, functions, tests)
       class Scoreboard:
           ...
 ```
 
-Menu "Sisipkan snippet" menaruh import yang belum ada di bagian import file dan body di akhir file. Snippet ikut aturan testbench di atas: input diubah di sisi turun clock, dan sinyal dibaca setelah `ReadOnly()`. Semua snippet harus bisa digabung menjadi satu testbench. Test Docker `test_snippets_make_a_working_testbench` menggabungkan semuanya untuk menguji register valid/ready (`backend/tests/fixtures/projects/pipe_reg`): hasilnya harus lulus di Icarus dan Verilator, dan harus gagal untuk register yang membuang data.
+The "Sisipkan snippet" menu puts imports that are not there yet into the file's import section and the body at the end of the file. Snippets follow the testbench rules above: inputs change on the falling clock edge, and signals are read after `ReadOnly()`. All snippets must combine into one testbench. The Docker test `test_snippets_make_a_working_testbench` combines them all to test a valid/ready register (`backend/tests/fixtures/projects/pipe_reg`): the result must pass on Icarus and Verilator, and must fail for a register that drops data.
 
-## Materi singkat: `content/lessons/NN-slug.md` (Fase 2)
+## Short lessons: `content/lessons/NN-slug.md` (Phase 2)
 
 ```markdown
 ---
 title: Icarus vs Verilator
-step: 2          # langkah belajar 1–6 (SPEC); 2 = simulasi & verifikasi
-order: 40        # urutan dalam satu langkah
+step: 2          # learning step 1–6 (SPEC); 2 = simulation & verification
+order: 40        # order within one step
 ---
 
 # Icarus vs Verilator
 ...
 ```
 
-`NN` adalah langkah belajar (misalnya `02-`). Isinya Markdown biasa (tabel dan blok kode didukung) dan tampil di sidebar "Materi" halaman proyek, yang menampilkan langkah 2 dan 3, dikelompokkan per langkah. Blok ```verilog di materi langkah 3 yang dibangun oleh test Docker harus tetap bisa di-Build tanpa peringatan. Klaim tentang perilaku tool sebaiknya diukur dulu di image toolchain dan disebut versinya, bukan ditulis dari ingatan.
+`NN` is the learning step (for example `02-`). The body is plain Markdown (tables and code blocks are supported) and is shown in the "Materi" sidebar of the project page, which shows steps 2 and 3, grouped per step. The ```verilog blocks in the step 3 lessons that a Docker test builds must keep building without warnings. Claims about tool behavior should be measured in the toolchain image first and name the version, not be written from memory.
 
-## Proyek terpandu: `content/projects/<id>/` (Fase 4)
+## Guided projects: `content/projects/<id>/` (Phase 4)
 
 ```
 uart-tx/
@@ -156,36 +158,36 @@ uart-tx/
    └─ 03-full-tx/
 ```
 
-`project.yaml` berisi `id, title, description, milestones: [{id, title, toplevel, test}]`, dan opsional `fpga: {board, constraints}` serta `asic: {config}` untuk dilanjutkan ke langkah 3 dan 5. File dari milestone sebelumnya ikut terbawa ke milestone berikutnya, jadi proyek tumbuh di workspace yang sama.
+`project.yaml` holds `id, title, description, milestones: [{id, title, toplevel, test}]`, and optionally `fpga: {board, constraints}` and `asic: {config}` to continue into steps 3 and 5. Files from earlier milestones carry over to the next milestone, so the project grows in the same workspace.
 
-## Profil board: `content/boards/<id>.yaml` (Fase 3)
+## Board profiles: `content/boards/<id>.yaml` (Phase 3)
 
 ```yaml
-id: tang-nano-9k                 # = nama file
+id: tang-nano-9k                 # = file name
 name: Sipeed Tang Nano 9K
 family: gowin                    # gowin | ice40
 device: GW1NR-LV9QN88PC6/I5
-synth: synth_gowin               # perintah sintesis Yosys: synth_gowin | synth_ice40
+synth: synth_gowin               # Yosys synthesis command: synth_gowin | synth_ice40
 nextpnr:
   binary: nextpnr-himbaechel
   args: [--device, GW1NR-LV9QN88PC6/I5, --vopt, family=GW1N-9C, --vopt, "cst={constraints}", --write, "{pnr}"]
-pnr_file: pnr.json               # yang ditulis nextpnr untuk packer
+pnr_file: pnr.json               # what nextpnr writes for the packer
 pack:
   binary: gowin_pack
   args: [-d, GW1N-9C, -o, "{bitstream}", "{pnr}"]
 bitstream_file: bitstream.fs
 flash: {binary: openFPGALoader, args: [-b, tangnano9k]}
-clock: {port: clk, pin: "52", freq_mhz: 27}    # freq_mhz = target --freq bawaan
-constraints: {format: cst, template: tang-nano-9k.cst}   # cst | pcf, file di folder yang sama
-resources:                       # baris laporan: label -> jenis resource nextpnr yang dijumlahkan
+clock: {port: clk, pin: "52", freq_mhz: 27}    # freq_mhz = default --freq target
+constraints: {format: cst, template: tang-nano-9k.cst}   # cst | pcf, a file in the same folder
+resources:                       # report rows: label -> nextpnr resource types summed into it
   LUT: [LUT4]
   FF: [DFF]
   BRAM: [BSRAM]
   IO: [IOB]
 ```
 
-Aturan:
+Rules:
 
-- Argumen tool boleh memakai placeholder `{constraints}` (file constraint proyek), `{pnr}` (`pnr_file`), dan `{bitstream}` (`bitstream_file`). Argumen nextpnr wajib memakai `{constraints}` dan `{pnr}`; argumen packer wajib memakai `{pnr}` dan `{bitstream}`. Job menambahkan `--json`, `--freq`, `--report`, dan `-l` sendiri.
-- Template constraint berisi semua pin board yang berguna dengan nama port yang konsisten (`clk`, `rst_n`, `btn`, `led[0]`…). Port yang tidak dipakai desain diabaikan nextpnr, jadi template tidak perlu dipangkas. Template wajib memasang `clock.port` ke `clock.pin`.
-- Argumen persis untuk nextpnr dan packer harus dicek terhadap versi OSS CAD Suite yang dipin. Test Docker `test_board_profile_builds_blinky` membangun `backend/tests/fixtures/boards/<id>/blinky.v` dengan profil dan template saja, dan setiap profil wajib punya fixture itu.
+- Tool arguments may use the placeholders `{constraints}` (the project's constraint file), `{pnr}` (`pnr_file`), and `{bitstream}` (`bitstream_file`). nextpnr arguments must use `{constraints}` and `{pnr}`; packer arguments must use `{pnr}` and `{bitstream}`. The job adds `--json`, `--freq`, `--report`, and `-l` itself.
+- The constraint template holds every useful board pin with consistent port names (`clk`, `rst_n`, `btn`, `led[0]`…). Ports the design does not use are ignored by nextpnr, so the template need not be trimmed. The template must pin `clock.port` to `clock.pin`.
+- The exact nextpnr and packer arguments must be checked against the pinned OSS CAD Suite version. The Docker test `test_board_profile_builds_blinky` builds `backend/tests/fixtures/boards/<id>/blinky.v` with nothing but the profile and its template, and every profile must have that fixture.

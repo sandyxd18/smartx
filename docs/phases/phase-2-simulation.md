@@ -1,21 +1,21 @@
-# Fase 2: Workspace simulasi (langkah 2)
+# Phase 2: Simulation workspace (step 2)
 
-Tujuan: lingkungan kerja proyek bebas (sandbox) dengan banyak file, testbench sendiri, dan riwayat run. Di sini pengguna belajar menulis verifikasinya sendiri, bukan hanya memakai testbench yang disediakan.
+Goal: a free-form (sandbox) project workspace with many files, the user's own testbenches, and a run history. Here the user learns to write their own verification, not just use the testbenches provided.
 
-## Task
+## Tasks
 
-1. [x] **Proyek sandbox**: buat proyek baru dari template (`empty`, `cocotb-basic`, atau "salin dari soal X"). File tree dengan buat/ganti nama/hapus file dan folder.
-2. [x] **Konfigurasi proyek** (`smartx.yaml` di root proyek): `top`, `sources` (glob), `tests` (modul cocotb), `simulator` (`icarus` | `verilator`), `parameters`, `defines`. Ada form UI dan editor mentah; keduanya sinkron.
-3. [x] **Job `lint`**: `verilator --lint-only -Wall` atas semua sumber. Parser output → diagnostic `{file, line, col, severity, code, message}` → tampil di panel Problems dan sebagai marker Monaco.
-4. [x] **Job `sim`**: generalisasi `grade.py` menjadi runner proyek (cocotb runner dengan banyak sumber, parameter, defines, dan pilihan simulator). Hasil per test + waveform.
-5. [x] **Riwayat run**: daftar run per proyek (waktu, jenis, status, durasi, ringkasan test). Klik untuk membuka hasil lama.
-6. [x] **Bandingkan dua run**: test mana yang berubah status. (Diff waveform tidak perlu.)
-7. [x] **Template testbench**: snippet cocotb untuk clock/reset, driver valid-ready, scoreboard sederhana, dan coverage dengan `cocotb-coverage` (opsional).
-8. [x] **Materi singkat** di `content/lessons/02-*.md`: cara menulis model referensi, test acak dengan seed, membaca waveform untuk debugging. Tampilkan di sidebar workspace.
+1. [x] **Sandbox projects**: create a new project from a template (`empty`, `cocotb-basic`, or "copy from exercise X"). File tree with create/rename/delete for files and folders.
+2. [x] **Project configuration** (`smartx.yaml` at the project root): `top`, `sources` (globs), `tests` (cocotb modules), `simulator` (`icarus` | `verilator`), `parameters`, `defines`. Both a UI form and a raw editor, kept in sync.
+3. [x] **`lint` job**: `verilator --lint-only -Wall` over all sources. Output parser → diagnostics `{file, line, col, severity, code, message}` → shown in a Problems panel and as Monaco markers.
+4. [x] **`sim` job**: generalize `grade.py` into a project runner (cocotb runner with many sources, parameters, defines, and a choice of simulator). Results per test + waveform.
+5. [x] **Run history**: list of runs per project (time, kind, status, duration, test summary). Click to open an old result.
+6. [x] **Compare two runs**: which tests changed status. (No waveform diff needed.)
+7. [x] **Testbench templates**: cocotb snippets for clock/reset, a valid-ready driver, a simple scoreboard, and coverage with `cocotb-coverage` (optional).
+8. [x] **Short lessons** in `content/lessons/02-*.md`: writing a reference model, random tests with a seed, reading waveforms for debugging. Shown in a workspace sidebar.
 
-## Kriteria selesai
+## Done criteria
 
-- [x] Membuat proyek sandbox berisi FIFO sinkron + testbench cocotb dengan scoreboard, menjalankannya di Icarus dan Verilator, keduanya hijau.
-- [x] Warning lint muncul di editor pada baris yang tepat.
-- [x] Riwayat menyimpan minimal 50 run terakhir per proyek; hasil lama bisa dibuka beserta waveform-nya.
-- [x] Perbedaan Icarus vs Verilator (mis. X-propagation) dijelaskan di materi.
+- [x] Create a sandbox project with a synchronous FIFO + a cocotb testbench with a scoreboard, run it on Icarus and Verilator, both green.
+- [x] Lint warnings appear in the editor on the right line.
+- [x] The history keeps at least the last 50 runs per project; old results can be opened together with their waveform.
+- [x] The differences between Icarus and Verilator (for example X-propagation) are explained in the lessons.
