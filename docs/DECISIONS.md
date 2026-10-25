@@ -27,7 +27,7 @@ Image all-in-one dari JKU (~4 GB) berisi PDK SKY130/GF180/IHP dan tool digital/a
 Murah, mudah didapat, didukung toolchain open-source (Yosys + nextpnr-himbaechel + Apicula + openFPGALoader). iCE40 (iCEBreaker/UPduino) jadi target kedua karena paling matang di ekosistem open-source. Ganti jika pemilik sudah punya board lain.
 
 ## D09. Flashing FPGA di host, bukan di container
-Passthrough USB ke Docker rapuh (terutama di WSL/macOS). Backend hanya menghasilkan bitstream; skrip `tools/flash/chiplab-flash` di host memanggil `openFPGALoader`.
+Passthrough USB ke Docker rapuh (terutama di WSL/macOS). Backend hanya menghasilkan bitstream; skrip `tools/flash/smartx-flash` di host memanggil `openFPGALoader`.
 
 ## D10. Waveform: Surfer web, di-host sendiri
 Surfer berjalan di browser (WASM), bisa di-embed lewat iframe dan dikontrol dengan `postMessage`. API-nya belum stabil, jadi versi dipin dan integrasi dibungkus satu komponen.

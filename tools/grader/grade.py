@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Grader untuk soal latihan ChipLab.
+"""Grader untuk soal latihan SmartX.
 
 Menjalankan testbench cocotb sebuah soal terhadap file Verilog kiriman
 pengguna, lalu menulis hasilnya sebagai JSON yang dibaca backend.

@@ -1,9 +1,9 @@
-# ChipLab: perintah utama. Jalankan `make help`.
+# SmartX: perintah utama. Jalankan `make help`.
 SHELL := /bin/bash
 -include .env
 export
 
-TOOLCHAIN_IMAGE ?= chiplab/toolchain:local
+TOOLCHAIN_IMAGE ?= smartx/toolchain:local
 PY ?= python3
 
 .PHONY: help

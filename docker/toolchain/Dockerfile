@@ -32,6 +32,6 @@ COPY tools/grader/requirements.txt /tmp/req.txt
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tmp/req.txt
 
 # Job berjalan sebagai user non-root; uid disesuaikan saat 'docker run --user'.
-RUN useradd -m -u 1000 chiplab || true
+RUN useradd -m -u 1000 smartx || true
 WORKDIR /work
 CMD ["bash"]

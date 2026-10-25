@@ -4,7 +4,7 @@ Panduan kerja untuk Claude Code di repo ini. Baca file ini dulu di setiap sesi.
 
 ## Proyek
 
-ChipLab: aplikasi web lokal, satu pengguna, untuk belajar desain chip digital dari latihan Verilog sampai tapeout Tiny Tapeout. Membungkus tool open-source (Icarus, Verilator, cocotb, Yosys, nextpnr, LibreLane, KLayout) di balik satu UI.
+SmartX: aplikasi web lokal, satu pengguna, untuk belajar desain chip digital dari latihan Verilog sampai tapeout Tiny Tapeout. Membungkus tool open-source (Icarus, Verilator, cocotb, Yosys, nextpnr, LibreLane, KLayout) di balik satu UI.
 
 Dokumen acuan, dibaca sesuai kebutuhan:
 - `docs/SPEC.md`: apa yang dibangun dan apa yang tidak.

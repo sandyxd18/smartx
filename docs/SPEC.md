@@ -1,8 +1,8 @@
-# ChipLab: spesifikasi produk
+# SmartX: spesifikasi produk
 
 ## Tujuan
 
-ChipLab adalah aplikasi web lokal untuk satu orang (pemiliknya) yang ingin belajar desain chip digital dari nol sampai tapeout. Satu desain Verilog yang sama dibawa melewati enam langkah:
+SmartX adalah aplikasi web lokal untuk satu orang (pemiliknya) yang ingin belajar desain chip digital dari nol sampai tapeout. Satu desain Verilog yang sama dibawa melewati enam langkah:
 
 | Langkah | Pertanyaan yang dijawab | Modul di aplikasi |
 |---|---|---|
@@ -39,7 +39,7 @@ Satu pengguna, di jaringan lokal. Tidak ada login, tidak ada multi-tenant. Aplik
 - Editor constraint (`.cst` untuk Gowin, `.pcf` untuk iCE40) dengan template per board.
 - Aksi: Synthesize (Yosys), Place & Route (nextpnr), Pack (bitstream).
 - Laporan: utilisasi resource (LUT, FF, BRAM), Fmax per clock, warning penting (latch, multi-driven, sinyal tidak terpakai).
-- Bitstream bisa diunduh. Flashing dilakukan dengan skrip helper di host (`chiplab-flash`), karena USB ke container tidak andal.
+- Bitstream bisa diunduh. Flashing dilakukan dengan skrip helper di host (`smartx-flash`), karena USB ke container tidak andal.
 
 ### F4. Projects (langkah 4)
 - Proyek terpandu: UART TX/RX, SPI master, I2C master, RV32I single-cycle, RV32I pipeline, mini-SoC.
@@ -82,4 +82,4 @@ Satu pengguna, di jaringan lokal. Tidak ada login, tidak ada multi-tenant. Aplik
 
 ## Definisi "v1 selesai"
 
-Satu desain (misalnya UART TX) bisa dibawa dari soal latihan → testbench cocotb → bitstream FPGA → GDS lewat LibreLane → repo Tiny Tapeout yang lolos hardening lokal, seluruhnya dari UI ChipLab.
+Satu desain (misalnya UART TX) bisa dibawa dari soal latihan → testbench cocotb → bitstream FPGA → GDS lewat LibreLane → repo Tiny Tapeout yang lolos hardening lokal, seluruhnya dari UI SmartX.

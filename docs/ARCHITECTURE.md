@@ -1,4 +1,4 @@
-# Arsitektur ChipLab
+# Arsitektur SmartX
 
 ## Gambaran
 
@@ -6,11 +6,11 @@
 Browser (React)
   │  HTTP + SSE
   ▼
-Backend (FastAPI, Python)  ── SQLite (data/chiplab.db)
+Backend (FastAPI, Python)  ── SQLite (data/smartx.db)
   │  Docker API (socket)
   ▼
 Job container (sekali pakai, per run)
-  ├─ image light: chiplab/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
+  ├─ image light: smartx/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
   └─ image heavy: ASIC_IMAGE         (LibreLane + PDK)
         │
         ▼
@@ -22,7 +22,7 @@ Backend tidak menjalankan tool EDA sendiri. Backend menyiapkan folder run, menya
 ## Struktur repo
 
 ```
-chiplab/
+smartx/
 ├─ CLAUDE.md                 aturan kerja untuk Claude Code
 ├─ Makefile                  semua perintah (make help)
 ├─ docker-compose.yml        backend + frontend (dibuat di Fase 0)
@@ -58,7 +58,7 @@ chiplab/
 │  └─ boards/<id>.yaml       profil board FPGA
 ├─ tools/
 │  ├─ grader/                grade.py, check_content.py (sudah jalan)
-│  └─ flash/chiplab-flash    helper flashing di host (Fase 3)
+│  └─ flash/smartx-flash    helper flashing di host (Fase 3)
 └─ data/                     runtime, di-gitignore
 ```
 
@@ -88,7 +88,7 @@ Setiap jenis job adalah satu modul di `backend/app/jobs/kinds/` dengan dua fungs
 
 - Pakai Python `docker` SDK lewat `/var/run/docker.sock` yang di-mount ke container backend.
 - Setiap job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, mount `data/runs/<id>` sebagai `/work` (rw) dan `content/` sebagai `/content` (ro).
-- Path folder run harus berupa path di **host**, karena container job dibuat oleh daemon host. Simpan `CHIPLAB_DATA_DIR` host di config dan terjemahkan path.
+- Path folder run harus berupa path di **host**, karena container job dibuat oleh daemon host. Simpan `SMARTX_DATA_DIR` host di config dan terjemahkan path.
 - Log stdout/stderr dibaca streaming dan ditulis ke `run.log` serta diteruskan ke SSE.
 - Timeout per kelas (`JOB_LIGHT_TIMEOUT_S`, `JOB_HEAVY_TIMEOUT_S`). Saat timeout atau cancel: `container.kill()`, status `timeout`/`cancelled`.
 - Saat backend start: run berstatus `running`/`queued` diubah ke `failed` dengan error "backend restarted".

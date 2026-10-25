@@ -1,4 +1,4 @@
-# ChipLab
+# SmartX
 
 Lab pribadi untuk belajar desain chip digital: dari latihan Verilog, simulasi dan verifikasi, FPGA, proyek bertahap sampai CPU RISC-V, ASIC flow dengan LibreLane, hingga repo yang siap dikirim ke Tiny Tapeout. Semua dari satu aplikasi web lokal.
 
