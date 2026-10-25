@@ -33,6 +33,8 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# tests/fixtures holds sample projects whose cocotb testbenches only run in the image.
+norecursedirs = ["fixtures"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [

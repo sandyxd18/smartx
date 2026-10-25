@@ -32,6 +32,12 @@ ENV PATH="/opt/venv/bin:/opt/oss-cad-suite/bin:${PATH}"
 COPY tools/grader/requirements.txt /tmp/req.txt
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tmp/req.txt
 
+# Verilator simulation compiles the model to C++ (g++); FST waveforms need lz4 and zlib.
+# Separate layer after the OSS CAD Suite download, so adding it kept that layer cached.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ liblz4-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Job berjalan sebagai user non-root; uid disesuaikan saat 'docker run --user'.
 # ubuntu:24.04 sudah punya user 'ubuntu' dengan UID 1000; hapus dulu.
 RUN (userdel -r ubuntu 2>/dev/null || true) && useradd -m -u 1000 smartx

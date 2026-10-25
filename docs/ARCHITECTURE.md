@@ -78,7 +78,7 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 |---|---|---|---|---|
 | `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
 | `lint` | light | light | salinan file proyek (`project/`) + config | `lint.sarif` → diagnostic (file, baris, kolom, severity, kode, pesan) |
-| `sim` | light | light | file proyek + top + test module | `result.json`, `.fst` |
+| `sim` | light | light | salinan file proyek (`project/`) + `sim.json` (config) | `result.json` (test per modul, error kompilasi, versi simulator), `.fst` |
 | `fpga` | light | light | file + board + constraint | `.fs`/`.bin`, laporan resource & timing |
 | `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
 | `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |

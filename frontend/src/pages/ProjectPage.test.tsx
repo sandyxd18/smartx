@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   ConfigRead,
   LintResult,
+  SimResult,
   ProjectConfig,
   ProjectDetail,
   ProjectEntry,
@@ -327,6 +328,7 @@ describe("ProjectPage", () => {
         id: "r1",
         project_id: 1,
         kind: "lint",
+        sim: null,
         status: "queued",
         params: {},
         result: null,
@@ -363,8 +365,8 @@ describe("ProjectPage", () => {
 
       await lintToEnd();
 
-      const panel = await screen.findByRole("region", { name: "Problems" });
-      expect(await within(panel).findByText("1 error, 1 warning")).toBeInTheDocument();
+      expect(await screen.findByText("1 error, 1 warning")).toBeInTheDocument();
+      const panel = screen.getByRole("tabpanel", { name: /^Problems/ });
       expect(within(panel).getByText("src/counter.v")).toBeInTheDocument();
       expect(within(panel).getByText("test/test_counter.py")).toBeInTheDocument();
       expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
@@ -422,6 +424,146 @@ describe("ProjectPage", () => {
       const put = env.log.indexOf(`PUT ${BASE}/files/src/counter.v`);
       expect(put).toBeGreaterThan(-1);
       expect(put).toBeLessThan(env.log.indexOf(`POST ${BASE}/runs`));
+    });
+  });
+
+  describe("simulasi", () => {
+    const PASS: SimResult = {
+      status: "pass",
+      top: "counter",
+      simulator: "verilator",
+      simulator_version: "Verilator 5.053",
+      tests: [
+        { module: "test_counter", name: "counts", passed: true, message: "", sim_time_ns: 10 },
+        { module: "test_more", name: "wraps", passed: true, message: "", sim_time_ns: 20 },
+      ],
+      diagnostics: [],
+      log: "cocotb selesai",
+      wave_file: "build/dump.fst",
+      wave_url: "/api/runs/s1/files/build/dump.fst",
+    };
+
+    function simRun(overrides: Partial<ProjectRun> = {}): ProjectRun {
+      return {
+        id: "s1",
+        project_id: 1,
+        kind: "sim",
+        status: "queued",
+        params: {},
+        result: null,
+        tool_versions: null,
+        created_at: "2026-10-25T10:00:00Z",
+        started_at: null,
+        finished_at: null,
+        exit_code: null,
+        error: null,
+        lint: null,
+        sim: null,
+        ...overrides,
+      };
+    }
+
+    function simRoutes(final: Partial<ProjectRun>) {
+      return {
+        [`POST ${BASE}/runs`]: () => Response.json(simRun(), { status: 201 }),
+        [`GET ${BASE}/runs/s1`]: () => simRun(final),
+        "GET /surfer/SURFER_VERSION": () => new Response("v0.7.0"),
+      };
+    }
+
+    async function simulate() {
+      await userEvent.click(await screen.findByRole("button", { name: "Simulasi" }));
+      const source = await waitFor(() => FakeEventSource.last());
+      expect(source.url).toBe("/api/runs/s1/events");
+      source.emit("status", { status: "running" });
+      source.emit("log", { line: "building with verilator" });
+      expect(await screen.findByText("Simulasi berjalan…")).toBeInTheDocument();
+      return source;
+    }
+
+    it("shows the tests per testbench, the simulator and the waveform", async () => {
+      const env = renderProject(simRoutes({ status: "succeeded", sim: PASS }));
+
+      const source = await simulate();
+      await userEvent.click(screen.getByRole("tab", { name: "Log" }));
+      expect(screen.getByRole("tabpanel", { name: "Log" })).toHaveTextContent("building with verilator");
+      source.emit("status", { status: "succeeded" });
+
+      // The Log tab the user picked stays open.
+      expect(screen.getByRole("tabpanel", { name: "Log" })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("tab", { name: "Tests" }));
+      expect(await screen.findByText("Lulus semua test (2/2)")).toBeInTheDocument();
+      expect(screen.getByText(/Verilator 5\.053/)).toBeInTheDocument();
+      const tests = screen.getByRole("tabpanel", { name: "Tests" });
+      expect(within(tests).getByText("test_counter")).toBeInTheDocument();
+      expect(within(tests).getByText("test_more")).toBeInTheDocument();
+      expect(
+        await env.fetch.mock.calls.find(([r]) => r.method === "POST")![0].clone().json(),
+      ).toEqual({ kind: "sim" });
+
+      await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
+      expect(screen.getByRole("link", { name: /Unduh \.fst/ })).toHaveAttribute(
+        "href",
+        PASS.wave_url,
+      );
+    });
+
+    it("reports failing tests with their messages", async () => {
+      const failing: SimResult = {
+        ...PASS,
+        status: "fail",
+        tests: [
+          { module: "test_counter", name: "counts", passed: false, message: "siklus 3: salah", sim_time_ns: 1 },
+          { module: "test_counter", name: "resets", passed: true, message: "", sim_time_ns: 1 },
+        ],
+      };
+      renderProject(simRoutes({ status: "succeeded", sim: failing }));
+
+      const source = await simulate();
+      source.emit("status", { status: "succeeded" });
+
+      expect(await screen.findByText("1 dari 2 test gagal")).toBeInTheDocument();
+      expect(screen.getByText("siklus 3: salah")).toBeInTheDocument();
+    });
+
+    it("sends compile errors to Problems and the editor", async () => {
+      const broken: SimResult = {
+        ...PASS,
+        status: "compile_error",
+        tests: [],
+        wave_file: null,
+        wave_url: null,
+        diagnostics: [
+          {
+            file: "src/counter.v",
+            line: 2,
+            col: null,
+            end_col: null,
+            severity: "error",
+            code: null,
+            message: "syntax error",
+          },
+        ],
+      };
+      renderProject(simRoutes({ status: "succeeded", sim: broken }));
+      await openFile("counter.v");
+
+      const source = await simulate();
+      source.emit("status", { status: "succeeded" });
+
+      expect(await screen.findByText("Kode tidak bisa dikompilasi")).toBeInTheDocument();
+      const problems = screen.getByRole("tabpanel", { name: /^Problems/ });
+      expect(within(problems).getByText(/2 syntax error/)).toBeInTheDocument();
+      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
+        "error 2: syntax error",
+      );
+    });
+
+    it("shows why a run did not finish", async () => {
+      renderProject(simRoutes({ status: "timeout", error: "Melebihi batas waktu 120 detik." }));
+      const source = await simulate();
+      source.emit("status", { status: "timeout" });
+      expect(await screen.findByText(/Melebihi batas waktu 120 detik/)).toBeInTheDocument();
     });
   });
 });

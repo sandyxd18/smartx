@@ -1,0 +1,8 @@
+top: fifo
+sources:
+  - src/**/*.v
+tests:
+  - test/test_fifo.py
+simulator: icarus
+parameters:
+  DEPTH: 8

@@ -70,6 +70,23 @@ def check_glob(pattern: str) -> str:
     return pattern
 
 
+def check_test_file(path: str) -> str:
+    """A cocotb testbench: a project .py file whose name is an importable module."""
+    try:
+        path = normalize_project_path(path)
+    except InvalidProjectPath as exc:
+        raise ValueError(str(exc)) from exc
+    name = path.rsplit("/", 1)[-1]
+    if not name.endswith(".py"):
+        raise ValueError("file testbench cocotb harus berakhiran .py")
+    if not _PY_MODULE.match(name[:-3]):
+        raise ValueError(
+            f"'{name}' bukan nama modul Python yang valid "
+            "(pakai huruf, angka, '_'; misalnya test_fifo.py)"
+        )
+    return path
+
+
 class ProjectConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -99,18 +116,9 @@ class ProjectConfig(BaseModel):
         checked = []
         for i, path in enumerate(value):
             try:
-                path = normalize_project_path(path)
-            except InvalidProjectPath as exc:
+                checked.append(check_test_file(path))
+            except ValueError as exc:
                 raise ValueError(f"tests[{i}]: {exc}") from exc
-            name = path.rsplit("/", 1)[-1]
-            if not name.endswith(".py"):
-                raise ValueError(f"tests[{i}]: file testbench cocotb harus berakhiran .py")
-            if not _PY_MODULE.match(name[:-3]):
-                raise ValueError(
-                    f"tests[{i}]: '{name}' bukan nama modul Python yang valid "
-                    "(pakai huruf, angka, '_'; misalnya test_fifo.py)"
-                )
-            checked.append(path)
         return checked
 
     @model_validator(mode="after")

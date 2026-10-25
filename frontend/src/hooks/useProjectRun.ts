@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, TERMINAL_STATUSES, type ProjectRun } from "../api/client";
+import { api, TERMINAL_STATUSES, type ProjectDiagnostic, type ProjectRun } from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { useRunEvents } from "./useRunEvents";
 
-export type ProjectRunKind = "lint";
+export type ProjectRunKind = "lint" | "sim";
 
 /**
  * Start a job on a project and follow it until it is finished.
@@ -66,7 +66,16 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
     run,
     running: pendingId !== null,
     status: pendingId !== null ? (events.status ?? "queued") : (run?.status ?? null),
+    /** Log lines streamed while the run is going. */
+    lines: events.lines,
     error,
     start,
   };
+}
+
+export type ProjectRunState = Omit<ReturnType<typeof useProjectRun>, "start">;
+
+/** Lint findings plus the compile errors of the last simulation. */
+export function projectProblems(lint: ProjectRunState, sim: ProjectRunState): ProjectDiagnostic[] {
+  return [...(lint.run?.lint?.diagnostics ?? []), ...(sim.run?.sim?.diagnostics ?? [])];
 }

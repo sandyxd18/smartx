@@ -274,3 +274,74 @@ async def test_lint_syntax_error_is_a_result(docker_settings: Settings, engine: 
     assert run.exit_code == 1
     assert run.result is not None and run.result["errors"] == 1
     assert run.result["diagnostics"][0]["line"] == 3
+
+
+FIFO = Path(__file__).parents[1] / "fixtures" / "projects" / "fifo"
+
+
+def project_files(root: Path) -> dict[str, str]:
+    return {
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in root.rglob("*")
+        if p.is_file()
+    }
+
+
+@pytest.mark.parametrize("simulator", ["icarus", "verilator"])
+async def test_sim_fifo_with_scoreboard_passes(
+    docker_settings: Settings, engine: Engine, simulator: str
+) -> None:
+    """Phase 2 criterion: a FIFO with a cocotb scoreboard is green on both simulators."""
+    params = {
+        "top": "fifo",
+        "sources": ["src/fifo.v"],
+        "tests": ["test/test_fifo.py"],
+        "simulator": simulator,
+        "parameters": {"DEPTH": 8},
+    }
+    run_id = new_run(engine, "sim", params)
+    write_snapshot(docker_settings.runs_dir / run_id / "project", project_files(FIFO))
+
+    async with asyncio.timeout(180):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    assert run.result["status"] == "pass", run.result["tests"] or run.result["log"][-2000:]
+    assert run.result["simulator"] == simulator
+    # DEPTH from the params reached the design (the fill test checks it).
+    assert len(run.result["tests"]) == 3
+    wave = docker_settings.runs_dir / run_id / run.result["wave_file"]
+    assert wave.is_file() and wave.stat().st_size > 0
+
+
+async def test_sim_string_parameter_reaches_icarus(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    files = {
+        "src/const_out.v": (
+            "module const_out #(parameter [7:0] INIT = 8'h00) (output wire [7:0] q);\n"
+            "  assign q = INIT;\nendmodule\n"
+        ),
+        "test/test_const.py": (
+            "import cocotb\nfrom cocotb.triggers import Timer\n\n\n@cocotb.test()\n"
+            "async def init_value(dut):\n    await Timer(1, unit='ns')\n"
+            "    assert int(dut.q.value) == 0xA5, hex(int(dut.q.value))\n"
+        ),
+    }
+    params = {
+        "top": "const_out",
+        "sources": ["src/const_out.v"],
+        "tests": ["test/test_const.py"],
+        "simulator": "icarus",
+        "parameters": {"INIT": "8'hA5"},
+    }
+    run_id = new_run(engine, "sim", params)
+    write_snapshot(docker_settings.runs_dir / run_id / "project", files)
+
+    async with asyncio.timeout(120):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    assert run.result is not None and run.result["status"] == "pass", run.result

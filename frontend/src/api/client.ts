@@ -33,4 +33,6 @@ export type ConfigRead = components["schemas"]["ConfigRead"];
 export type ConfigProblem = components["schemas"]["ConfigProblem"];
 export type ProjectRun = components["schemas"]["ProjectRunRead"];
 export type LintResult = components["schemas"]["LintResult"];
-export type LintDiagnostic = components["schemas"]["LintDiagnostic"];
+
+export type ProjectDiagnostic = components["schemas"]["ProjectDiagnostic"];
+export type SimResult = components["schemas"]["SimResult"];

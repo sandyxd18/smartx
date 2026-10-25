@@ -7,11 +7,12 @@ Verilator writes its findings as SARIF, which collect() turns into diagnostics.
 
 import json
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from app.jobs.context import JobContext, JobInputError
+from app.jobs.diagnostics import ProjectDiagnostic
 from app.jobs.runner import ContainerSpec, JobClass
 from app.jobs.verilator_lint import parse_sarif
 from app.projects.config import Name, Scalar
@@ -36,22 +37,12 @@ class Params(BaseModel):
     parameters: dict[Name, Scalar] = {}
 
 
-class LintDiagnostic(BaseModel):
-    file: str  # project path
-    line: int
-    col: int
-    end_col: int
-    severity: Literal["error", "warning"]
-    code: str | None
-    message: str
-
-
 class LintResult(BaseModel):
     """Run.result of a lint run."""
 
     errors: int
     warnings: int
-    diagnostics: list[LintDiagnostic]
+    diagnostics: list[ProjectDiagnostic]
 
 
 def prepare(run_dir: Path, params: dict[str, Any], ctx: JobContext) -> ContainerSpec:
@@ -93,6 +84,6 @@ def collect(run_dir: Path) -> dict[str, Any]:
     result = LintResult(
         errors=sum(d["severity"] == "error" for d in diagnostics),
         warnings=sum(d["severity"] == "warning" for d in diagnostics),
-        diagnostics=[LintDiagnostic.model_validate(d) for d in diagnostics],
+        diagnostics=[ProjectDiagnostic.model_validate(d) for d in diagnostics],
     )
     return result.model_dump()

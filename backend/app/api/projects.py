@@ -2,7 +2,7 @@
 
 import shutil
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
@@ -14,6 +14,7 @@ from app.config import Settings
 from app.content.models import ExerciseId
 from app.db import get_session
 from app.jobs.kinds.lint import PROJECT_DIR, LintResult
+from app.jobs.kinds.sim import SimResult
 from app.jobs.queue import JobQueue
 from app.models import File, Project, ProjectKind, Run, RunStatus
 from app.progress import load_progress
@@ -368,18 +369,23 @@ def check_config(project_id: int, body: ConfigCheck, session: SessionDep) -> Con
 
 
 class ProjectRunCreate(BaseModel):
-    kind: Literal["lint"]
+    kind: Literal["lint", "sim"]
 
 
 class ProjectRunRead(RunRead):
     """A project run with its result parsed for the run's kind (None until finished)."""
 
     lint: LintResult | None
+    sim: SimResult | None
 
 
 def _project_run(run: Run) -> ProjectRunRead:
-    lint = LintResult.model_validate(run.result) if run.kind == "lint" and run.result else None
-    return ProjectRunRead(**RunRead.model_validate(run).model_dump(), lint=lint)
+    result = run.result if run.result else None
+    return ProjectRunRead(
+        **RunRead.model_validate(run).model_dump(),
+        lint=LintResult.model_validate(result) if result and run.kind == "lint" else None,
+        sim=SimResult.model_validate(result) if result and run.kind == "sim" else None,
+    )
 
 
 def _unprocessable(message: str) -> HTTPException:
@@ -406,16 +412,23 @@ async def start_project_run(
             f"Pola 'sources' di {CONFIG_PATH} tidak cocok dengan file apa pun di proyek."
         )
 
-    run = Run(
-        kind=body.kind,
-        project_id=project_id,
-        params={
-            "top": config.top,
-            "sources": analysis.sources,
-            "defines": config.defines,
-            "parameters": config.parameters,
-        },
-    )
+    params: dict[str, Any] = {
+        "top": config.top,
+        "sources": analysis.sources,
+        "defines": config.defines,
+        "parameters": config.parameters,
+    }
+    if body.kind == "sim":
+        if not config.tests:
+            raise _unprocessable(
+                f"Belum ada testbench di 'tests' pada {CONFIG_PATH}. Pilih minimal satu file test."
+            )
+        missing = [t for t in config.tests if t not in files]
+        if missing:
+            raise _unprocessable(f"File test tidak ada di proyek: {', '.join(missing)}.")
+        params = {**params, "tests": config.tests, "simulator": config.simulator}
+
+    run = Run(kind=body.kind, project_id=project_id, params=params)
     session.add(run)
     session.commit()
     session.refresh(run)

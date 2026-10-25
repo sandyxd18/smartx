@@ -1,0 +1,9 @@
+{
+  "top": "fifo",
+  "simulator": "icarus",
+  "simulator_version": "Icarus Verilog version 14.0 (devel) (s20260301-664-g9cfecc9c9-dirty)",
+  "status": "compile_error",
+  "tests": [],
+  "log": "/work/project/src/fifo.v:22: syntax error\n/work/project/src/fifo.v:21: error: Syntax error in left side of continuous assignment.\n",
+  "wave_file": null
+}

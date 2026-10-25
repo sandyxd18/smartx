@@ -739,26 +739,6 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** LintDiagnostic */
-        LintDiagnostic: {
-            /** File */
-            file: string;
-            /** Line */
-            line: number;
-            /** Col */
-            col: number;
-            /** End Col */
-            end_col: number;
-            /**
-             * Severity
-             * @enum {string}
-             */
-            severity: "error" | "warning";
-            /** Code */
-            code: string | null;
-            /** Message */
-            message: string;
-        };
         /**
          * LintResult
          * @description Run.result of a lint run.
@@ -769,7 +749,7 @@ export interface components {
             /** Warnings */
             warnings: number;
             /** Diagnostics */
-            diagnostics: components["schemas"]["LintDiagnostic"][];
+            diagnostics: components["schemas"]["ProjectDiagnostic"][];
         };
         /** MoveRequest */
         MoveRequest: {
@@ -851,6 +831,26 @@ export interface components {
             /** Entries */
             entries: components["schemas"]["EntryRead"][];
         };
+        /** ProjectDiagnostic */
+        ProjectDiagnostic: {
+            /** File */
+            file: string;
+            /** Line */
+            line: number;
+            /** Col */
+            col?: number | null;
+            /** End Col */
+            end_col?: number | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning";
+            /** Code */
+            code?: string | null;
+            /** Message */
+            message: string;
+        };
         /**
          * ProjectKind
          * @enum {string}
@@ -860,9 +860,9 @@ export interface components {
         ProjectRunCreate: {
             /**
              * Kind
-             * @constant
+             * @enum {string}
              */
-            kind: "lint";
+            kind: "lint" | "sim";
         };
         /**
          * ProjectRunRead
@@ -902,6 +902,7 @@ export interface components {
             /** Error */
             error: string | null;
             lint: components["schemas"]["LintResult"] | null;
+            sim: components["schemas"]["SimResult"] | null;
         };
         /** ProjectSummary */
         ProjectSummary: {
@@ -994,6 +995,67 @@ export interface components {
          * @enum {string}
          */
         RunStatus: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "timeout";
+        /**
+         * SimResult
+         * @description Run.result of a sim run.
+         */
+        SimResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "compile_error" | "error";
+            /** Top */
+            top: string;
+            /** Simulator */
+            simulator: string;
+            /**
+             * Simulator Version
+             * @default
+             */
+            simulator_version: string;
+            /**
+             * Tests
+             * @default []
+             */
+            tests: components["schemas"]["SimTest"][];
+            /**
+             * Diagnostics
+             * @default []
+             */
+            diagnostics: components["schemas"]["ProjectDiagnostic"][];
+            /**
+             * Log
+             * @default
+             */
+            log: string;
+            /** Wave File */
+            wave_file?: string | null;
+            /** Wave Url */
+            wave_url?: string | null;
+        };
+        /** SimTest */
+        SimTest: {
+            /**
+             * Module
+             * @default
+             */
+            module: string;
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Sim Time Ns
+             * @default 0
+             */
+            sim_time_ns: number;
+        };
         /** SolutionRead */
         SolutionRead: {
             /** Code */

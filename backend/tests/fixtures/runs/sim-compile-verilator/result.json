@@ -1,0 +1,9 @@
+{
+  "top": "fifo",
+  "simulator": "verilator",
+  "simulator_version": "Verilator 5.053 devel rev v5.052-567-g0041d207c (mod)",
+  "status": "compile_error",
+  "tests": [],
+  "log": "%Error: /work/project/src/fifo.v:22:5: syntax error, unexpected assign, expecting ',' or ';'\n   22 |     assign full  = (wptr[AW-1:0] == rptr[AW-1:0]) && (wptr[AW] != rptr[AW]);\n      |     ^~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.053 for more assistance.\n%Error: Exiting due to 1 error(s)\n",
+  "wave_file": null
+}

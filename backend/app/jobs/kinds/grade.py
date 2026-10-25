@@ -7,12 +7,13 @@ at /exercise). content/ is not mounted, so user code cannot read solution.v.
 import json
 import re
 import shutil
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.content.models import ExerciseId
+from app.jobs.artifacts import file_url, run_relative
 from app.jobs.context import JobContext, JobInputError
 from app.jobs.runner import ContainerSpec, JobClass
 from app.jobs.verilator_lint import parse_lint
@@ -121,22 +122,11 @@ def parse_diagnostics(log: str) -> list[dict[str, Any]]:
     return diagnostics
 
 
-def _run_relative(container_path: object, run_dir: Path) -> str | None:
-    """Map /work/... (as the grader saw it) to a path relative to the run folder."""
-    if not isinstance(container_path, str):
-        return None
-    path = PurePosixPath(container_path)
-    if not path.is_relative_to("/work") or ".." in path.parts:
-        return None
-    rel = path.relative_to("/work")
-    return rel.as_posix() if (run_dir / rel).is_file() else None
-
-
 def collect(run_dir: Path) -> dict[str, Any]:
     data = json.loads((run_dir / RESULT_FILE).read_text(encoding="utf-8"))
     status = data["status"]
     log = data.get("log") or ""
-    wave = _run_relative(data.get("wave_file"), run_dir)
+    wave = run_relative(data.get("wave_file"), run_dir)
     result = GradeResult.model_validate(
         {
             "exercise_id": data["exercise"],
@@ -147,7 +137,7 @@ def collect(run_dir: Path) -> dict[str, Any]:
             "lint": [] if status == "compile_error" else parse_lint(data.get("lint_log") or ""),
             "log": log,
             "wave_file": wave,
-            "wave_url": f"/api/runs/{run_dir.name}/files/{wave}" if wave else None,
+            "wave_url": file_url(run_dir, wave),
         }
     )
     return result.model_dump()

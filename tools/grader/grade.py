@@ -107,6 +107,8 @@ def parse_results(xml_path: Path) -> list[dict]:
         problem = failure if failure is not None else error
         tests.append(
             {
+                # The test module (file stem); projects may have several.
+                "module": case.get("classname") or "",
                 "name": case.get("name"),
                 "passed": problem is None,
                 "message": clean_message(problem.get("message") or problem.text or "")

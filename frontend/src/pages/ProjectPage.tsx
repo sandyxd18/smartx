@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { api, type LintDiagnostic, type ProjectDetail, type ProjectEntry } from "../api/client";
+import { api, type ProjectDetail, type ProjectDiagnostic, type ProjectEntry } from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
 import { ConfigEditor } from "../components/ConfigEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { FileTree } from "../components/FileTree";
-import { ProblemsPanel } from "../components/ProblemsPanel";
+import { RunPanel, type RunTab } from "../components/RunPanel";
 import { SaveIndicator } from "../components/SaveIndicator";
 import { languageForPath } from "../editor/languages";
 import { type SaveFn, useAutosave } from "../hooks/useAutosave";
-import { useProjectRun } from "../hooks/useProjectRun";
+import { projectProblems, useProjectRun } from "../hooks/useProjectRun";
 
 type LoadState =
   | { kind: "loading" }
@@ -71,6 +71,15 @@ function ProjectView({ projectId }: { projectId: number }) {
   }, []);
   // Lint copies the saved files, so pending edits are stored first.
   const lint = useProjectRun(projectId, settle);
+  const sim = useProjectRun(projectId, settle);
+  const [runTab, setRunTab] = useState<RunTab>("problems");
+  // A simulation that did not compile is explained in Problems; switch there once.
+  const [shownCompileError, setShownCompileError] = useState<string | null>(null);
+  const simRun = sim.run;
+  if (simRun?.sim?.status === "compile_error" && shownCompileError !== simRun.id) {
+    setShownCompileError(simRun.id);
+    setRunTab("problems");
+  }
   const [reveal, setReveal] = useState<{ line: number; column: number } | null>(null);
 
   const showSavedConfig = useCallback((text: string) => {
@@ -126,22 +135,22 @@ function ProjectView({ projectId }: { projectId: number }) {
   const openPath = open?.path ?? null;
   const markers = useMemo<EditorDiagnostic[]>(
     () =>
-      (lint.run?.lint?.diagnostics ?? [])
+      projectProblems(lint, sim)
         .filter((d) => d.file === openPath)
         .map((d) => ({
           line: d.line,
-          column: d.col,
-          endColumn: d.end_col,
+          column: d.col ?? null,
+          endColumn: d.end_col ?? null,
           severity: d.severity,
           code: d.code,
           message: d.message,
         })),
-    [lint.run, openPath],
+    [lint, sim, openPath],
   );
 
-  async function openProblem(d: LintDiagnostic) {
+  async function openProblem(d: ProjectDiagnostic) {
     if (d.file !== openPath) await openFile(d.file);
-    setReveal({ line: d.line, column: d.col });
+    setReveal({ line: d.line, column: d.col ?? 1 });
   }
 
   function edit(content: string) {
@@ -247,12 +256,27 @@ function ProjectView({ projectId }: { projectId: number }) {
           <SaveIndicator status={autosave.status} />
           <button
             type="button"
-            onClick={() => void lint.start("lint")}
+            onClick={() => {
+              setRunTab("problems");
+              void lint.start("lint");
+            }}
             disabled={lint.running}
             title="verilator --lint-only -Wall atas file sumber di smartx.yaml"
-            className="ml-auto rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="ml-auto rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium disabled:opacity-50"
           >
             Lint
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRunTab("tests");
+              void sim.start("sim");
+            }}
+            disabled={sim.running}
+            title="Jalankan testbench cocotb di smartx.yaml dengan simulator yang dipilih"
+            className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            Simulasi
           </button>
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}
@@ -309,10 +333,11 @@ function ProjectView({ projectId }: { projectId: number }) {
         </div>
       </div>
 
-      <ProblemsPanel
-        run={lint.run}
-        running={lint.running}
-        error={lint.error}
+      <RunPanel
+        lint={lint}
+        sim={sim}
+        tab={runTab}
+        onTab={setRunTab}
         onOpen={(d) => void openProblem(d)}
       />
     </section>

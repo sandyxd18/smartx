@@ -552,3 +552,54 @@ class TestLintRuns:
 
         assert client.get(f"/api/projects/{b}/runs/{run_id}").status_code == 404
         assert client.get(f"/api/projects/{a}/runs/nope").status_code == 404
+
+
+class TestSimRuns:
+    @pytest.fixture
+    def runner(self) -> FakeRunner:
+        return FakeRunner(FakeJob(exit_code=0, fixture_dir=RUN_FIXTURES / "sim-pass"))
+
+    def start(self, client: TestClient, pid: int) -> Any:
+        return client.post(f"/api/projects/{pid}/runs", json={"kind": "sim"})
+
+    def test_runs_the_config_tests_on_its_simulator(
+        self, client: TestClient, settings: Settings
+    ) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 201, r.text
+        run = r.json()
+        assert run["params"] == {
+            "top": "counter",
+            "sources": ["src/counter.v"],
+            "tests": ["test/test_counter.py"],
+            "simulator": "icarus",
+            "defines": {},
+            "parameters": {},
+        }
+        assert (settings.runs_dir / run["id"] / "project" / "test" / "test_counter.py").is_file()
+
+        wait_for_status(client, run["id"], TERMINAL)
+        done = client.get(f"/api/projects/{pid}/runs/{run['id']}").json()
+        assert done["sim"]["status"] == "pass"
+        assert done["sim"]["wave_url"].endswith("/files/build/sim_build/fifo.fst")
+        assert done["lint"] is None
+
+    def test_needs_a_testbench(self, client: TestClient) -> None:
+        pid = create(client)["id"]  # the empty template has tests: []
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 422
+        assert "tests" in r.json()["detail"]
+
+    def test_testbench_must_exist(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.delete(f"/api/projects/{pid}/files/test/test_counter.py")
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 422
+        assert "test/test_counter.py" in r.json()["detail"]
