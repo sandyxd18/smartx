@@ -8,6 +8,9 @@ export const routes: RouteObject[] = [
   {
     path: "/",
     element: <Layout />,
+    // Opening a lazy route by URL (e.g. a refresh on /latihan/:id) renders this until the
+    // route's code has loaded, instead of a blank page.
+    hydrateFallbackElement: <p className="p-8 text-sm text-slate-500">Memuat halaman…</p>,
     children: [
       { index: true, element: <Dashboard /> },
       { path: "latihan", element: <ExerciseList /> },

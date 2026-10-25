@@ -1,0 +1,19 @@
+id: comparator-4bit
+title: Comparator 4-bit
+step: 1
+level: 1
+topics:
+- combinational
+- arithmetic
+toplevel: cmp4
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_cmp4.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Verilog punya operator `<`, `==`, dan `>` yang menghasilkan 1 bit.
+- Tepat satu dari `lt`, `eq`, `gt` bernilai 1 untuk setiap input.
+order: 80

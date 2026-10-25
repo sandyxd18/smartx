@@ -1,0 +1,23 @@
+id: mux-4to1-case
+title: Multiplexer 4:1 dengan case
+step: 1
+level: 1
+topics:
+- combinational
+- mux
+- case
+toplevel: mux4
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_mux4.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Pakai blok `always @(*)` dan `case (sel)` dengan empat cabang.
+- Di dalam always kombinasional pakai blocking assignment (`=`).
+- Tambahkan cabang `default` supaya `y` selalu punya nilai.
+order: 40
+requires:
+- mux-2to1

@@ -1,0 +1,22 @@
+id: edge-detector
+title: Edge detector (sisi naik dan turun)
+step: 1
+level: 2
+topics:
+- fsm
+- edge
+toplevel: edge_detect
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_edge_detect.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Simpan nilai `sig` dari siklus sebelumnya di register `prev`.
+- 'Sisi naik: sekarang 1, sebelumnya 0. Sisi turun: sekarang 0, sebelumnya 1.'
+- Semua assignment di dalam satu `always @(posedge clk)` dengan non-blocking (`<=`).
+order: 50
+requires:
+- dff-async-reset

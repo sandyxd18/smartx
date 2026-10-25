@@ -1,0 +1,22 @@
+id: counter-updown
+title: Counter up/down 4-bit dengan load
+step: 1
+level: 2
+topics:
+- sequential
+- counter
+toplevel: counter_ud
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_counter_ud.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Prioritas: `rst`, lalu `load`, lalu `en`. Tulis sebagai rantai `if / else if`.'
+- 'Arah dipilih dengan `up`: `q <= up ? q + 1 : q - 1;`.'
+- 'Register 4-bit otomatis membungkus: 15 + 1 = 0 dan 0 - 1 = 15.'
+order: 40
+requires:
+- counter-4bit

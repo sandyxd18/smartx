@@ -1,0 +1,23 @@
+id: seg7-decoder
+title: Decoder 7-segment heksadesimal
+step: 1
+level: 2
+topics:
+- combinational
+- decoder
+- case
+toplevel: seg7
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_seg7.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Satu `case (hex)` dengan 16 cabang, masing-masing memberi pola 7 bit.
+- 'Urutan bit: `seg[6]` adalah segmen a, `seg[0]` adalah segmen g.'
+- Salin pola dari tabel di soal; perhatikan huruf kecil `b` dan `d`.
+order: 90
+requires:
+- mux-4to1-case

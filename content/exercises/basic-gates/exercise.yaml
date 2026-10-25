@@ -1,0 +1,19 @@
+id: basic-gates
+title: Gerbang logika dasar
+step: 1
+level: 1
+topics:
+- combinational
+- gates
+toplevel: gates
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_gates.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Operator bitwise Verilog: `&` (AND), `|` (OR), `^` (XOR), `~` (NOT).'
+- 'NAND adalah NOT dari AND: `~(a & b)`. Begitu juga NOR dan XNOR.'
+order: 20

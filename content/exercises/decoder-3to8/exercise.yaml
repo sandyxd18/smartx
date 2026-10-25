@@ -1,0 +1,20 @@
+id: decoder-3to8
+title: Decoder 3 ke 8 dengan enable
+step: 1
+level: 1
+topics:
+- combinational
+- decoder
+toplevel: decoder3to8
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_decoder3to8.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Saat `en = 1`, hanya bit ke-`a` dari `y` yang 1.
+- 'Operator geser bisa membantu: `8''b1 << a`.'
+- 'Jangan lupa: saat `en = 0`, semua bit `y` harus 0.'
+order: 50

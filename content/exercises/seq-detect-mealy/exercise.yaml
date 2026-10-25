@@ -1,0 +1,23 @@
+id: seq-detect-mealy
+title: Deteksi pola 101 (FSM Mealy)
+step: 1
+level: 2
+topics:
+- fsm
+- mealy
+- sequence
+toplevel: seq101
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_seq101.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Cukup tiga state: belum ada, sudah ''1'', sudah ''10''.'
+- 'Pada FSM Mealy, output dihitung dari state *dan* input sekarang: `assign z = (state == S_10) && x;`.'
+- Setelah pola lengkap, '1' terakhir bisa menjadi awal pola berikutnya.
+order: 20
+requires:
+- seq-detect-moore

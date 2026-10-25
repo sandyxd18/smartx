@@ -1,0 +1,19 @@
+id: adder-4bit
+title: Adder 4-bit dengan carry
+step: 1
+level: 1
+topics:
+- combinational
+- arithmetic
+toplevel: adder4
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_adder4.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Hasil penjumlahan dua angka 4-bit plus carry butuh 5 bit.
+- 'Gabungkan output di sisi kiri: `assign {cout, sum} = a + b + cin;`.'
+order: 70

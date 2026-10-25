@@ -1,0 +1,23 @@
+id: seq-detect-moore
+title: Deteksi pola 1011 (FSM Moore)
+step: 1
+level: 2
+topics:
+- fsm
+- moore
+- sequence
+toplevel: seq1011
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_seq1011.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Butuh lima state: belum ada, sudah ''1'', sudah ''10'', sudah ''101'', dan ''ketemu 1011''.'
+- 'Pada FSM Moore, output hanya bergantung pada state: `assign z = (state == FOUND);`.'
+- Pola boleh tumpang tindih. Dari state FOUND, x = 0 berarti '10' sudah terkumpul, x = 1 berarti '1'.
+order: 10
+requires:
+- shift-register

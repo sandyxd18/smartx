@@ -1,0 +1,11 @@
+module adder4 (
+    input  wire [3:0] a,
+    input  wire [3:0] b,
+    input  wire       cin,
+    output wire [3:0] sum,
+    output wire       cout
+);
+
+    // Tulis logika penjumlahan di sini.
+
+endmodule

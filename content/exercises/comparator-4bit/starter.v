@@ -1,0 +1,11 @@
+module cmp4 (
+    input  wire [3:0] a,
+    input  wire [3:0] b,
+    output wire       lt,
+    output wire       eq,
+    output wire       gt
+);
+
+    // Tulis logika perbandingan di sini.
+
+endmodule

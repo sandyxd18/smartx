@@ -1,0 +1,19 @@
+id: mux-2to1
+title: Multiplexer 2:1 (8-bit)
+step: 1
+level: 1
+topics:
+- combinational
+- mux
+toplevel: mux2
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_mux2.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Operator ternary: `assign y = kondisi ? nilai_jika_1 : nilai_jika_0;`.'
+- Satu baris assign sudah cukup untuk semua 8 bit sekaligus.
+order: 30

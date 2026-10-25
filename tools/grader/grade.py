@@ -42,6 +42,17 @@ def load_exercise(ex_dir: Path) -> dict:
     return meta
 
 
+def clean_message(text: str) -> str:
+    """Keep the testbench author's message, drop cocotb's assertion introspection.
+
+    For `assert a == b, "pesan"` cocotb appends lines like "assert 1 == 0" and
+    "+ where ...", which only confuse beginners.
+    """
+    text = text.strip()
+    head, sep, _ = text.partition("\nassert ")
+    return head.strip() if sep and head.strip() else text
+
+
 def parse_results(xml_path: Path) -> list[dict]:
     tests = []
     if not xml_path.is_file():
@@ -55,7 +66,7 @@ def parse_results(xml_path: Path) -> list[dict]:
             {
                 "name": case.get("name"),
                 "passed": problem is None,
-                "message": (problem.get("message") or problem.text or "").strip()
+                "message": clean_message(problem.get("message") or problem.text or "")
                 if problem is not None
                 else "",
                 "sim_time_ns": float(case.get("sim_time_ns", 0) or 0),

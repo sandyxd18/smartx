@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseDetail, ExerciseRun, GradeResult } from "../api/client";
 import { routes } from "../routes";
 import { FakeEventSource } from "../test/fakeEventSource";
@@ -10,6 +10,12 @@ import { mockFetch } from "../test/mockFetch";
 vi.mock("../components/CodeEditor", async () => ({
   CodeEditor: (await import("../test/fakeCodeEditor")).FakeCodeEditor,
 }));
+
+// The page is a lazy route. Its first import (Markdown, etc.) can take longer than the
+// default findBy timeout on a busy machine, so load it once before the tests start.
+beforeAll(async () => {
+  await import("./ExercisePage");
+});
 
 const STARTER = "module counter4(input clk, input rst, input en, output reg [3:0] q);\nendmodule\n";
 const RUN_ID = "3d2b1bde0c1946ed91b904bf4e735ed3";

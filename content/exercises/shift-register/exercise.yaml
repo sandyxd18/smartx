@@ -1,0 +1,21 @@
+id: shift-register
+title: Shift register 8-bit (serial in, parallel out)
+step: 1
+level: 1
+topics:
+- sequential
+- shift
+toplevel: shift8
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_shift8.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Geser kiri dengan konkatenasi: `q <= {q[6:0], sin};`.'
+- '`sout` cukup `assign sout = q[7];`.'
+order: 50
+requires:
+- register-8bit

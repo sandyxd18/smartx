@@ -1,0 +1,22 @@
+id: priority-encoder
+title: Priority encoder 8 ke 3
+step: 1
+level: 2
+topics:
+- combinational
+- encoder
+toplevel: prio_enc8
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_prio_enc8.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Bit dengan nomor tertinggi yang menang. Periksa dari `req[7]` turun ke `req[0]`.
+- '`if ... else if ...` di dalam `always @(*)` cocok untuk prioritas.'
+- Beri nilai awal `idx = 0; valid = 0;` di awal always supaya tidak ada latch.
+order: 60
+requires:
+- decoder-3to8

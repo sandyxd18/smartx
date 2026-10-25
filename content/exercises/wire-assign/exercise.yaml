@@ -1,0 +1,20 @@
+id: wire-assign
+title: Wire dan assign
+step: 1
+level: 1
+topics:
+- combinational
+- assign
+toplevel: wire_assign
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_wire_assign.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Setiap output cukup satu baris `assign nama = ekspresi;`.
+- Bit tunggal diambil dengan `in[3]`; beberapa bit digabung dengan `{x, y, z}`.
+- Konstanta 4-bit ditulis `4'd5` (desimal) atau `4'b0101` (biner).
+order: 10

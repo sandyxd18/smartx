@@ -1,0 +1,20 @@
+id: dff-async-reset
+title: D flip-flop dengan reset asinkron
+step: 1
+level: 1
+topics:
+- sequential
+- flip-flop
+toplevel: dff_ar
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_dff_ar.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Reset asinkron masuk ke daftar sensitivitas: `always @(posedge clk or negedge rst_n)`.'
+- '`rst_n` aktif rendah: reset terjadi saat `rst_n == 0`.'
+- 'Di dalam always: `if (!rst_n) q <= 0; else q <= d;`.'
+order: 10

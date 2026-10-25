@@ -1,0 +1,23 @@
+id: lfsr-8bit
+title: LFSR 8-bit (pseudo-random)
+step: 1
+level: 2
+topics:
+- sequential
+- shift
+- lfsr
+toplevel: lfsr8
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_lfsr8.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Bit umpan balik: `wire fb = q[7] ^ q[5] ^ q[4] ^ q[3];`.'
+- 'Lalu geser kiri seperti shift register: `q <= {q[6:0], fb};`.'
+- 'Reset ke 1, bukan 0: LFSR yang berisi 0 akan terjebak di 0 selamanya.'
+order: 60
+requires:
+- shift-register

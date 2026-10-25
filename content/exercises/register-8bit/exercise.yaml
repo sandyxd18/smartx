@@ -1,0 +1,22 @@
+id: register-8bit
+title: Register 8-bit dengan enable dan reset sinkron
+step: 1
+level: 1
+topics:
+- sequential
+- register
+toplevel: reg8_en
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_reg8_en.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Reset sinkron hanya dicek di dalam `always @(posedge clk)`, tidak ada di daftar sensitivitas.
+- 'Urutan prioritas: `if (rst) ... else if (en) ...`.'
+- 'Saat `en = 0` tidak perlu menulis apa-apa: register otomatis menyimpan nilainya.'
+order: 20
+requires:
+- dff-async-reset

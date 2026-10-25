@@ -1,0 +1,22 @@
+id: traffic-light
+title: Lampu lalu lintas
+step: 1
+level: 2
+topics:
+- fsm
+- timer
+toplevel: traffic
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_traffic.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Satu register untuk warna (state) dan satu counter untuk lama warna itu sudah menyala.
+- Pindah warna saat counter mencapai durasi dikurangi satu, lalu kembalikan counter ke 0.
+- Ketiga output cukup `assign green = (state == GREEN);` dan seterusnya.
+order: 30
+requires:
+- counter-4bit

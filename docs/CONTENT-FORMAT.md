@@ -51,6 +51,8 @@ Topik lain boleh dipakai sebagai topik kedua dan seterusnya (misalnya `mux`, `co
 4. Ada minimal satu test acak dengan seed tetap, supaya hasil bisa diulang.
 5. Ubah input di sisi turun clock dan cek output di sisi turun berikutnya. Ini menghindari race antara testbench dan DUT.
 6. Jangan andalkan `timescale` di file user; grader memaksa `1ns/1ps`.
+7. Pakai `assert kondisi, "pesan"` dengan pesan lengkap. Yang ditampilkan ke pengguna hanya pesan itu; introspeksi assertion dari cocotb dibuang oleh grader.
+8. Untuk soal "jebakan umum", pesan gagal starter sebaiknya mengarahkan ke penyebab bug (contoh: `pitfall-latch`).
 
 ### Validasi
 

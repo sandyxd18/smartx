@@ -1,0 +1,24 @@
+id: pitfall-blocking
+title: 'Perbaiki: blocking vs non-blocking'
+step: 1
+level: 2
+topics:
+- pitfalls
+- sequential
+- pipeline
+toplevel: pipe2
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_pipe2.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Bandingkan `q1` dan `q2` setelah satu clock. Kenapa nilainya sama?
+- Dengan `=` (blocking), baris kedua sudah membaca `q1` yang baru saja diubah baris pertama.
+- 'Di logika sekuensial pakai `<=` (non-blocking): semua sisi kanan dibaca dulu, baru semua register diperbarui
+  bersamaan.'
+order: 20
+requires:
+- register-8bit

@@ -1,0 +1,24 @@
+id: pitfall-latch
+title: 'Perbaiki: latch yang tidak disengaja'
+step: 1
+level: 2
+topics:
+- pitfalls
+- latch
+- combinational
+toplevel: pick
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_pick.py
+  statement: README.md
+timeout_s: 30
+hints:
+- 'Lihat cabang `if (en)`: apa nilai `y` saat `en = 0`?'
+- 'Jika ada jalur di `always @(*)` yang tidak meng-assign output, simulator dan sintesis membuat latch:
+  nilai lama disimpan.'
+- Tambahkan `else y = 4'd0;`, atau beri nilai default `y = 4'd0;` di awal always.
+order: 10
+requires:
+- mux-4to1-case

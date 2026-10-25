@@ -1,0 +1,22 @@
+id: debouncer
+title: Debouncer tombol
+step: 1
+level: 3
+topics:
+- fsm
+- timer
+toplevel: debounce
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_debounce.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Simpan `clean` (nilai stabil) dan counter `cnt` 2-bit.
+- Jika `btn == clean`, counter kembali ke 0. Jika berbeda, counter bertambah.
+- Saat counter sudah 3 dan `btn` masih berbeda, salin `btn` ke `clean` dan nolkan counter.
+order: 40
+requires:
+- traffic-light

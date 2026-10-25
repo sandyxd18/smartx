@@ -11,6 +11,8 @@ files:
   test: test_counter4.py  # testbench cocotb
   statement: README.md    # teks soal
 timeout_s: 30
+order: 30          # urutan tampil dalam topik
+requires: [register-8bit]
 hints:
   - Logika sekuensial ditulis di dalam always @(posedge clk).
   - Gunakan non-blocking assignment (<=) untuk register.

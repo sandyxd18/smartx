@@ -1,0 +1,23 @@
+id: pitfall-multi-driven
+title: 'Perbaiki: satu sinyal, dua driver'
+step: 1
+level: 1
+topics:
+- pitfalls
+- combinational
+- assign
+toplevel: logic_sel
+language: verilog
+files:
+  starter: starter.v
+  solution: solution.v
+  test: test_logic_sel.py
+  statement: README.md
+timeout_s: 30
+hints:
+- Berapa banyak `assign` yang menulis ke `y`? Wire hanya boleh punya satu sumber.
+- Saat dua driver memberi nilai berbeda, simulator menampilkan X (tidak diketahui).
+- 'Gabungkan jadi satu: `assign y = sel ? (a | b) : (a & b);`.'
+order: 30
+requires:
+- mux-2to1
