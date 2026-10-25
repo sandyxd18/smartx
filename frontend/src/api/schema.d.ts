@@ -506,10 +506,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Boards
+         * @description FPGA boards that can be targeted, ordered by id.
+         */
+        get: operations["list_boards_api_boards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BoardRead */
+        BoardRead: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Family */
+            family: string;
+            /** Device */
+            device: string;
+            /** Clock Port */
+            clock_port: string;
+            /** Clock Pin */
+            clock_pin: string;
+            /** Clock Mhz */
+            clock_mhz: number;
+            /** Constraints Format */
+            constraints_format: string;
+            /** Constraints Template */
+            constraints_template: string;
+        };
         /** ConfigCheck */
         ConfigCheck: {
             /** Text */
@@ -2304,6 +2345,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_boards_api_boards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardRead"][];
                 };
             };
         };

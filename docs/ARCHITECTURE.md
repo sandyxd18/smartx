@@ -124,7 +124,7 @@ GET  /api/runs/{id}/events                SSE: log, status
 POST /api/runs/{id}/cancel
 GET  /api/runs/{id}/files/{path}          artefak (cegah path traversal!)
 
-GET  /api/boards
+GET  /api/boards                          profil board FPGA + template constraint (content/boards/)
 POST /api/projects/{id}/tapeout/generate
 ```
 

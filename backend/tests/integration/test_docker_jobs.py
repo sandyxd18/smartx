@@ -4,7 +4,9 @@ Skipped by default. Run with: SMARTX_DOCKER_TESTS=1 uv run pytest tests/integrat
 """
 
 import asyncio
+import json
 import os
+import shlex
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +19,7 @@ from sqlmodel import Session
 
 from app.config import REPO_ROOT, Settings
 from app.content import ExerciseCatalog
+from app.content.boards import BoardProfile, load_boards, nextpnr_command, pack_command
 from app.db import init_db, make_engine
 from app.jobs.context import JobContext
 from app.jobs.docker_runner import RUN_LABEL, DockerRunner
@@ -39,8 +42,40 @@ SANDBOX_SCRIPT = (
     "touch /content/x 2>/dev/null && echo content=rw || echo content=ro"
 )
 
+BOARD_FIXTURES = Path(__file__).parents[1] / "fixtures" / "boards"
+BOARDS = {p.board.id: p for p in load_boards(REPO_ROOT / "content" / "boards")}
+
+
+def prepare_board_check(run_dir: Path, params: dict[str, Any], ctx: object) -> ContainerSpec:
+    """Synthesize, place, route and pack a blinky with nothing but a board profile."""
+    profile: BoardProfile = BOARDS[params["board"]]
+    board = profile.board
+    (run_dir / "blinky.v").write_bytes((BOARD_FIXTURES / board.id / "blinky.v").read_bytes())
+    (run_dir / "board.cst").write_text(profile.constraints_template, encoding="utf-8")
+    synth = f"read_verilog blinky.v; {board.synth} -top blinky -json netlist.json"
+    steps = [
+        ["yosys", "-q", "-l", "yosys.log", "-p", synth],
+        nextpnr_command(
+            board,
+            netlist="netlist.json",
+            constraints="board.cst",
+            freq_mhz=board.clock.freq_mhz,
+            report="report.json",
+            log="nextpnr.log",
+        ),
+        pack_command(board),
+    ]
+    return ContainerSpec(command=["sh", "-c", " && ".join(shlex.join(s) for s in steps)])
+
+
 KINDS_UNDER_TEST = {
     **KINDS,
+    "board_check": SimpleNamespace(
+        JOB_CLASS=JobClass.light,
+        OK_EXIT_CODES=frozenset({0}),
+        prepare=prepare_board_check,
+        collect=lambda run_dir: {},
+    ),
     "sandbox": SimpleNamespace(
         JOB_CLASS=JobClass.light,
         OK_EXIT_CODES=frozenset({0}),
@@ -388,3 +423,34 @@ async def test_snippets_make_a_working_testbench(
         assert "seharusnya" in test["message"], test["message"]
     else:
         assert run.result["status"] == "pass", test["message"] or run.result["log"][-2000:]
+
+
+def test_every_board_has_a_blinky_fixture() -> None:
+    assert BOARDS
+    for board_id in BOARDS:
+        assert (BOARD_FIXTURES / board_id / "blinky.v").is_file(), board_id
+
+
+@pytest.mark.parametrize("board_id", sorted(BOARDS))
+async def test_board_profile_builds_blinky(
+    docker_settings: Settings, engine: Engine, board_id: str
+) -> None:
+    """The tool arguments in a board profile work with the pinned toolchain."""
+    run_id = new_run(engine, "board_check", {"board": board_id})
+
+    async with asyncio.timeout(180):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    run_dir = docker_settings.runs_dir / run_id
+    log = (run_dir / "run.log").read_text(encoding="utf-8", errors="replace")
+    assert run.status == RunStatus.succeeded, f"{run.error}\n{log[-3000:]}"
+    board = BOARDS[board_id].board
+    assert (run_dir / board.bitstream_file).stat().st_size > 0
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    # The template's clock pin carries the only clock, and blinky easily meets it.
+    [clock] = report["fmax"].values()
+    assert clock["constraint"] == board.clock.freq_mhz
+    assert clock["achieved"] > clock["constraint"]
+    for types in board.resources.values():
+        assert all(t in report["utilization"] for t in types), types

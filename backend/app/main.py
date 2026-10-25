@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import __version__
-from app.api import exercises, health, lessons, projects, runs
+from app.api import boards, exercises, health, lessons, projects, runs
 from app.config import Settings, get_settings
 from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
@@ -73,4 +73,5 @@ def create_app(settings: Settings | None = None, runner: JobRunner | None = None
     app.include_router(exercises.router, prefix="/api")
     app.include_router(projects.router, prefix="/api")
     app.include_router(lessons.router, prefix="/api")
+    app.include_router(boards.router, prefix="/api")
     return app

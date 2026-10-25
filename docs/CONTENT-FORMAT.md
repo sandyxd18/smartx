@@ -156,15 +156,31 @@ uart-tx/
 ## Profil board: `content/boards/<id>.yaml` (Fase 3)
 
 ```yaml
-id: tang-nano-9k
+id: tang-nano-9k                 # = nama file
 name: Sipeed Tang Nano 9K
-family: gowin
-device: GW1NR-LV9QN88PC6/I6
-nextpnr: {binary: nextpnr-himbaechel, args: ["--device", "GW1NR-LV9QN88PC6/I6", "--vopt", "family=GW1N-9C"]}
-pack: {binary: gowin_pack, args: ["-d", "GW1N-9C"]}
-flash: {tool: openFPGALoader, args: ["-b", "tangnano9k"]}
-clock: {pin: "52", freq_mhz: 27}
-constraints_template: tang-nano-9k.cst
+family: gowin                    # gowin | ice40
+device: GW1NR-LV9QN88PC6/I5
+synth: synth_gowin               # perintah sintesis Yosys: synth_gowin | synth_ice40
+nextpnr:
+  binary: nextpnr-himbaechel
+  args: [--device, GW1NR-LV9QN88PC6/I5, --vopt, family=GW1N-9C, --vopt, "cst={constraints}", --write, "{pnr}"]
+pnr_file: pnr.json               # yang ditulis nextpnr untuk packer
+pack:
+  binary: gowin_pack
+  args: [-d, GW1N-9C, -o, "{bitstream}", "{pnr}"]
+bitstream_file: bitstream.fs
+flash: {binary: openFPGALoader, args: [-b, tangnano9k]}
+clock: {port: clk, pin: "52", freq_mhz: 27}    # freq_mhz = target --freq bawaan
+constraints: {format: cst, template: tang-nano-9k.cst}   # cst | pcf, file di folder yang sama
+resources:                       # baris laporan: label -> jenis resource nextpnr yang dijumlahkan
+  LUT: [LUT4]
+  FF: [DFF]
+  BRAM: [BSRAM]
+  IO: [IOB]
 ```
 
-Argumen persis untuk nextpnr dan gowin_pack harus dicek terhadap versi OSS CAD Suite yang dipin (contoh di atas bisa usang).
+Aturan:
+
+- Argumen tool boleh memakai placeholder `{constraints}` (file constraint proyek), `{pnr}` (`pnr_file`), dan `{bitstream}` (`bitstream_file`). Argumen nextpnr wajib memakai `{constraints}` dan `{pnr}`; argumen packer wajib memakai `{pnr}` dan `{bitstream}`. Job menambahkan `--json`, `--freq`, `--report`, dan `-l` sendiri.
+- Template constraint berisi semua pin board yang berguna dengan nama port yang konsisten (`clk`, `rst_n`, `btn`, `led[0]`…). Port yang tidak dipakai desain diabaikan nextpnr, jadi template tidak perlu dipangkas. Template wajib memasang `clock.port` ke `clock.pin`.
+- Argumen persis untuk nextpnr dan packer harus dicek terhadap versi OSS CAD Suite yang dipin. Test Docker `test_board_profile_builds_blinky` membangun `backend/tests/fixtures/boards/<id>/blinky.v` dengan profil dan template saja, dan setiap profil wajib punya fixture itu.

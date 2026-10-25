@@ -1,0 +1,25 @@
+# Sipeed Tang Nano 9K (Gowin GW1NR-9). Arguments checked against the pinned
+# OSS CAD Suite (nextpnr 0.11.1-79, Apicula gowin_pack, openFPGALoader 1.2.0).
+id: tang-nano-9k
+name: Sipeed Tang Nano 9K
+family: gowin
+device: GW1NR-LV9QN88PC6/I5
+synth: synth_gowin
+nextpnr:
+  binary: nextpnr-himbaechel
+  args: [--device, GW1NR-LV9QN88PC6/I5, --vopt, family=GW1N-9C, --vopt, "cst={constraints}", --write, "{pnr}"]
+pnr_file: pnr.json
+pack:
+  binary: gowin_pack
+  args: [-d, GW1N-9C, -o, "{bitstream}", "{pnr}"]
+bitstream_file: bitstream.fs
+flash:
+  binary: openFPGALoader
+  args: [-b, tangnano9k]
+clock: {port: clk, pin: "52", freq_mhz: 27}
+constraints: {format: cst, template: tang-nano-9k.cst}
+resources:
+  LUT: [LUT4]
+  FF: [DFF]
+  BRAM: [BSRAM]
+  IO: [IOB]
