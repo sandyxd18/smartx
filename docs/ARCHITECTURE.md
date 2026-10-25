@@ -50,7 +50,7 @@ smartx/
 │  ├─ public/surfer/         build web Surfer (diunduh oleh skrip, di-gitignore)
 │  └─ src/
 │     ├─ pages/              Dashboard, Exercises, Exercise, Workspace, Projects, Tapeout
-│     ├─ components/         Editor, FileTree, RunPanel, LogView, WaveView, GdsView, ReportTable
+│     ├─ components/         Editor, FileTree, RunPanel, WaveView, FpgaPanel, FpgaReport, GdsView
 │     └─ api/                client typed (dibuat dari OpenAPI backend)
 ├─ content/
 │  ├─ exercises/<id>/        soal langkah 1 (format: docs/CONTENT-FORMAT.md)

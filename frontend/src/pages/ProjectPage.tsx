@@ -12,6 +12,7 @@ import { CodeEditor } from "../components/CodeEditor";
 import { ConfigEditor } from "../components/ConfigEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { FileTree } from "../components/FileTree";
+import { FpgaPanel } from "../components/FpgaPanel";
 import { LessonsPanel } from "../components/LessonsPanel";
 import { RunPanel, type RunTab } from "../components/RunPanel";
 import { SaveIndicator } from "../components/SaveIndicator";
@@ -83,8 +84,15 @@ function ProjectView({ projectId }: { projectId: number }) {
   // Lint copies the saved files, so pending edits are stored first.
   const lint = useProjectRun(projectId, settle);
   const sim = useProjectRun(projectId, settle);
+  const fpga = useProjectRun(projectId, settle);
   const [runTab, setRunTab] = useState<RunTab>("problems");
-  const [showLessons, setShowLessons] = useState(false);
+  const [side, setSide] = useState<"lessons" | "fpga" | null>(null);
+  // A build without an fpga section in smartx.yaml opens the settings once.
+  const [shownFpgaError, setShownFpgaError] = useState<string | null>(null);
+  if (fpga.error && fpga.error !== shownFpgaError) {
+    setShownFpgaError(fpga.error);
+    if (fpga.error.includes("'fpga'")) setSide("fpga");
+  }
   // A simulation that did not compile is explained in Problems; switch there once.
   const [shownCompileError, setShownCompileError] = useState<string | null>(
     null,
@@ -103,6 +111,14 @@ function ProjectView({ projectId }: { projectId: number }) {
 
   const showSavedConfig = useCallback((text: string) => {
     setOpen((current) => current && { ...current, content: text });
+  }, []);
+  // smartx.yaml rewritten from outside its editor (the FPGA panel): load it again.
+  const reloadConfig = useCallback((text: string) => {
+    setOpen((current) => {
+      if (current?.path !== CONFIG_PATH) return current;
+      openCounter.current += 1;
+      return { id: openCounter.current, path: CONFIG_PATH, content: text };
+    });
   }, []);
 
   // cocotb snippets for the "Sisipkan snippet" menu of Python files.
@@ -176,7 +192,7 @@ function ProjectView({ projectId }: { projectId: number }) {
   const openPath = open?.path ?? null;
   const markers = useMemo<EditorDiagnostic[]>(
     () =>
-      projectProblems(lint, sim)
+      projectProblems(lint, sim, fpga)
         .filter((d) => d.file === openPath)
         .map((d) => ({
           line: d.line,
@@ -186,7 +202,7 @@ function ProjectView({ projectId }: { projectId: number }) {
           code: d.code,
           message: d.message,
         })),
-    [lint, sim, openPath],
+    [lint, sim, fpga, openPath],
   );
 
   async function openRun(runId: string) {
@@ -205,6 +221,9 @@ function ProjectView({ projectId }: { projectId: number }) {
       if (data.kind === "lint") {
         lint.show(data);
         setRunTab("problems");
+      } else if (data.kind === "fpga") {
+        fpga.show(data);
+        setRunTab("fpga");
       } else {
         sim.show(data);
         setRunTab("tests");
@@ -342,11 +361,20 @@ function ProjectView({ projectId }: { projectId: number }) {
           <SaveIndicator status={autosave.status} />
           <button
             type="button"
-            aria-pressed={showLessons}
-            onClick={() => setShowLessons((shown) => !shown)}
+            aria-pressed={side === "lessons"}
+            onClick={() => setSide((s) => (s === "lessons" ? null : "lessons"))}
             className="ml-auto rounded-md border border-slate-300 px-3 py-1.5 text-sm aria-pressed:bg-slate-100"
           >
             Materi
+          </button>
+          <button
+            type="button"
+            aria-pressed={side === "fpga"}
+            onClick={() => setSide((s) => (s === "fpga" ? null : "fpga"))}
+            title="Pilih board, target clock, dan file constraint"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm aria-pressed:bg-slate-100"
+          >
+            FPGA
           </button>
           <button
             type="button"
@@ -371,6 +399,18 @@ function ProjectView({ projectId }: { projectId: number }) {
             className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >
             Simulasi
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRunTab("fpga");
+              void fpga.start("fpga");
+            }}
+            disabled={fpga.running}
+            title="Synthesize, place & route, dan pack untuk board di smartx.yaml"
+            className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            Build
           </button>
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}
@@ -443,13 +483,26 @@ function ProjectView({ projectId }: { projectId: number }) {
           )}
         </div>
 
-        {showLessons && <LessonsPanel step={2} />}
+        {side === "lessons" && <LessonsPanel step={2} />}
+        {side === "fpga" && (
+          <FpgaPanel
+            projectId={projectId}
+            files={load.detail.entries
+              .filter((e) => e.kind === "file")
+              .map((e) => e.path)}
+            settle={settle}
+            onConfigSaved={reloadConfig}
+            onFileCreated={refresh}
+            onOpenFile={(path) => void openFile(path)}
+          />
+        )}
       </div>
 
       <RunPanel
         projectId={projectId}
         lint={lint}
         sim={sim}
+        fpga={fpga}
         tab={runTab}
         onTab={setRunTab}
         onOpen={(d) => void openProblem(d)}

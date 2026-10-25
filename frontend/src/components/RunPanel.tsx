@@ -8,14 +8,16 @@ import {
 } from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { projectProblems, type ProjectRunState } from "../hooks/useProjectRun";
+import { FpgaReport, FpgaSummary } from "./FpgaReport";
 import { WaveView } from "./WaveView";
 
-export type RunTab = "problems" | "tests" | "log" | "wave" | "history";
+export type RunTab = "problems" | "tests" | "log" | "wave" | "fpga" | "history";
 
 export interface RunPanelProps {
   projectId: number;
   lint: ProjectRunState;
   sim: ProjectRunState;
+  fpga: ProjectRunState;
   tab: RunTab;
   onTab: (tab: RunTab) => void;
   /** Open the file of a problem at its line. */
@@ -29,6 +31,7 @@ const TABS: { id: RunTab; label: string }[] = [
   { id: "tests", label: "Tests" },
   { id: "log", label: "Log" },
   { id: "wave", label: "Waveform" },
+  { id: "fpga", label: "FPGA" },
   { id: "history", label: "Riwayat" },
 ];
 
@@ -128,6 +131,7 @@ export function RunPanel({
   projectId,
   lint,
   sim,
+  fpga,
   tab,
   onTab,
   onOpen,
@@ -138,6 +142,7 @@ export function RunPanel({
     tests: useId(),
     log: useId(),
     wave: useId(),
+    fpga: useId(),
     history: useId(),
   };
   // Once opened, the waveform viewer stays mounted so switching tabs does not reload Surfer.
@@ -150,13 +155,13 @@ export function RunPanel({
     setLastWave(currentWave);
   const waveUrl = sim.running ? lastWave : currentWave;
 
-  const problems = projectProblems(lint, sim);
+  const problems = projectProblems(lint, sim, fpga);
 
   return (
     <section
       aria-label="Hasil run"
       className={`flex shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white ${
-        tab === "wave" ? "h-[32rem]" : "h-60"
+        tab === "wave" ? "h-[32rem]" : tab === "fpga" ? "h-80" : "h-60"
       }`}
     >
       <div className="flex items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-xs">
@@ -184,11 +189,15 @@ export function RunPanel({
           ))}
         </div>
         <div className="min-w-0 truncate text-slate-600">
-          {tab === "problems"
-            ? problemsSummary(lint, sim)
-            : tab === "history"
-              ? "Klik sebuah run untuk membuka hasilnya."
-              : simSummary(sim)}
+          {tab === "problems" ? (
+            problemsSummary(lint, sim)
+          ) : tab === "history" ? (
+            "Klik sebuah run untuk membuka hasilnya."
+          ) : tab === "fpga" ? (
+            <FpgaSummary fpga={fpga} />
+          ) : (
+            simSummary(sim)
+          )}
         </div>
       </div>
       <div
@@ -203,8 +212,16 @@ export function RunPanel({
         {tab === "history" && (
           <HistoryList
             projectId={projectId}
-            shown={[lint.run?.id, sim.run?.id]}
+            shown={[lint.run?.id, sim.run?.id, fpga.run?.id]}
             onOpenRun={onOpenRun}
+          />
+        )}
+        {tab === "fpga" && (
+          <FpgaReport
+            fpga={fpga}
+            onOpenSource={(file, line) =>
+              onOpen({ file, line, severity: "warning", message: "" })
+            }
           />
         )}
         {tab === "tests" && (
@@ -308,7 +325,11 @@ const WHEN = new Intl.DateTimeFormat("id-ID", {
   timeStyle: "medium",
 });
 const SECONDS = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 });
-const KIND_LABELS: Record<string, string> = { lint: "Lint", sim: "Simulasi" };
+const KIND_LABELS: Record<string, string> = {
+  lint: "Lint",
+  sim: "Simulasi",
+  fpga: "FPGA",
+};
 const SIMULATOR_LABELS: Record<string, string> = {
   icarus: "Icarus",
   verilator: "Verilator",
@@ -397,7 +418,9 @@ function HistoryList(props: {
     return <p className="text-red-700">{state.message}</p>;
   if (state.runs.length === 0) {
     return (
-      <p className="text-slate-500">Belum ada run. Klik Lint atau Simulasi.</p>
+      <p className="text-slate-500">
+        Belum ada run. Klik Lint, Simulasi, atau Build.
+      </p>
     );
   }
   if (comparison) {

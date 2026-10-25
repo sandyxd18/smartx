@@ -20,7 +20,7 @@ Dikonfirmasi 2026-10-25: pemilik belum punya board. Mulai dengan Tang Nano 9K sa
    - Fmax per domain clock vs target, beri warna merah jika gagal.
    - Warning Yosys yang penting: latch terbentuk, sinyal tidak terpakai, multi-driven, inferred memory gagal.
    Tulis unit test parser dengan file laporan contoh di `backend/tests/fixtures/`.
-4. [ ] **Halaman FPGA** di workspace: pilih board, editor constraint, tombol Build, tabel laporan, unduh bitstream.
+4. [x] **Halaman FPGA** di workspace: pilih board, editor constraint, tombol Build, tabel laporan, unduh bitstream.
 5. [ ] **Helper flashing** `tools/flash/smartx-flash`: skrip di host yang mengunduh bitstream run terakhir dari backend (atau path lokal) lalu memanggil `openFPGALoader` sesuai profil board. Dokumentasikan instalasi `openFPGALoader` dan aturan udev di README.
 6. [ ] **Materi** `content/lessons/03-*.md`: kode yang tidak bisa disintesis, synchronizer 2-flop, debounce, cara membaca laporan timing, kenapa simulasi lulus tapi FPGA gagal.
 7. [ ] **Contoh proyek FPGA**: blinky, counter ke LED, tombol dengan debounce.
@@ -29,6 +29,6 @@ Dikonfirmasi 2026-10-25: pemilik belum punya board. Mulai dengan Tang Nano 9K sa
 ## Kriteria selesai
 
 - [ ] Blinky dibangun dari UI dan berkedip di board setelah `smartx-flash`.
-- [ ] Laporan menampilkan resource dan Fmax yang cocok dengan output nextpnr mentah.
-- [ ] Desain dengan latch tak sengaja memunculkan peringatan yang jelas di UI.
-- [ ] Desain yang gagal timing ditandai merah, dengan jalur kritis (dari report) ditampilkan.
+- [x] Laporan menampilkan resource dan Fmax yang cocok dengan output nextpnr mentah.
+- [x] Desain dengan latch tak sengaja memunculkan peringatan yang jelas di UI.
+- [x] Desain yang gagal timing ditandai merah, dengan jalur kritis (dari report) ditampilkan.

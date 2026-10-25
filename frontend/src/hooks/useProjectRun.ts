@@ -1,15 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, TERMINAL_STATUSES, type ProjectDiagnostic, type ProjectRun } from "../api/client";
+import {
+  api,
+  TERMINAL_STATUSES,
+  type ProjectDiagnostic,
+  type ProjectRun,
+} from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { useRunEvents } from "./useRunEvents";
 
-export type ProjectRunKind = "lint" | "sim";
+export type ProjectRunKind = "lint" | "sim" | "fpga";
 
 /**
  * Start a job on a project and follow it until it is finished.
  * `beforeStart` runs first (store pending edits: the run copies the saved files).
  */
-export function useProjectRun(projectId: number, beforeStart: () => Promise<void>) {
+export function useProjectRun(
+  projectId: number,
+  beforeStart: () => Promise<void>,
+) {
   const [run, setRun] = useState<ProjectRun | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +35,10 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
         ({ data, response }) => {
           if (cancelled) return;
           if (data) setRun(data);
-          else setError(`Gagal membaca hasil run. ${httpErrorMessage(response.status)}`);
+          else
+            setError(
+              `Gagal membaca hasil run. ${httpErrorMessage(response.status)}`,
+            );
           setPendingId(null);
         },
         () => {
@@ -45,10 +56,14 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
       setError(null);
       await beforeStart();
       try {
-        const { data, error: apiError, response } = await api.POST(
-          "/api/projects/{project_id}/runs",
-          { params: { path: { project_id: projectId } }, body: { kind } },
-        );
+        const {
+          data,
+          error: apiError,
+          response,
+        } = await api.POST("/api/projects/{project_id}/runs", {
+          params: { path: { project_id: projectId } },
+          body: { kind },
+        });
         if (!data) {
           setError(apiErrorMessage(apiError, response.status));
           return;
@@ -76,7 +91,8 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
     run,
     show,
     running: pendingId !== null,
-    status: pendingId !== null ? (events.status ?? "queued") : (run?.status ?? null),
+    status:
+      pendingId !== null ? (events.status ?? "queued") : (run?.status ?? null),
     /** Log lines streamed while the run is going. */
     lines: events.lines,
     error,
@@ -84,9 +100,39 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
   };
 }
 
-export type ProjectRunState = Omit<ReturnType<typeof useProjectRun>, "start" | "show">;
+export type ProjectRunState = Omit<
+  ReturnType<typeof useProjectRun>,
+  "start" | "show"
+>;
 
-/** Lint findings plus the compile errors of the last simulation. */
-export function projectProblems(lint: ProjectRunState, sim: ProjectRunState): ProjectDiagnostic[] {
-  return [...(lint.run?.lint?.diagnostics ?? []), ...(sim.run?.sim?.diagnostics ?? [])];
+/**
+ * Lint findings, the compile errors of the last simulation, and what the last FPGA
+ * build found in the sources (synthesis errors, and warnings that have a line).
+ */
+export function projectProblems(
+  lint: ProjectRunState,
+  sim: ProjectRunState,
+  fpga?: ProjectRunState,
+): ProjectDiagnostic[] {
+  const build = fpga?.run?.fpga;
+  const synthWarnings: ProjectDiagnostic[] = (build?.warnings ?? []).flatMap(
+    (w) =>
+      w.file && w.line
+        ? [
+            {
+              file: w.file,
+              line: w.line,
+              severity: "warning",
+              code: "Yosys",
+              message: w.message,
+            },
+          ]
+        : [],
+  );
+  return [
+    ...(lint.run?.lint?.diagnostics ?? []),
+    ...(sim.run?.sim?.diagnostics ?? []),
+    ...(build?.diagnostics ?? []),
+    ...synthWarnings,
+  ];
 }

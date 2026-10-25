@@ -725,6 +725,19 @@ class TestFpgaRuns:
 
         assert row["summary"] == "Gagal di Place & Route"
 
+    def test_missed_timing_in_the_summary(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        engine = client.app.state.engine  # type: ignore[attr-defined]
+        with Session(engine) as s:
+            for timing_met in (True, False):
+                result = {"status": "ok", "stages": [], "timing_met": timing_met}
+                s.add(Run(project_id=pid, kind="fpga", status=RunStatus.succeeded, result=result))
+            s.commit()
+
+        summaries = {r["summary"] for r in client.get(f"/api/projects/{pid}/runs").json()}
+
+        assert summaries == {"Bitstream jadi", "Bitstream jadi, timing tidak tercapai"}
+
 
 class TestRunHistory:
     def add_run(self, client: TestClient, pid: int, **fields: Any) -> str:

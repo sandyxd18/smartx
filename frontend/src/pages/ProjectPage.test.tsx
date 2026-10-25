@@ -15,6 +15,7 @@ import type {
 } from "../api/client";
 import { routes } from "../routes";
 import { FakeEventSource } from "../test/fakeEventSource";
+import { MISSED_TIMING, TANG } from "../test/fpgaFixtures";
 import { mockFetch } from "../test/mockFetch";
 
 vi.mock("../components/CodeEditor", async () => ({
@@ -1011,5 +1012,131 @@ describe("ProjectPage", () => {
         screen.queryByRole("combobox", { name: "Sisipkan snippet" }),
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("ProjectPage FPGA build", () => {
+  const BUILT = {
+    ...MISSED_TIMING,
+    top: "counter",
+    warnings: [
+      {
+        kind: "latch" as const,
+        signal: "q",
+        module: "counter",
+        file: "src/counter.v",
+        line: 1,
+        message: "Latch terbentuk untuk `q`.",
+      },
+    ],
+  };
+
+  function fpgaRun(overrides: Partial<ProjectRun> = {}): ProjectRun {
+    return {
+      id: "f1",
+      project_id: 1,
+      kind: "fpga",
+      status: "queued",
+      params: {},
+      result: null,
+      tool_versions: null,
+      created_at: "2026-10-25T10:00:00Z",
+      started_at: null,
+      finished_at: null,
+      exit_code: null,
+      error: null,
+      lint: null,
+      sim: null,
+      fpga: null,
+      ...overrides,
+    };
+  }
+
+  it("builds with live stages, then shows the report and marks warnings in the editor", async () => {
+    const env = renderProject({
+      [`POST ${BASE}/runs`]: () => Response.json(fpgaRun(), { status: 201 }),
+      [`GET ${BASE}/runs/f1`]: () =>
+        fpgaRun({ status: "succeeded", fpga: BUILT }),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Build" }));
+    const source = await waitFor(() => FakeEventSource.last());
+    expect(source.url).toBe("/api/runs/f1/events");
+    expect(screen.getByRole("tab", { name: "FPGA" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    source.emit("status", { status: "running" });
+    source.emit("log", { line: "==> Synthesize" });
+    expect(
+      await screen.findByLabelText("Synthesize: berjalan"),
+    ).toBeInTheDocument();
+    source.emit("log", { line: "<== Synthesize: ok (0.86 s)" });
+    source.emit("log", { line: "==> Place & Route" });
+    expect(
+      await screen.findByLabelText("Place & Route: berjalan"),
+    ).toBeInTheDocument();
+    source.emit("status", { status: "succeeded" });
+
+    expect(await screen.findByText("Bitstream jadi")).toBeInTheDocument();
+    expect(
+      screen.getByText("· timing tidak tercapai", { exact: false }),
+    ).toHaveClass("text-red-700");
+    expect(
+      await env.fetch.mock.calls
+        .find(([r]) => r.method === "POST")![0]
+        .clone()
+        .json(),
+    ).toEqual({ kind: "fpga" });
+
+    // The latch warning is a Problem and a marker on its line.
+    expect(
+      screen.getByRole("tab", { name: "Problems (1)" }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "src/counter.v:1" }),
+    );
+    const markers = await screen.findByRole("list", { name: "Penanda editor" });
+    expect(markers).toHaveTextContent("warning 1: Latch terbentuk untuk `q`.");
+  });
+
+  it("opens the FPGA settings when smartx.yaml has no fpga section", async () => {
+    renderProject({
+      [`POST ${BASE}/runs`]: () =>
+        Response.json(
+          {
+            detail:
+              "Bagian 'fpga' belum ada di smartx.yaml. Pilih board dan file constraint dulu.",
+          },
+          { status: 422 },
+        ),
+      "GET /api/boards": () => [TANG],
+      [`GET ${BASE}/config`]: () => ({
+        text: "top: counter\n",
+        config: {
+          top: "counter",
+          sources: ["src/**/*.v"],
+          tests: [],
+          simulator: "icarus",
+          parameters: {},
+          defines: {},
+        },
+        problems: [],
+        sources: ["src/counter.v"],
+      }),
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Build" }));
+
+    expect(
+      await screen.findByRole("complementary", { name: "Pengaturan FPGA" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "FPGA" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      await screen.findByRole("combobox", { name: "Board" }),
+    ).toBeInTheDocument();
   });
 });
