@@ -27,7 +27,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
 4. [x] **API run**
    - `POST /api/runs` (sementara, untuk `echo`), `GET /api/runs/{id}`, `GET /api/runs/{id}/events` (SSE), `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/files/{path}` dengan pencegahan path traversal + test-nya.
 
-5. **Frontend skeleton** (`frontend/`)
+5. [x] **Frontend skeleton** (`frontend/`)
    - Vite + React + TypeScript, React Router, satu library UI yang ringan (mis. Tailwind; shadcn/ui opsional).
    - Client API typed dari OpenAPI (`openapi-typescript`), dengan skrip `npm run gen:api`.
    - Halaman Dashboard yang menampilkan `/api/health` dan tombol "Run echo job" yang menampilkan log live dari SSE.

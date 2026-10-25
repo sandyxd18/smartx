@@ -73,3 +73,12 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - `run.log` selalu ditulis dengan LF, juga di Windows.
 - Timestamp di respons API selalu berzona UTC, karena SQLite membuang info zona waktu dan browser akan membacanya sebagai waktu lokal.
 - Path artefak lewat `app/paths.py::safe_join`. Yang ditolak (400): segmen `..`, path absolut, drive Windows, UNC, NUL, dan symlink yang mengarah keluar folder run. Backslash diperlakukan sebagai pemisah. `run_id` harus 32 hex, jadi tidak bisa dipakai untuk traversal. Test symlink di-skip di Windows tanpa Developer Mode.
+
+## D18. Kerangka frontend (Fase 0 task 5)
+- Vite 8, React 19, React Router 8 (paket `react-router`), Tailwind 4 lewat `@tailwindcss/vite`. Test memakai Vitest 5, jsdom, dan Testing Library. ESLint 10 flat config dengan typescript-eslint (type-checked) dan `--max-warnings 0`.
+- TypeScript dipin `~5.9.3`, bukan 7.x: typescript-eslint 8.72 hanya mendukung `<6.1` dan openapi-typescript 7 mensyaratkan `^5`. Naikkan setelah keduanya mendukung versi baru.
+- Client API: `openapi-typescript` membuat `src/api/schema.d.ts` (di-commit) dan `openapi-fetch` memakainya. `npm run gen:api` mengambil skema dengan `uv run python -m app.openapi_dump` di `backend/`, jadi tidak perlu server yang menyala. Setelah mengubah API backend, jalankan `npm run gen:api`.
+- Port: browser hanya membuka Vite di `SMARTX_PORT` (8080). Vite mem-proxy `/api` ke backend di `SMARTX_API_URL` (default `http://127.0.0.1:8000`). Akibatnya backend tidak lagi memakai `SMARTX_PORT`; penyesuaian `.env` dan compose dikerjakan di task 6.
+- `useRunEvents` mengosongkan log setiap kali `EventSource` (re)connect, karena server memutar ulang seluruh log di setiap koneksi. Stream ditutup dari sisi klien saat status akhir, supaya browser tidak reconnect otomatis.
+- Status 502–504 dari proxy dev ditampilkan sebagai "Backend tidak bisa dihubungi", dengan tombol "Periksa lagi". Ditemukan saat uji di browser: frontend sering siap lebih dulu daripada backend.
+- `.claude/launch.json` berisi konfigurasi `backend` (port 8000) dan `frontend` (port 8080) untuk preview di Claude Code.
