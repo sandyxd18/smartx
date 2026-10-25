@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ExerciseSummary, ProjectDetail, ProjectSummary, ProjectTemplate } from "../api/client";
 import { routes } from "../routes";
 import { mockFetch } from "../test/mockFetch";
@@ -9,6 +9,12 @@ import { mockFetch } from "../test/mockFetch";
 vi.mock("../components/CodeEditor", async () => ({
   CodeEditor: (await import("../test/fakeCodeEditor")).FakeCodeEditor,
 }));
+
+// The project page is a lazy route that a test opens after creating a project; load it
+// once up front so that test does not time out on a busy machine.
+beforeAll(async () => {
+  await import("./ProjectPage");
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
