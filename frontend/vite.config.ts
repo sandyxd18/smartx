@@ -13,6 +13,8 @@ export default defineConfig({
     host,
     port,
     strictPort: true,
+    // Polling is needed when the source is bind-mounted from Windows into a container.
+    watch: process.env.SMARTX_WATCH_POLLING ? { usePolling: true, interval: 300 } : undefined,
     proxy: {
       "/api": { target: apiUrl, changeOrigin: false },
     },

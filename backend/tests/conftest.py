@@ -12,6 +12,14 @@ from app.jobs.fake_runner import FakeRunner
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    # `make test` exports .env into the environment; tests must not depend on it.
+    for field in Settings.model_fields.values():
+        if isinstance(field.validation_alias, str):
+            monkeypatch.delenv(field.validation_alias, raising=False)
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     # _env_file=None: tests must not depend on the developer's .env.

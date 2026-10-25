@@ -7,7 +7,7 @@ Status: rancangan + fondasi awal. Pengembangan dilakukan bersama Claude Code men
 ## Kebutuhan
 
 - Linux, macOS, atau Windows dengan Docker Desktop; GNU Make, Git, Python 3.10+
-- Node.js 20+ (untuk frontend, mulai Fase 0)
+- Node.js 22.22+ dan [uv](https://docs.astral.sh/uv/) (untuk `make test`/`make lint` di host)
 - Fase 5–6: RAM 12–16 GB, ruang disk kosong ±30 GB
 
 ### Windows
@@ -21,12 +21,22 @@ Perintah `make` bisa dijalankan dari PowerShell maupun Git Bash. Yang dibutuhkan
 ## Mulai
 
 ```bash
-cp .env.example .env
-make pin-toolchain      # pilih versi OSS CAD Suite terbaru, simpan ke .env
-make toolchain          # build image toolchain (sekali, beberapa menit)
+make toolchain          # build image toolchain (sekali, beberapa menit; versi dipin di .env)
 make tool-versions      # pastikan tool terpasang
-make check-content      # uji soal contoh di dalam image
+make dev                # backend + frontend lewat docker compose
 ```
+
+Lalu buka http://127.0.0.1:8080. Dashboard menampilkan status backend dan Docker, dan tombol "Jalankan echo job" menguji pipa job dari awal sampai akhir.
+
+Perintah lain (`make help` untuk daftar lengkap):
+
+```bash
+make check              # semua pemeriksaan: lint, test, test Docker, check-content
+make surfer             # build viewer waveform Surfer (web) ke frontend/public/surfer, sekali saja (±5 menit)
+make pin-toolchain      # naikkan OSS CAD Suite ke rilis terbaru (lalu make toolchain && make check)
+```
+
+`make test` dan `make lint` berjalan di host, jadi butuh [uv](https://docs.astral.sh/uv/) dan Node.js 22.22+. Setelah mengubah API backend, jalankan `npm run gen:api` di `frontend/`; `make lint` gagal kalau tipe API frontend tertinggal.
 
 Tanpa Docker, grader bisa dicoba langsung di host jika `iverilog` sudah terpasang:
 

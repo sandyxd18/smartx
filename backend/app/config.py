@@ -51,6 +51,18 @@ class Settings(BaseSettings):
         # Relative paths in .env are relative to the repo root, not the cwd.
         return value if value.is_absolute() else (REPO_ROOT / value).resolve()
 
+    @field_validator("job_user")
+    @classmethod
+    def _check_job_user(cls, value: str) -> str:
+        if not value:
+            return value
+        uid, sep, gid = value.partition(":")
+        if not (sep and uid.isdigit() and gid.isdigit()):
+            raise ValueError("JOB_USER harus berformat uid:gid, mis. 1000:1000")
+        if int(uid) == 0:
+            raise ValueError("JOB_USER tidak boleh root (uid 0)")
+        return value
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "smartx.db"

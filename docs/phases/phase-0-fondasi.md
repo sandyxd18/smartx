@@ -33,16 +33,16 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
    - Halaman Dashboard yang menampilkan `/api/health` dan tombol "Run echo job" yang menampilkan log live dari SSE.
    - Layout dasar: sidebar navigasi (Dashboard, Latihan, Workspace, Proyek, Tapeout), bahasa Indonesia.
 
-6. **Compose & perintah**
+6. [x] **Compose & perintah**
    - `docker-compose.yml`: service `backend` (mount docker.sock, `content/` ro, `data/`), service `frontend` (dev server Vite dengan proxy `/api`).
    - Isi target `make dev`, `make test`, `make lint`, `make check` (hapus `TODO` di Makefile).
    - `scripts/` atau target make untuk mengunduh build web Surfer ke `frontend/public/surfer/` (dipakai Fase 1).
 
 ## Kriteria selesai
 
-- [ ] `make dev` lalu buka `http://127.0.0.1:8080`: Dashboard tampil, health OK, Docker terdeteksi.
-- [ ] Klik "Run echo job": log versi Yosys muncul live, status berakhir `succeeded`.
+- [x] `make dev` lalu buka `http://127.0.0.1:8080`: Dashboard tampil, health OK, Docker terdeteksi.
+- [x] Klik "Run echo job": log versi Yosys muncul live, status berakhir `succeeded`.
 - [x] Cancel job panjang (mis. `sleep 60` di test) mengubah status jadi `cancelled` dan container hilang.
 - [x] Restart backend saat job berjalan: run ditandai `failed` dengan alasan.
-- [ ] `make check` hijau (ruff, pytest, eslint, vitest, check-content).
+- [x] `make check` hijau (ruff, pytest, eslint, vitest, check-content).
 - [x] Unit test untuk: path traversal, queue concurrency, pemulihan startup (pakai `FakeRunner`).

@@ -52,15 +52,56 @@ check-content: ## Uji semua soal (solution lulus, starter gagal) di dalam image 
 check-content-local: ## Sama seperti check-content tapi pakai tool di host
 	$(PY) tools/grader/check_content.py
 
-# Target berikut diisi saat Fase 0 dikerjakan (lihat docs/phases/phase-0-fondasi.md).
-.PHONY: dev test lint check
-dev: ## Jalankan backend + frontend (docker compose)
-	docker compose up --build
+UV ?= uv
+NPM ?= npm
+SURFER_VERSION ?= v0.7.0
 
-test: ## Unit test backend + frontend
-	@echo "TODO(Fase 0): pytest backend + vitest frontend" && false
+# Path repo menurut host Docker; dipakai compose untuk bind mount container job.
+export SMARTX_HOST_DIR := $(CURDIR)
+# Di Linux/macOS, file hasil run dimiliki user yang menjalankan make (bukan root).
+ifneq ($(OS),Windows_NT)
+ifeq ($(JOB_USER),)
+ifneq ($(shell id -u),0)
+export JOB_USER := $(shell id -u):$(shell id -g)
+endif
+endif
+endif
 
-lint: ## Lint backend + frontend
-	@echo "TODO(Fase 0): ruff + eslint" && false
+frontend/node_modules: frontend/package-lock.json
+	cd frontend && $(NPM) ci
+	@touch $@
 
-check: lint test check-content ## Semua pemeriksaan; wajib hijau sebelum task dianggap selesai
+.PHONY: dev
+dev: .env ## Jalankan backend + frontend (docker compose), buka http://127.0.0.1:8080
+	@docker image inspect $(TOOLCHAIN_IMAGE) >/dev/null 2>&1 || \
+		{ echo "Image $(TOOLCHAIN_IMAGE) belum ada. Jalankan 'make toolchain' dulu."; exit 1; }
+	docker compose up --build --renew-anon-volumes
+
+.PHONY: test test-backend test-frontend test-docker
+test: test-backend test-frontend ## Unit test backend + frontend (tanpa Docker)
+
+test-backend:
+	cd backend && $(UV) run pytest -q
+
+test-frontend: frontend/node_modules
+	cd frontend && $(NPM) test
+
+test-docker: ## Test integrasi job dengan Docker asli dan image toolchain
+	cd backend && SMARTX_DOCKER_TESTS=1 $(UV) run pytest -q tests/integration
+
+.PHONY: lint lint-backend lint-frontend
+lint: lint-backend lint-frontend ## Lint + format + typecheck backend dan frontend
+
+lint-backend:
+	cd backend && $(UV) run ruff check . && $(UV) run ruff format --check .
+
+lint-frontend: frontend/node_modules
+	cd frontend && $(NPM) run lint && $(NPM) run typecheck && $(NPM) run gen:api -- --check
+
+.PHONY: check
+check: lint test test-docker check-content ## Semua pemeriksaan; wajib hijau sebelum task dianggap selesai
+
+.PHONY: surfer
+surfer: ## Build Surfer web (WASM) versi SURFER_VERSION ke frontend/public/surfer (lama, sekali saja)
+	docker build -f docker/surfer/Dockerfile --build-arg SURFER_VERSION=$(SURFER_VERSION) \
+		--output type=local,dest=frontend/public/surfer .

@@ -22,10 +22,28 @@ def _default_client(timeout: float | None) -> Any:
     return docker.from_env(timeout=timeout)
 
 
+# The 'smartx' user baked into the toolchain image.
+FALLBACK_JOB_USER = "1000:1000"
+
+
 def default_job_user() -> str:
-    if hasattr(os, "getuid"):
-        return f"{os.getuid()}:{os.getgid()}"
-    return "1000:1000"  # Windows host: the 'smartx' user baked into the toolchain image.
+    """The backend's own uid:gid, so run files belong to the person running SmartX.
+
+    Falls back to the image user on Windows (no uids) and when the backend runs as root
+    (e.g. inside its compose container): jobs must never run as root.
+    """
+    getuid = getattr(os, "getuid", None)
+    if getuid is None or getuid() == 0:
+        return FALLBACK_JOB_USER
+    return f"{getuid()}:{os.getgid()}"
+
+
+def _hand_over(run_dir: Path, user: str) -> None:
+    """A root backend creates run dirs as root; give them to the non-root job user."""
+    geteuid = getattr(os, "geteuid", None)
+    if geteuid is not None and geteuid() == 0:
+        uid, _, gid = user.partition(":")
+        os.chown(run_dir, int(uid), int(gid))
 
 
 def host_path(path: Path, local_root: Path, host_root: str) -> str:
@@ -90,6 +108,7 @@ class DockerRunner(JobRunner):
 
     async def start(self, run_id: str, run_dir: Path, spec: ContainerSpec) -> JobHandle:
         kwargs = self._run_kwargs(run_id, run_dir, spec)
+        _hand_over(run_dir, kwargs["user"])
         container = await asyncio.to_thread(self._client().containers.run, **kwargs)
         return JobHandle(
             run_id=run_id,

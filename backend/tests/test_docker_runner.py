@@ -1,12 +1,14 @@
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 from docker.errors import NotFound
+from pydantic import ValidationError
 
 from app.config import Settings
-from app.jobs.docker_runner import DockerRunner, host_path
+from app.jobs.docker_runner import DockerRunner, default_job_user, host_path
 from app.jobs.runner import ContainerSpec, JobClass, JobHandle, LineSplitter
 
 
@@ -181,6 +183,41 @@ async def test_remove_orphans(settings: Settings, client: FakeClient) -> None:
     assert await runner.remove_orphans() == 1
     assert client.containers.list_kwargs == {"all": True, "filters": {"label": "smartx.run_id"}}
     assert client.containers.container.removed
+
+
+class TestJobUser:
+    def test_uses_backend_uid(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(os, "getuid", lambda: 1001, raising=False)
+        monkeypatch.setattr(os, "getgid", lambda: 1002, raising=False)
+        assert default_job_user() == "1001:1002"
+
+    def test_never_root_when_backend_runs_as_root(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(os, "getuid", lambda: 0, raising=False)
+        monkeypatch.setattr(os, "getgid", lambda: 0, raising=False)
+        assert default_job_user() == "1000:1000"
+
+    def test_windows_has_no_getuid(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delattr(os, "getuid", raising=False)
+        assert default_job_user() == "1000:1000"
+
+    @pytest.mark.parametrize("bad", ["0:0", "0", "root", "1000", "abc:def", "1000:0x1"])
+    def test_settings_reject_root_or_malformed_user(self, bad: str) -> None:
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, job_user=bad)
+
+    async def test_run_dir_is_handed_to_job_user_when_root(
+        self, monkeypatch: pytest.MonkeyPatch, settings: Settings, client: FakeClient
+    ) -> None:
+        chowned: list[tuple[Path, int, int]] = []
+        monkeypatch.setattr(os, "geteuid", lambda: 0, raising=False)
+        monkeypatch.setattr(os, "chown", lambda p, u, g: chowned.append((p, u, g)), raising=False)
+        settings = settings.model_copy(update={"job_user": "1001:1002"})
+        rd = run_dir(settings)
+
+        await make_runner(settings, client).start("r1", rd, ContainerSpec(command=["true"]))
+
+        assert chowned == [(rd, 1001, 1002)]
+        assert client.containers.run_kwargs["user"] == "1001:1002"
 
 
 def test_line_splitter_handles_split_utf8() -> None:

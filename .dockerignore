@@ -1,0 +1,10 @@
+# Build context for docker/toolchain and docker/surfer: they only need a few files.
+.git
+data
+backend/.venv
+frontend/node_modules
+frontend/dist
+frontend/public/surfer
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
