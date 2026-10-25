@@ -109,6 +109,22 @@ Aturan:
 - Peringatan, yang tidak menghalangi penyimpanan: pola yang tidak cocok dengan file mana pun, modul top yang tidak ditemukan di file sumber, file test yang tidak ada, dan `tests` yang kosong.
 - Menyimpan dari form menulis ulang file dari isi form, sehingga komentar buatan sendiri hilang. Hanya baris judul yang dipertahankan.
 
+## Snippet testbench: `content/snippets/*.yaml` (Fase 2)
+
+```yaml
+snippets:
+  - id: scoreboard            # huruf kecil, angka, '-'
+    title: Scoreboard
+    description: Bandingkan keluaran DUT dengan urutan data yang diharapkan.
+    imports:                  # baris import yang dibutuhkan body
+      - from collections import deque
+    body: |                   # kode tingkat modul (kelas, fungsi, test)
+      class Scoreboard:
+          ...
+```
+
+Menu "Sisipkan snippet" menaruh import yang belum ada di bagian import file dan body di akhir file. Snippet ikut aturan testbench di atas: input diubah di sisi turun clock, dan sinyal dibaca setelah `ReadOnly()`. Semua snippet harus bisa digabung menjadi satu testbench. Test Docker `test_snippets_make_a_working_testbench` menggabungkan semuanya untuk menguji register valid/ready (`backend/tests/fixtures/projects/pipe_reg`): hasilnya harus lulus di Icarus dan Verilator, dan harus gagal untuk register yang membuang data.
+
 ## Proyek terpandu: `content/projects/<id>/` (Fase 4)
 
 ```

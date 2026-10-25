@@ -23,6 +23,7 @@ from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analy
 from app.projects.history import CHANGE_ORDER, compare_tests, prune_runs, summarize
 from app.projects.paths import InvalidProjectPath
 from app.projects.snapshot import write_snapshot
+from app.projects.snippets import Snippet, load_snippets
 from app.projects.templates import exercise_files, load_templates
 
 router = APIRouter(tags=["projects"])
@@ -169,6 +170,12 @@ def _detail(session: Session, project: Project) -> ProjectDetail:
 
 def _file_read(file: File) -> FileRead:
     return FileRead(path=file.path, content=file.content, updated_at=file.updated_at)
+
+
+@router.get("/snippets")
+def list_snippets(settings: SettingsDep) -> list[Snippet]:
+    """cocotb testbench snippets for the editor's "Sisipkan snippet" menu."""
+    return load_snippets(settings.content_dir / "snippets")
 
 
 @router.get("/project-templates")

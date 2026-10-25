@@ -38,3 +38,4 @@ export type ProjectDiagnostic = components["schemas"]["ProjectDiagnostic"];
 export type SimResult = components["schemas"]["SimResult"];
 export type ProjectRunSummary = components["schemas"]["ProjectRunSummary"];
 export type RunComparison = components["schemas"]["RunComparison"];
+export type Snippet = components["schemas"]["Snippet"];

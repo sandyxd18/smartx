@@ -231,6 +231,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/snippets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Snippets
+         * @description cocotb testbench snippets for the editor's "Sisipkan snippet" menu.
+         */
+        get: operations["list_snippets_api_snippets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/project-templates": {
         parameters: {
             query?: never;
@@ -1127,6 +1147,30 @@ export interface components {
              */
             sim_time_ns: number;
         };
+        /** Snippet */
+        Snippet: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Language
+             * @default python
+             */
+            language: string;
+            /**
+             * Imports
+             * @default []
+             */
+            imports: string[];
+            /** Body */
+            body: string;
+        };
         /** SolutionRead */
         SolutionRead: {
             /** Code */
@@ -1570,6 +1614,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_snippets_api_snippets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snippet"][];
                 };
             };
         };

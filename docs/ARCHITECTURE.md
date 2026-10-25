@@ -105,6 +105,7 @@ POST /api/exercises/{id}/hints/next
 GET  /api/exercises/{id}/solution         403 sampai syarat terpenuhi
 
 GET  /api/project-templates
+GET  /api/snippets                        snippet testbench cocotb (content/snippets/*.yaml)
 GET  /api/projects | POST /api/projects       {name, template | exercise_id}
 GET | PATCH | DELETE /api/projects/{id}       detail + tree | ganti nama | hapus
 POST /api/projects/{id}/files                {path, content} (409 kalau sudah ada)

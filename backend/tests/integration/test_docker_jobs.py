@@ -26,6 +26,7 @@ from app.jobs.queue import JobQueue
 from app.jobs.runner import ContainerSpec, JobClass
 from app.models import Run, RunStatus
 from app.projects.snapshot import write_snapshot
+from app.projects.snippets import assemble, load_snippets
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("SMARTX_DOCKER_TESTS") != "1", reason="set SMARTX_DOCKER_TESTS=1"
@@ -345,3 +346,45 @@ async def test_sim_string_parameter_reaches_icarus(
 
     run = get_run(engine, run_id)
     assert run.result is not None and run.result["status"] == "pass", run.result
+
+
+PIPE_REG = Path(__file__).parents[1] / "fixtures" / "projects" / "pipe_reg"
+
+
+@pytest.mark.parametrize(
+    ("simulator", "broken"),
+    [("icarus", False), ("verilator", False), ("icarus", True), ("verilator", True)],
+)
+async def test_snippets_make_a_working_testbench(
+    docker_settings: Settings, engine: Engine, simulator: str, broken: bool
+) -> None:
+    """All cocotb snippets together test a valid/ready register on both simulators,
+    and the scoreboard catches a register that drops data under backpressure."""
+    snippets = load_snippets(REPO_ROOT / "content" / "snippets")
+    design = (PIPE_REG / "src" / "pipe_reg.v").read_text(encoding="utf-8")
+    if broken:  # ignores in_ready: overwrites the output while it is still waiting
+        design = design.replace("end else if (in_ready) begin", "end else begin")
+    params = {
+        "top": "pipe_reg",
+        "sources": ["src/pipe_reg.v"],
+        "tests": ["test/test_pipe.py"],
+        "simulator": simulator,
+    }
+    run_id = new_run(engine, "sim", params)
+    write_snapshot(
+        docker_settings.runs_dir / run_id / "project",
+        {"src/pipe_reg.v": design, "test/test_pipe.py": assemble(snippets)},
+    )
+
+    async with asyncio.timeout(180):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    (test,) = run.result["tests"]
+    if broken:
+        assert run.result["status"] == "fail"
+        assert "seharusnya" in test["message"], test["message"]
+    else:
+        assert run.result["status"] == "pass", test["message"] or run.result["log"][-2000:]

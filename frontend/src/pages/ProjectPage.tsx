@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { api, type ProjectDetail, type ProjectDiagnostic, type ProjectEntry } from "../api/client";
+import {
+  api,
+  type ProjectDetail,
+  type ProjectDiagnostic,
+  type ProjectEntry,
+  type Snippet,
+} from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
 import { ConfigEditor } from "../components/ConfigEditor";
@@ -9,6 +15,7 @@ import { FileTree } from "../components/FileTree";
 import { RunPanel, type RunTab } from "../components/RunPanel";
 import { SaveIndicator } from "../components/SaveIndicator";
 import { languageForPath } from "../editor/languages";
+import { applySnippet } from "../editor/snippets";
 import { type SaveFn, useAutosave } from "../hooks/useAutosave";
 import { projectProblems, useProjectRun } from "../hooks/useProjectRun";
 
@@ -49,11 +56,14 @@ function ProjectView({ projectId }: { projectId: number }) {
 
   const saveFile = useCallback<SaveFn<Draft>>(
     async ({ path, content }, { keepalive }) => {
-      const { response } = await api.PUT("/api/projects/{project_id}/files/{path}", {
-        params: { path: { project_id: projectId, path } },
-        body: { content },
-        keepalive,
-      });
+      const { response } = await api.PUT(
+        "/api/projects/{project_id}/files/{path}",
+        {
+          params: { path: { project_id: projectId, path } },
+          body: { content },
+          keepalive,
+        },
+      );
       if (!response.ok) throw new Error(httpErrorMessage(response.status));
     },
     [projectId],
@@ -74,32 +84,54 @@ function ProjectView({ projectId }: { projectId: number }) {
   const sim = useProjectRun(projectId, settle);
   const [runTab, setRunTab] = useState<RunTab>("problems");
   // A simulation that did not compile is explained in Problems; switch there once.
-  const [shownCompileError, setShownCompileError] = useState<string | null>(null);
+  const [shownCompileError, setShownCompileError] = useState<string | null>(
+    null,
+  );
   const simRun = sim.run;
-  if (simRun?.sim?.status === "compile_error" && shownCompileError !== simRun.id) {
+  if (
+    simRun?.sim?.status === "compile_error" &&
+    shownCompileError !== simRun.id
+  ) {
     setShownCompileError(simRun.id);
     setRunTab("problems");
   }
-  const [reveal, setReveal] = useState<{ line: number; column: number } | null>(null);
+  const [reveal, setReveal] = useState<{ line: number; column: number } | null>(
+    null,
+  );
 
   const showSavedConfig = useCallback((text: string) => {
     setOpen((current) => current && { ...current, content: text });
   }, []);
 
+  // cocotb snippets for the "Sisipkan snippet" menu of Python files.
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  useEffect(() => {
+    api.GET("/api/snippets").then(
+      ({ data }) => setSnippets(data ?? []),
+      () => undefined, // the editor works without them
+    );
+  }, []);
+
   const refresh = useCallback(
     () =>
-      api.GET("/api/projects/{project_id}", { params: { path: { project_id: projectId } } }).then(
-        ({ data, response }) => {
-          if (data) {
-            setLoad({ kind: "ok", detail: data });
-            return;
-          }
-          const message =
-            response.status === 404 ? "Proyek tidak ditemukan." : httpErrorMessage(response.status);
-          setLoad({ kind: "error", message });
-        },
-        () => setLoad({ kind: "error", message: UNREACHABLE }),
-      ),
+      api
+        .GET("/api/projects/{project_id}", {
+          params: { path: { project_id: projectId } },
+        })
+        .then(
+          ({ data, response }) => {
+            if (data) {
+              setLoad({ kind: "ok", detail: data });
+              return;
+            }
+            const message =
+              response.status === 404
+                ? "Proyek tidak ditemukan."
+                : httpErrorMessage(response.status);
+            setLoad({ kind: "error", message });
+          },
+          () => setLoad({ kind: "error", message: UNREACHABLE }),
+        ),
     [projectId],
   );
 
@@ -113,17 +145,24 @@ function ProjectView({ projectId }: { projectId: number }) {
       setSelected(path);
       await settle();
       try {
-        const { data, error: apiError, response } = await api.GET(
-          "/api/projects/{project_id}/files/{path}",
-          { params: { path: { project_id: projectId, path } } },
-        );
+        const {
+          data,
+          error: apiError,
+          response,
+        } = await api.GET("/api/projects/{project_id}/files/{path}", {
+          params: { path: { project_id: projectId, path } },
+        });
         if (!data) {
           setError(apiErrorMessage(apiError, response.status));
           return;
         }
         openCounter.current += 1;
         setReveal(null);
-        setOpen({ id: openCounter.current, path: data.path, content: data.content });
+        setOpen({
+          id: openCounter.current,
+          path: data.path,
+          content: data.content,
+        });
         setError(null);
       } catch {
         setError(UNREACHABLE);
@@ -150,10 +189,13 @@ function ProjectView({ projectId }: { projectId: number }) {
 
   async function openRun(runId: string) {
     try {
-      const { data, error: apiError, response } = await api.GET(
-        "/api/projects/{project_id}/runs/{run_id}",
-        { params: { path: { project_id: projectId, run_id: runId } } },
-      );
+      const {
+        data,
+        error: apiError,
+        response,
+      } = await api.GET("/api/projects/{project_id}/runs/{run_id}", {
+        params: { path: { project_id: projectId, run_id: runId } },
+      });
       if (!data) {
         setError(apiErrorMessage(apiError, response.status));
         return;
@@ -181,7 +223,18 @@ function ProjectView({ projectId }: { projectId: number }) {
     autosave.schedule({ path: open.path, content });
   }
 
-  async function create(kind: ProjectEntry["kind"], path: string): Promise<boolean> {
+  function insertSnippet(id: string) {
+    const snippet = snippets.find((s) => s.id === id);
+    if (!open || !snippet) return;
+    const result = applySnippet(open.content, snippet);
+    edit(result.content);
+    setReveal({ line: result.line, column: 1 });
+  }
+
+  async function create(
+    kind: ProjectEntry["kind"],
+    path: string,
+  ): Promise<boolean> {
     await settle();
     try {
       const { error: apiError, response } =
@@ -212,10 +265,13 @@ function ProjectView({ projectId }: { projectId: number }) {
   async function rename(from: string, to: string): Promise<boolean> {
     await settle();
     try {
-      const { error: apiError, response } = await api.POST("/api/projects/{project_id}/move", {
-        params: { path: { project_id: projectId } },
-        body: { from_path: from, to_path: to },
-      });
+      const { error: apiError, response } = await api.POST(
+        "/api/projects/{project_id}/move",
+        {
+          params: { path: { project_id: projectId } },
+          body: { from_path: from, to_path: to },
+        },
+      );
       if (!response.ok) {
         setError(apiErrorMessage(apiError, response.status));
         return false;
@@ -225,7 +281,8 @@ function ProjectView({ projectId }: { projectId: number }) {
       return false;
     }
     setError(null);
-    const moved = (path: string) => (within(path, from) ? to + path.slice(from.length) : path);
+    const moved = (path: string) =>
+      within(path, from) ? to + path.slice(from.length) : path;
     setOpen((current) => current && { ...current, path: moved(current.path) });
     setSelected((current) => current && moved(current));
     await refresh();
@@ -254,12 +311,17 @@ function ProjectView({ projectId }: { projectId: number }) {
       return;
     }
     setError(null);
-    setOpen((current) => (current && within(current.path, entry.path) ? null : current));
-    setSelected((current) => (current && within(current, entry.path) ? null : current));
+    setOpen((current) =>
+      current && within(current.path, entry.path) ? null : current,
+    );
+    setSelected((current) =>
+      current && within(current, entry.path) ? null : current,
+    );
     await refresh();
   }
 
-  if (load.kind === "loading") return <p className="text-sm text-slate-500">Memuat proyek…</p>;
+  if (load.kind === "loading")
+    return <p className="text-sm text-slate-500">Memuat proyek…</p>;
   if (load.kind === "error") {
     return (
       <div className="flex flex-col gap-2">
@@ -336,8 +398,23 @@ function ProjectView({ projectId }: { projectId: number }) {
             </div>
           ) : open ? (
             <>
-              <div className="border-b border-slate-200 px-3 py-1.5 font-mono text-xs text-slate-600">
-                {open.path}
+              <div className="flex items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-xs">
+                <span className="font-mono text-slate-600">{open.path}</span>
+                {open.path.endsWith(".py") && snippets.length > 0 && (
+                  <select
+                    aria-label="Sisipkan snippet"
+                    value=""
+                    onChange={(e) => insertSnippet(e.target.value)}
+                    className="ml-auto rounded border border-slate-300 px-1 py-0.5"
+                  >
+                    <option value="">Sisipkan snippet cocotb…</option>
+                    {snippets.map((s) => (
+                      <option key={s.id} value={s.id} title={s.description}>
+                        {s.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div className="min-h-0 flex-1" key={open.id}>
                 <CodeEditor
@@ -350,7 +427,9 @@ function ProjectView({ projectId }: { projectId: number }) {
               </div>
             </>
           ) : (
-            <p className="p-4 text-sm text-slate-500">Pilih file di kiri untuk mulai mengedit.</p>
+            <p className="p-4 text-sm text-slate-500">
+              Pilih file di kiri untuk mulai mengedit.
+            </p>
           )}
         </div>
       </div>

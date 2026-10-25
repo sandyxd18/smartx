@@ -703,4 +703,43 @@ describe("ProjectPage", () => {
       expect(await screen.findByText(/Belum ada run/)).toBeInTheDocument();
     });
   });
+
+  describe("snippet", () => {
+    const SNIPPETS = [
+      {
+        id: "scoreboard",
+        title: "Scoreboard",
+        description: "Bandingkan keluaran.",
+        language: "python",
+        imports: ["from collections import deque"],
+        body: "class Scoreboard:\n    pass\n",
+      },
+    ];
+
+    it("inserts a snippet into a Python file and saves it", async () => {
+      const env = renderProject({ "GET /api/snippets": () => SNIPPETS });
+      const editor = await openFile("test_counter.py");
+
+      await userEvent.selectOptions(
+        await screen.findByRole("combobox", { name: "Sisipkan snippet" }),
+        "scoreboard",
+      );
+
+      expect(editor).toHaveValue(
+        "import cocotb\nfrom collections import deque\n\n\nclass Scoreboard:\n    pass\n",
+      );
+      await waitFor(
+        () => expect(env.saved["test/test_counter.py"]).toContain("class Scoreboard"),
+        { timeout: 3000 },
+      );
+      // The menu goes back to its prompt, ready for the next snippet.
+      expect(screen.getByRole("combobox", { name: "Sisipkan snippet" })).toHaveValue("");
+    });
+
+    it("is only offered for Python files", async () => {
+      renderProject({ "GET /api/snippets": () => SNIPPETS });
+      await openFile("counter.v");
+      expect(screen.queryByRole("combobox", { name: "Sisipkan snippet" })).not.toBeInTheDocument();
+    });
+  });
 });
