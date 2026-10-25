@@ -13,6 +13,8 @@ export type RunStatus = components["schemas"]["RunStatus"];
 export type ExerciseSummary = components["schemas"]["ExerciseSummary"];
 export type ExerciseDetail = components["schemas"]["ExerciseDetail"];
 export type ExerciseStatus = components["schemas"]["ExerciseStatus"];
+export type ExerciseRun = components["schemas"]["ExerciseRunRead"];
+export type GradeResult = components["schemas"]["GradeResult"];
 
 export const TERMINAL_STATUSES: ReadonlySet<RunStatus> = new Set([
   "succeeded",

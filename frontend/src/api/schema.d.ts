@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exercises/{exercise_id}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Exercise Run */
+        get: operations["get_exercise_run_api_exercises__exercise_id__runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exercises/{exercise_id}/hints/next": {
         parameters: {
             query?: never;
@@ -198,6 +215,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Diagnostic */
+        Diagnostic: {
+            /** Line */
+            line: number;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning";
+            /** Message */
+            message: string;
+        };
         /** DockerStatus */
         DockerStatus: {
             /** Available */
@@ -247,12 +276,51 @@ export interface components {
             solution_available: boolean;
             /** Solution Unlock Attempts */
             solution_unlock_attempts: number;
-            last_run: components["schemas"]["RunRead"] | null;
+            last_run: components["schemas"]["ExerciseRunRead"] | null;
         };
         /** ExerciseRunCreate */
         ExerciseRunCreate: {
             /** Code */
             code: string;
+        };
+        /**
+         * ExerciseRunRead
+         * @description A grade run with its result parsed (None until the grader has finished).
+         */
+        ExerciseRunRead: {
+            /** Id */
+            id: string;
+            /** Project Id */
+            project_id: number | null;
+            /** Kind */
+            kind: string;
+            status: components["schemas"]["RunStatus"];
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Tool Versions */
+            tool_versions: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Exit Code */
+            exit_code: number | null;
+            /** Error */
+            error: string | null;
+            grade: components["schemas"]["GradeResult"] | null;
         };
         /**
          * ExerciseStatus
@@ -278,6 +346,57 @@ export interface components {
             status: components["schemas"]["ExerciseStatus"];
             /** Attempts */
             attempts: number;
+        };
+        /**
+         * GradeResult
+         * @description Run.result of a grade run. Exposed in the API so the frontend gets real types.
+         */
+        GradeResult: {
+            /** Exercise Id */
+            exercise_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "compile_error" | "error";
+            /** Simulator */
+            simulator?: string | null;
+            /**
+             * Tests
+             * @default []
+             */
+            tests: components["schemas"]["GradeTest"][];
+            /**
+             * Diagnostics
+             * @default []
+             */
+            diagnostics: components["schemas"]["Diagnostic"][];
+            /**
+             * Log
+             * @default
+             */
+            log: string;
+            /** Wave File */
+            wave_file?: string | null;
+            /** Wave Url */
+            wave_url?: string | null;
+        };
+        /** GradeTest */
+        GradeTest: {
+            /** Name */
+            name: string;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Sim Time Ns
+             * @default 0
+             */
+            sim_time_ns: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -635,7 +754,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunRead"];
+                    "application/json": components["schemas"]["ExerciseRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_exercise_run_api_exercises__exercise_id__runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseRunRead"];
                 };
             };
             /** @description Validation Error */

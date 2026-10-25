@@ -8,7 +8,7 @@ import json
 import re
 import shutil
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -39,6 +39,33 @@ class Params(BaseModel):
 
     exercise_id: ExerciseId
     code: str = Field(max_length=MAX_CODE_CHARS)
+
+
+class GradeTest(BaseModel):
+    name: str
+    passed: bool
+    message: str = ""
+    sim_time_ns: float = 0
+
+
+class Diagnostic(BaseModel):
+    line: int
+    severity: Literal["error", "warning"]
+    message: str
+
+
+class GradeResult(BaseModel):
+    """Run.result of a grade run. Exposed in the API so the frontend gets real types."""
+
+    exercise_id: str
+    status: Literal["pass", "fail", "compile_error", "error"]
+    simulator: str | None = None
+    tests: list[GradeTest] = []
+    # Compiler messages about the user's code (only for compile_error).
+    diagnostics: list[Diagnostic] = []
+    log: str = ""
+    wave_file: str | None = None  # relative to the run folder
+    wave_url: str | None = None
 
 
 def prepare(run_dir: Path, params: dict[str, Any], ctx: JobContext) -> ContainerSpec:
@@ -104,13 +131,16 @@ def collect(run_dir: Path) -> dict[str, Any]:
     status = data["status"]
     log = data.get("log") or ""
     wave = _run_relative(data.get("wave_file"), run_dir)
-    return {
-        "exercise_id": data["exercise"],
-        "status": status,  # pass | fail | compile_error | error
-        "simulator": data.get("simulator"),
-        "tests": data.get("tests", []),
-        "diagnostics": parse_diagnostics(log) if status == "compile_error" else [],
-        "log": log,
-        "wave_file": wave,
-        "wave_url": f"/api/runs/{run_dir.name}/files/{wave}" if wave else None,
-    }
+    result = GradeResult.model_validate(
+        {
+            "exercise_id": data["exercise"],
+            "status": status,
+            "simulator": data.get("simulator"),
+            "tests": data.get("tests", []),
+            "diagnostics": parse_diagnostics(log) if status == "compile_error" else [],
+            "log": log,
+            "wave_file": wave,
+            "wave_url": f"/api/runs/{run_dir.name}/files/{wave}" if wave else None,
+        }
+    )
+    return result.model_dump()

@@ -121,3 +121,13 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - Label status mengikuti rencana fase: `not_started` = "Belum", `attempted` = "Gagal", `solved` = "Lulus". Jumlah percobaan ditampilkan di sampingnya. Level 1–3 = Dasar, Menengah, Lanjut.
 - Filter (teks, status, level) disimpan di query string (`?q=&status=&level=`), sehingga tetap berlaku setelah refresh dan bisa dibagikan sebagai tautan.
 - `/latihan/:id` sementara menampilkan placeholder sampai halaman soal dibuat di task 5.
+
+## D24. Halaman soal dan editor (Fase 1 task 5)
+- Monaco di-host sendiri, bukan dari CDN (bawaan `@monaco-editor/react`), supaya aplikasi tetap jalan tanpa internet. Yang dimuat hanya fitur editor (`monaco-editor/features/register.all`), grammar Monarch Verilog/SystemVerilog bawaan Monaco (`languages/definitions/systemverilog/register`), dan `editor.worker`. Layanan bahasa TS/CSS/HTML/JSON dari `editor.main` sengaja tidak dimuat. Halaman soal adalah lazy route, jadi chunk Monaco (~4 MB, gzip ~1 MB) hanya dimuat saat soal dibuka.
+- `monaco-editor` 0.57.0 mengunci `dompurify` 3.4.15, yang terkena advisory XSS kritis (GHSA-p98j-92pf-mc4p dan kawan-kawan). `package.json` memaksa `dompurify` 3.4.17 lewat `overrides`. Hapus override ini setelah Monaco merilis versi dengan dompurify yang sudah diperbaiki. `@tailwindcss/typography` tidak dipakai, karena mengunci `postcss-selector-parser` yang rentan; teks soal ditata dengan CSS sendiri (`.markdown` di `index.css`).
+- Teks soal di-render dengan `react-markdown` + `remark-gfm` (untuk tabel), tanpa HTML mentah. H1 di awal README dibuang, karena judul halaman sudah diambil dari `exercise.yaml`.
+- Hasil grade di API bertipe `GradeResult` (Pydantic; dipakai juga oleh `collect()`), dengan `ExerciseRunRead.grade` dan endpoint `GET /api/exercises/{id}/runs/{run_id}`. Dengan begitu frontend tidak perlu menulis tipe hasil secara manual.
+- **Bug yang ditemukan saat uji di browser:** Ctrl+Enter yang ditekan sesaat setelah mengetik mengirim kode *lama*. Monaco sudah berisi teks baru, tetapi React belum me-render ulang, sehingga state `code` masih versi sebelumnya. Perbaikannya: `onRun` menerima isi model Monaco saat itu (`editor.getValue()`), dan nilai itu yang dipakai. Ada test regresinya.
+- Penanda error memakai `diagnostics` dari grader sebagai `setModelMarkers`; nomor baris di luar jangkauan dijepit ke baris terakhir. Penanda tetap ada sampai Run berikutnya.
+- Di layar sempit (< `lg`), soal ditampilkan di atas editor; di layar lebar, keduanya berdampingan.
+- Diukur di browser (backend di host, data terpisah): waktu dari klik Run sampai hasil tampil 1,2–1,7 detik untuk `counter-4bit`.

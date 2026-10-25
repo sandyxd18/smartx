@@ -1,14 +1,14 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlmodel import Session, select
 
 from app.api.runs import RunRead, get_app_settings, get_queue
 from app.config import Settings
 from app.content import Exercise, ExerciseCatalog
 from app.db import get_session
-from app.jobs.kinds.grade import MAX_CODE_CHARS
+from app.jobs.kinds.grade import MAX_CODE_CHARS, GradeResult
 from app.jobs.queue import JobQueue
 from app.models import ExerciseProgress, ExerciseStatus, Run
 from app.progress import (
@@ -45,6 +45,12 @@ class ExerciseSummary(BaseModel):
     attempts: int
 
 
+class ExerciseRunRead(RunRead):
+    """A grade run with its result parsed (None until the grader has finished)."""
+
+    grade: GradeResult | None
+
+
 class ExerciseDetail(ExerciseSummary):
     toplevel: str
     language: Literal["verilog", "systemverilog"]
@@ -55,7 +61,7 @@ class ExerciseDetail(ExerciseSummary):
     hints_total: int
     solution_available: bool
     solution_unlock_attempts: int
-    last_run: RunRead | None
+    last_run: ExerciseRunRead | None
 
 
 class ExerciseRunCreate(BaseModel):
@@ -93,6 +99,16 @@ def _summary(exercise: Exercise, progress: ExerciseProgress) -> ExerciseSummary:
     )
 
 
+def _exercise_run(run: Run) -> ExerciseRunRead:
+    grade: GradeResult | None = None
+    if run.result is not None:
+        try:
+            grade = GradeResult.model_validate(run.result)
+        except ValidationError:
+            grade = None  # e.g. results stored before GradeResult existed
+    return ExerciseRunRead(**RunRead.model_validate(run).model_dump(), grade=grade)
+
+
 def _opened_hints(exercise: Exercise, progress: ExerciseProgress) -> list[str]:
     return exercise.meta.hints[: progress.hints_opened]
 
@@ -125,7 +141,7 @@ def get_exercise(
         hints_total=len(exercise.meta.hints),
         solution_available=solution_unlocked(progress, settings.solution_unlock_attempts),
         solution_unlock_attempts=settings.solution_unlock_attempts,
-        last_run=RunRead.model_validate(last_run) if last_run else None,
+        last_run=_exercise_run(last_run) if last_run else None,
     )
 
 
@@ -136,7 +152,7 @@ async def run_exercise(
     session: SessionDep,
     catalog: CatalogDep,
     queue: Annotated[JobQueue, Depends(get_queue)],
-) -> RunRead:
+) -> ExerciseRunRead:
     _get_exercise(catalog, exercise_id)
     run = Run(kind=GRADE_KIND, params={"exercise_id": exercise_id, "code": body.code})
     session.add(run)
@@ -144,7 +160,18 @@ async def run_exercise(
     session.commit()
     session.refresh(run)
     queue.submit(run.id)
-    return RunRead.model_validate(run)
+    return _exercise_run(run)
+
+
+@router.get("/{exercise_id}/runs/{run_id}")
+def get_exercise_run(
+    exercise_id: str, run_id: str, session: SessionDep, catalog: CatalogDep
+) -> ExerciseRunRead:
+    _get_exercise(catalog, exercise_id)
+    run = session.get(Run, run_id)
+    if run is None or run.kind != GRADE_KIND or run.params.get("exercise_id") != exercise_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run tidak ditemukan.")
+    return _exercise_run(run)
 
 
 @router.post("/{exercise_id}/hints/next")

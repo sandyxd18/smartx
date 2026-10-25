@@ -9,6 +9,8 @@ const host = process.env.SMARTX_BIND ?? "127.0.0.1";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Monaco ends up in one ~4 MB chunk that only the exercise page loads (lazy route).
+  build: { chunkSizeWarningLimit: 5000 },
   server: {
     host,
     port,

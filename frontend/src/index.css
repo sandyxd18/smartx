@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+/* Exercise statements (see components/Markdown.tsx). */
+@layer components {
+  .markdown {
+    @apply text-sm leading-relaxed text-slate-800;
+  }
+  .markdown h1 {
+    @apply mb-3 text-xl font-semibold;
+  }
+  .markdown h2 {
+    @apply mt-5 mb-2 text-base font-semibold;
+  }
+  .markdown h3 {
+    @apply mt-4 mb-2 font-semibold;
+  }
+  .markdown p {
+    @apply mb-3;
+  }
+  .markdown ul {
+    @apply mb-3 list-disc pl-5;
+  }
+  .markdown ol {
+    @apply mb-3 list-decimal pl-5;
+  }
+  .markdown li {
+    @apply mb-1;
+  }
+  .markdown code {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.85em];
+  }
+  .markdown pre {
+    @apply mb-3 overflow-auto rounded-md bg-slate-900 p-3 text-slate-100;
+  }
+  .markdown pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+  .markdown table {
+    @apply mb-3 w-full border-collapse text-left;
+  }
+  .markdown th {
+    @apply border border-slate-200 bg-slate-50 px-2 py-1 font-medium;
+  }
+  .markdown td {
+    @apply border border-slate-200 px-2 py-1 align-top;
+  }
+  .markdown blockquote {
+    @apply mb-3 border-l-4 border-slate-200 pl-3 text-slate-600;
+  }
+}

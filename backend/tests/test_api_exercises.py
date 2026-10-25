@@ -230,3 +230,30 @@ def test_progress_survives_restart(settings: Settings, runner: FakeRunner) -> No
         assert detail["code"] == CODE
         assert detail["hints"] == ["pakai always"]
         assert detail["last_run"] is not None
+
+
+class TestTypedRuns:
+    def test_runs_carry_a_typed_grade_result(self, client: TestClient) -> None:
+        r = client.post("/api/exercises/ex-a/runs", json={"code": CODE})
+        assert r.status_code == 201
+        created = r.json()
+        assert created["grade"] is None  # not graded yet
+
+        wait_for_status(client, created["id"], TERMINAL)
+        run = client.get(f"/api/exercises/ex-a/runs/{created['id']}").json()
+
+        assert run["id"] == created["id"]
+        assert run["grade"]["status"] == "fail"
+        assert [t["passed"] for t in run["grade"]["tests"]] == [False, False, False]
+        assert run["grade"]["wave_url"].endswith("/build/sim_build/counter4.fst")
+        assert client.get("/api/exercises/ex-a").json()["last_run"]["grade"]["status"] == "fail"
+
+    def test_run_of_another_exercise_is_not_found(self, client: TestClient) -> None:
+        run_id = submit(client, "ex-a")["id"]
+        r = client.get(f"/api/exercises/ex-b/runs/{run_id}")
+        assert r.status_code == 404
+        assert r.json()["detail"] == "Run tidak ditemukan."
+
+    def test_non_grade_run_is_not_found(self, client: TestClient) -> None:
+        echo = client.post("/api/runs", json={"kind": "echo", "params": {}}).json()
+        assert client.get(f"/api/exercises/ex-a/runs/{echo['id']}").status_code == 404
