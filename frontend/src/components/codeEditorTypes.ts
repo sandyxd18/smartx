@@ -5,6 +5,8 @@ export interface EditorDiagnostic {
   message: string;
   /** 1-based; without it the whole line is marked. */
   column?: number | null;
+  /** 1-based, exclusive; without it the word at `column` is marked. */
+  endColumn?: number | null;
   /** Tool-specific name such as Verilator's LATCH. */
   code?: string | null;
 }
@@ -28,4 +30,6 @@ export interface CodeEditorProps {
   /** Shown as squiggles and in the gutter; cleared when the list is empty. */
   diagnostics?: EditorDiagnostic[];
   language: EditorLanguage;
+  /** Move the cursor here and scroll to it; a new object jumps again. */
+  reveal?: { line: number; column?: number } | null;
 }

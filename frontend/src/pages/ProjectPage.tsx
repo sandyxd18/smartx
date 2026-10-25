@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { api, type ProjectDetail, type ProjectEntry } from "../api/client";
+import { api, type LintDiagnostic, type ProjectDetail, type ProjectEntry } from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
 import { ConfigEditor } from "../components/ConfigEditor";
+import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { FileTree } from "../components/FileTree";
+import { ProblemsPanel } from "../components/ProblemsPanel";
 import { SaveIndicator } from "../components/SaveIndicator";
 import { languageForPath } from "../editor/languages";
 import { type SaveFn, useAutosave } from "../hooks/useAutosave";
+import { useProjectRun } from "../hooks/useProjectRun";
 
 type LoadState =
   | { kind: "loading" }
@@ -66,6 +69,10 @@ function ProjectView({ projectId }: { projectId: number }) {
   const registerFormSettle = useCallback((fn: (() => Promise<void>) | null) => {
     formSettle.current = fn;
   }, []);
+  // Lint copies the saved files, so pending edits are stored first.
+  const lint = useProjectRun(projectId, settle);
+  const [reveal, setReveal] = useState<{ line: number; column: number } | null>(null);
+
   const showSavedConfig = useCallback((text: string) => {
     setOpen((current) => current && { ...current, content: text });
   }, []);
@@ -106,6 +113,7 @@ function ProjectView({ projectId }: { projectId: number }) {
           return;
         }
         openCounter.current += 1;
+        setReveal(null);
         setOpen({ id: openCounter.current, path: data.path, content: data.content });
         setError(null);
       } catch {
@@ -114,6 +122,27 @@ function ProjectView({ projectId }: { projectId: number }) {
     },
     [projectId, settle],
   );
+
+  const openPath = open?.path ?? null;
+  const markers = useMemo<EditorDiagnostic[]>(
+    () =>
+      (lint.run?.lint?.diagnostics ?? [])
+        .filter((d) => d.file === openPath)
+        .map((d) => ({
+          line: d.line,
+          column: d.col,
+          endColumn: d.end_col,
+          severity: d.severity,
+          code: d.code,
+          message: d.message,
+        })),
+    [lint.run, openPath],
+  );
+
+  async function openProblem(d: LintDiagnostic) {
+    if (d.file !== openPath) await openFile(d.file);
+    setReveal({ line: d.line, column: d.col });
+  }
 
   function edit(content: string) {
     if (!open) return;
@@ -216,6 +245,15 @@ function ProjectView({ projectId }: { projectId: number }) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">{load.detail.name}</h1>
           <SaveIndicator status={autosave.status} />
+          <button
+            type="button"
+            onClick={() => void lint.start("lint")}
+            disabled={lint.running}
+            title="verilator --lint-only -Wall atas file sumber di smartx.yaml"
+            className="ml-auto rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            Lint
+          </button>
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}
       </div>
@@ -260,6 +298,8 @@ function ProjectView({ projectId }: { projectId: number }) {
                   value={open.content}
                   onChange={edit}
                   language={languageForPath(open.path)}
+                  diagnostics={markers}
+                  reveal={reveal}
                 />
               </div>
             </>
@@ -268,6 +308,13 @@ function ProjectView({ projectId }: { projectId: number }) {
           )}
         </div>
       </div>
+
+      <ProblemsPanel
+        run={lint.run}
+        running={lint.running}
+        error={lint.error}
+        onOpen={(d) => void openProblem(d)}
+      />
     </section>
   );
 }

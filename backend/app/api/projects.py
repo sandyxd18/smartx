@@ -9,21 +9,25 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator, model
 from sqlmodel import Session, col, func, select
 
 from app.api.exercises import CatalogDep
-from app.api.runs import get_app_settings
+from app.api.runs import RunRead, get_app_settings, get_queue
 from app.config import Settings
 from app.content.models import ExerciseId
 from app.db import get_session
+from app.jobs.kinds.lint import PROJECT_DIR, LintResult
+from app.jobs.queue import JobQueue
 from app.models import File, Project, ProjectKind, Run, RunStatus
 from app.progress import load_progress
 from app.projects import tree
 from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analyze, dump_config
 from app.projects.paths import InvalidProjectPath
+from app.projects.snapshot import write_snapshot
 from app.projects.templates import exercise_files, load_templates
 
 router = APIRouter(tags=["projects"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
+QueueDep = Annotated[JobQueue, Depends(get_queue)]
 NOT_FOUND = "Proyek tidak ditemukan."
 
 ProjectName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
@@ -361,3 +365,69 @@ def check_config(project_id: int, body: ConfigCheck, session: SessionDep) -> Con
     """Analyze YAML that is still being typed, without saving it."""
     _get_project(session, project_id)
     return _config_read(session, project_id, body.text)
+
+
+class ProjectRunCreate(BaseModel):
+    kind: Literal["lint"]
+
+
+class ProjectRunRead(RunRead):
+    """A project run with its result parsed for the run's kind (None until finished)."""
+
+    lint: LintResult | None
+
+
+def _project_run(run: Run) -> ProjectRunRead:
+    lint = LintResult.model_validate(run.result) if run.kind == "lint" and run.result else None
+    return ProjectRunRead(**RunRead.model_validate(run).model_dump(), lint=lint)
+
+
+def _unprocessable(message: str) -> HTTPException:
+    return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, message)
+
+
+@router.post("/projects/{project_id}/runs", status_code=status.HTTP_201_CREATED)
+async def start_project_run(
+    project_id: int, body: ProjectRunCreate, session: SessionDep, queue: QueueDep
+) -> ProjectRunRead:
+    """Run a job on the project as it is now: its files are copied into the run folder."""
+    _get_project(session, project_id)
+    files = tree.read_all(session, project_id)
+    if CONFIG_PATH not in files:
+        raise _unprocessable(f"{CONFIG_PATH} belum ada. Buat dulu lewat file baru atau form.")
+    analysis = analyze(files[CONFIG_PATH], files)
+    config = analysis.config
+    if config is None:
+        first = analysis.problems[0]
+        where = f" (baris {first.line})" if first.line else ""
+        raise _unprocessable(f"{CONFIG_PATH} belum valid{where}: {first.message}")
+    if not analysis.sources:
+        raise _unprocessable(
+            f"Pola 'sources' di {CONFIG_PATH} tidak cocok dengan file apa pun di proyek."
+        )
+
+    run = Run(
+        kind=body.kind,
+        project_id=project_id,
+        params={
+            "top": config.top,
+            "sources": analysis.sources,
+            "defines": config.defines,
+            "parameters": config.parameters,
+        },
+    )
+    session.add(run)
+    session.commit()
+    session.refresh(run)
+    write_snapshot(queue.run_dir(run.id) / PROJECT_DIR, files)
+    queue.submit(run.id)
+    return _project_run(run)
+
+
+@router.get("/projects/{project_id}/runs/{run_id}")
+def get_project_run(project_id: int, run_id: str, session: SessionDep) -> ProjectRunRead:
+    _get_project(session, project_id)
+    run = session.get(Run, run_id)
+    if run is None or run.project_id != project_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run tidak ditemukan.")
+    return _project_run(run)

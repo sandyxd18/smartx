@@ -77,7 +77,7 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 | kind | Image | Kelas | Input | Output utama |
 |---|---|---|---|---|
 | `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
-| `lint` | light | light | file proyek | daftar diagnostic (file, baris, pesan) |
+| `lint` | light | light | salinan file proyek (`project/`) + config | `lint.sarif` → diagnostic (file, baris, kolom, severity, kode, pesan) |
 | `sim` | light | light | file proyek + top + test module | `result.json`, `.fst` |
 | `fpga` | light | light | file + board + constraint | `.fs`/`.bin`, laporan resource & timing |
 | `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
@@ -113,7 +113,8 @@ POST /api/projects/{id}/folders              {path}
 POST /api/projects/{id}/move                 {from_path, to_path}: ganti nama/pindah file atau folder
 GET | PUT /api/projects/{id}/config           smartx.yaml: teks + hasil parse + masalah | simpan dari form
 POST /api/projects/{id}/config/check          {text}: periksa YAML yang sedang diketik (tidak disimpan)
-POST /api/projects/{id}/runs              {kind, params}
+POST /api/projects/{id}/runs              {kind}: salin file proyek ke folder run, ambil params dari smartx.yaml
+GET  /api/projects/{id}/runs/{run_id}     run + hasil sesuai jenisnya (lint, ...)
 GET  /api/runs/{id}
 GET  /api/runs/{id}/events                SSE: log, status
 POST /api/runs/{id}/cancel

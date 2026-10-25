@@ -191,3 +191,17 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - API: `GET /config` membaca dan menganalisis file yang tersimpan. `POST /config/check {text}` menganalisis teks yang sedang diketik tanpa menyimpannya, sehingga masalah tampil langsung tanpa menunggu autosave. `PUT /config` (dari form) menulis ulang `smartx.yaml` dari isi form; komentar buatan sendiri hilang dan hanya baris judul yang dipertahankan.
 - UI: membuka `smartx.yaml` di proyek menampilkan tab "Form | YAML". Form dipilih kalau file valid, YAML kalau ada error. Mode YAML adalah editor biasa (autosave file) dengan masalah sebagai marker Monaco. Mode form menyimpan sendiri (debounce 600 ms), lalu teks hasil simpanan dikirim balik ke editor. Sinkronisasi terjadi saat berpindah mode: sebelum ke form, simpanan YAML yang tertunda ditunggu dan teks diperiksa ulang; sebelum ke YAML, simpanan form ditunggu. Form tidak bisa dibuka selama YAML masih berisi error. Halaman proyek juga menunggu simpanan form sebelum pindah file atau mengubah tree; ada test mutasi untuk ini.
 - Saat dicek di browser, baris parameter yang baru ditambah ternyata tidak mendapat fokus, sehingga ketikan hilang. Sekarang baris parameter, define, dan pola sumber yang baru langsung difokus, dan ada test-nya.
+
+## D32. Job lint proyek (Fase 2 task 3)
+- Saat Lint diklik, API membaca `smartx.yaml` dan menolak (422) kalau config belum valid (error pertama beserta barisnya disebut) atau kalau `sources` tidak cocok dengan file mana pun. Setelah lolos, **semua** file proyek disalin ke `runs/<id>/project/` (salinan saat diklik), baru job diantrikan. Semua file disalin, bukan hanya `sources`, supaya `` `include `` dari folder yang sama ditemukan. Params run berisi config yang sudah diterjemahkan (`top`, daftar file `sources` hasil glob, `defines`, `parameters`), sehingga riwayat run (task 5) bisa menampilkan apa yang dijalankan tanpa membaca file.
+- Perintah, dicek di image yang dipin (Verilator 5.053):
+
+  ```
+  verilator --lint-only -Wall -Wno-EOFNEWLINE -Wno-fatal --quiet --diagnostics-sarif --diagnostics-sarif-output lint.sarif --top-module <top> -I<folder tiap sumber> -D<n>=<v> -G<n>=<v> project/<sumber>...
+  ```
+
+  Berbeda dengan job `grade`, `DECLFILENAME` tetap menyala karena di proyek nama file dipilih pengguna.
+- Hasil dibaca dari **SARIF**, bukan dari teks log. SARIF memberi `endColumn` (marker Monaco menandai rentang yang tepat), kode aturan, level asli (`error`/`warning`), dan tetap ditulis saat ada syntax error. Hasil tanpa lokasi ("Cannot continue") dan lokasi di luar `project/` dibuang. Pesan diberi penjelasan Indonesia yang sama dengan lint di soal (`describe()` di `verilator_lint.py`). Exit code 1 (ada error Verilator) dihitung sebagai hasil, bukan job gagal. Log teks tetap ada di `run.log`.
+- Fixture SARIF untuk test diambil dari image asli. Test Docker membuktikan lint lintas folder dengan `` `include ``, dan bahwa syntax error tetap menghasilkan run yang `succeeded` dengan exit code 1.
+- UI: tombol Lint di header proyek (simpanan yang tertunda disimpan dulu), panel Problems yang dikelompokkan per file dengan ringkasan "N error, M warning", dan marker hanya untuk file yang sedang terbuka. Klik sebuah masalah membuka filenya lalu memindah kursor ke baris dan kolomnya (`CodeEditor.reveal`). `useProjectRun` dipakai lagi oleh job `sim` di task 4. Marker tidak ikut bergeser saat file diedit setelah lint; jalankan Lint lagi untuk memperbaruinya.
+- Diukur di browser: dari klik Lint sampai Problems tampil 0,9 detik.

@@ -14,6 +14,7 @@ export function CodeEditor({
   onRun,
   diagnostics = NO_DIAGNOSTICS,
   language,
+  reveal,
 }: CodeEditorProps) {
   const [editor, setEditor] = useState<StandaloneEditor | null>(null);
   // The keybinding is registered once; read the latest callback through a ref.
@@ -44,12 +45,16 @@ export function CodeEditor({
         const maxColumn = model.getLineMaxColumn(line);
         // Verilator points at a column: underline the word there, not the whole line.
         const column = d.column ? Math.min(d.column, maxColumn) : null;
-        const word = column ? model.getWordAtPosition({ lineNumber: line, column }) : null;
+        // An exact range (Verilator SARIF) wins over the word at the column.
+        const word =
+          column && !d.endColumn ? model.getWordAtPosition({ lineNumber: line, column }) : null;
+        const end = d.endColumn ? Math.min(Math.max(d.endColumn, (column ?? 1) + 1), maxColumn) : null;
         return {
           startLineNumber: line,
           endLineNumber: line,
           startColumn: word?.startColumn ?? column ?? 1,
-          endColumn: word?.endColumn ?? (column ? Math.min(column + 1, maxColumn) : maxColumn),
+          endColumn:
+            end ?? word?.endColumn ?? (column ? Math.min(column + 1, maxColumn) : maxColumn),
           message: d.message,
           code: d.code ?? undefined,
           severity:
@@ -58,6 +63,14 @@ export function CodeEditor({
       }),
     );
   }, [editor, diagnostics, value]);
+
+  useEffect(() => {
+    if (!editor || !reveal) return;
+    const position = { lineNumber: reveal.line, column: reveal.column ?? 1 };
+    editor.setPosition(position);
+    editor.revealPositionInCenter(position);
+    editor.focus();
+  }, [editor, reveal]);
 
   return (
     <Editor

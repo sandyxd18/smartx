@@ -1,15 +1,19 @@
+from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.config import REPO_ROOT
+from app.config import REPO_ROOT, Settings
+from app.jobs.fake_runner import FakeJob, FakeRunner
 from app.models import Run, RunStatus
 from app.projects import tree
 from app.projects.tree import MAX_ENTRIES, MAX_FILE_CHARS
+from tests.helpers import TERMINAL, wait_for_status
 
 COUNTER = REPO_ROOT / "content" / "exercises" / "counter-4bit"
+RUN_FIXTURES = Path(__file__).parent / "fixtures" / "runs"
 
 
 def create(client: TestClient, **body: Any) -> dict[str, Any]:
@@ -455,3 +459,96 @@ def test_every_template_and_exercise_copy_has_a_valid_config(client: TestClient)
         assert body["sources"], p["source"]
         if p["source"] != "template:empty":
             assert body["problems"] == [], (p["source"], body["problems"])
+
+
+class TestLintRuns:
+    @pytest.fixture
+    def runner(self) -> FakeRunner:
+        return FakeRunner(FakeJob(exit_code=0, fixture_dir=RUN_FIXTURES / "lint-warnings"))
+
+    def start(self, client: TestClient, pid: int) -> Any:
+        return client.post(f"/api/projects/{pid}/runs", json={"kind": "lint"})
+
+    def test_snapshots_the_project_and_lints_the_config_sources(
+        self, client: TestClient, settings: Settings
+    ) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.put(
+            f"/api/projects/{pid}/files/src/counter.v", json={"content": "module counter;\n"}
+        )
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 201, r.text
+        run = r.json()
+        assert run["kind"] == "lint"
+        assert run["project_id"] == pid
+        assert run["params"] == {
+            "top": "counter",
+            "sources": ["src/counter.v"],
+            "defines": {},
+            "parameters": {},
+        }
+        project = settings.runs_dir / run["id"] / "project"
+        # Every file is copied as it was when Lint was clicked (includes may need them).
+        assert (project / "src" / "counter.v").read_text(encoding="utf-8") == "module counter;\n"
+        assert (project / "test" / "test_counter.py").is_file()
+        assert (project / "smartx.yaml").is_file()
+
+        wait_for_status(client, run["id"], TERMINAL)
+        done = client.get(f"/api/projects/{pid}/runs/{run['id']}").json()
+        assert done["status"] == "succeeded"
+        assert done["lint"]["warnings"] == 3
+        assert done["lint"]["diagnostics"][0]["file"] == "src/sub/helper.v"
+
+    def test_defines_and_parameters_come_from_the_config(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.put(
+            f"/api/projects/{pid}/config",
+            json={
+                "top": "counter",
+                "sources": ["src/**/*.v"],
+                "tests": ["test/test_counter.py"],
+                "parameters": {"W": 8},
+                "defines": {"SIM": 1},
+            },
+        )
+
+        params = self.start(client, pid).json()["params"]
+
+        assert params["defines"] == {"SIM": 1}
+        assert params["parameters"] == {"W": 8}
+
+    def test_invalid_config_is_refused(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.put(f"/api/projects/{pid}/files/smartx.yaml", json={"content": "top: [\n"})
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 422
+        assert "smartx.yaml" in r.json()["detail"]
+
+    def test_no_matching_sources_is_refused(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.put(
+            f"/api/projects/{pid}/files/smartx.yaml",
+            json={"content": "top: counter\nsources: [rtl/*.v]\n"},
+        )
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 422
+        assert "sources" in r.json()["detail"]
+
+    def test_unknown_kind(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        r = client.post(f"/api/projects/{pid}/runs", json={"kind": "asic"})
+        assert r.status_code == 422
+
+    def test_run_belongs_to_its_project(self, client: TestClient) -> None:
+        a = create(client, template="cocotb-basic")["id"]
+        b = create(client)["id"]
+        run_id = self.start(client, a).json()["id"]
+
+        assert client.get(f"/api/projects/{b}/runs/{run_id}").status_code == 404
+        assert client.get(f"/api/projects/{a}/runs/nope").status_code == 404

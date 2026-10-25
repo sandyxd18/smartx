@@ -25,6 +25,7 @@ from app.jobs.kinds import KINDS
 from app.jobs.queue import JobQueue
 from app.jobs.runner import ContainerSpec, JobClass
 from app.models import Run, RunStatus
+from app.projects.snapshot import write_snapshot
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("SMARTX_DOCKER_TESTS") != "1", reason="set SMARTX_DOCKER_TESTS=1"
@@ -224,3 +225,52 @@ async def test_grade_cannot_read_solution(docker_settings: Settings, engine: Eng
     solution = (COUNTER / "solution.v").read_text()
     assert "q <= q + 4'd1" in solution  # the marker below really is in the solution
     assert "q <= q + 4'd1" not in run.result["log"]
+
+
+async def test_lint_project_reports_per_file(docker_settings: Settings, engine: Engine) -> None:
+    files = {
+        "src/top.v": (
+            "module top (input wire clk, input wire [3:0] a, output wire [1:0] y);\n"
+            "  helper h (.a(a), .y(y));\n"
+            "endmodule\n"
+        ),
+        "src/sub/helper.v": (
+            '`include "widths.vh"\n'
+            "module helper (input wire [3:0] a, output reg [`W-1:0] y);\n"
+            "  always @(*) y = a;\n"
+            "endmodule\n"
+        ),
+        "src/sub/widths.vh": "`define W 2\n",
+    }
+    params = {"top": "top", "sources": ["src/top.v", "src/sub/helper.v"]}
+    run_id = new_run(engine, "lint", params)
+    write_snapshot(docker_settings.runs_dir / run_id / "project", files)
+
+    async with asyncio.timeout(120):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    found = {(d["file"], d["line"], d["code"]) for d in run.result["diagnostics"]}
+    # The include next to helper.v was found (no error), and both files were linted.
+    assert run.result["errors"] == 0, run.result
+    assert ("src/sub/helper.v", 3, "WIDTHTRUNC") in found
+    assert ("src/top.v", 1, "UNUSEDSIGNAL") in found
+
+
+async def test_lint_syntax_error_is_a_result(docker_settings: Settings, engine: Engine) -> None:
+    run_id = new_run(engine, "lint", {"top": "broken", "sources": ["broken.v"]})
+    write_snapshot(
+        docker_settings.runs_dir / run_id / "project",
+        {"broken.v": "module broken (input wire a, output wire y);\n  assign y = a\nendmodule\n"},
+    )
+
+    async with asyncio.timeout(120):
+        await make_queue(docker_settings, engine).submit(run_id)
+
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.exit_code == 1
+    assert run.result is not None and run.result["errors"] == 1
+    assert run.result["diagnostics"][0]["line"] == 3

@@ -405,6 +405,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Project Run
+         * @description Run a job on the project as it is now: its files are copied into the run folder.
+         */
+        post: operations["start_project_run_api_projects__project_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project Run */
+        get: operations["get_project_run_api_projects__project_id__runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -702,6 +739,38 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** LintDiagnostic */
+        LintDiagnostic: {
+            /** File */
+            file: string;
+            /** Line */
+            line: number;
+            /** Col */
+            col: number;
+            /** End Col */
+            end_col: number;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning";
+            /** Code */
+            code: string | null;
+            /** Message */
+            message: string;
+        };
+        /**
+         * LintResult
+         * @description Run.result of a lint run.
+         */
+        LintResult: {
+            /** Errors */
+            errors: number;
+            /** Warnings */
+            warnings: number;
+            /** Diagnostics */
+            diagnostics: components["schemas"]["LintDiagnostic"][];
+        };
         /** MoveRequest */
         MoveRequest: {
             /** From Path */
@@ -787,6 +856,53 @@ export interface components {
          * @enum {string}
          */
         ProjectKind: "exercise" | "sandbox" | "guided" | "tt";
+        /** ProjectRunCreate */
+        ProjectRunCreate: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "lint";
+        };
+        /**
+         * ProjectRunRead
+         * @description A project run with its result parsed for the run's kind (None until finished).
+         */
+        ProjectRunRead: {
+            /** Id */
+            id: string;
+            /** Project Id */
+            project_id: number | null;
+            /** Kind */
+            kind: string;
+            status: components["schemas"]["RunStatus"];
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+            /** Tool Versions */
+            tool_versions: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Exit Code */
+            exit_code: number | null;
+            /** Error */
+            error: string | null;
+            lint: components["schemas"]["LintResult"] | null;
+        };
         /** ProjectSummary */
         ProjectSummary: {
             /** Id */
@@ -1762,6 +1878,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_project_run_api_projects__project_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_run_api_projects__project_id__runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRunRead"];
                 };
             };
             /** @description Validation Error */

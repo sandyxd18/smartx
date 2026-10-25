@@ -1,9 +1,17 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { ConfigRead, ProjectConfig, ProjectDetail, ProjectEntry } from "../api/client";
+import type {
+  ConfigRead,
+  LintResult,
+  ProjectConfig,
+  ProjectDetail,
+  ProjectEntry,
+  ProjectRun,
+} from "../api/client";
 import { routes } from "../routes";
+import { FakeEventSource } from "../test/fakeEventSource";
 import { mockFetch } from "../test/mockFetch";
 
 vi.mock("../components/CodeEditor", async () => ({
@@ -285,6 +293,135 @@ describe("ProjectPage", () => {
       const put = env.log.indexOf(`PUT ${BASE}/config`);
       expect(put).toBeGreaterThan(-1);
       expect(put).toBeLessThan(env.log.indexOf(`GET ${BASE}/files/src/counter.v`));
+    });
+  });
+
+  describe("lint", () => {
+    const LINT: LintResult = {
+      errors: 1,
+      warnings: 1,
+      diagnostics: [
+        {
+          file: "src/counter.v",
+          line: 1,
+          col: 8,
+          end_col: 15,
+          severity: "warning",
+          code: "UNUSEDSIGNAL",
+          message: "Sinyal tidak dipakai (Verilator UNUSEDSIGNAL: Signal is not used: 'x')",
+        },
+        {
+          file: "test/test_counter.py",
+          line: 2,
+          col: 1,
+          end_col: 5,
+          severity: "error",
+          code: null,
+          message: "Verilator: syntax error",
+        },
+      ],
+    };
+
+    function projectRun(overrides: Partial<ProjectRun> = {}): ProjectRun {
+      return {
+        id: "r1",
+        project_id: 1,
+        kind: "lint",
+        status: "queued",
+        params: {},
+        result: null,
+        tool_versions: null,
+        created_at: "2026-10-25T10:00:00Z",
+        started_at: null,
+        finished_at: null,
+        exit_code: null,
+        error: null,
+        lint: null,
+        ...overrides,
+      };
+    }
+
+    function lintRoutes(final: Partial<ProjectRun> = { status: "succeeded", lint: LINT }) {
+      return {
+        [`POST ${BASE}/runs`]: () => Response.json(projectRun(), { status: 201 }),
+        [`GET ${BASE}/runs/r1`]: () => projectRun(final),
+      };
+    }
+
+    async function lintToEnd(status = "succeeded") {
+      await userEvent.click(await screen.findByRole("button", { name: "Lint" }));
+      const source = await waitFor(() => FakeEventSource.last());
+      expect(source.url).toBe("/api/runs/r1/events");
+      source.emit("status", { status: "running" });
+      expect(await screen.findByText("Lint berjalan…")).toBeInTheDocument();
+      source.emit("status", { status });
+    }
+
+    it("lists problems per file and marks the open file", async () => {
+      const env = renderProject(lintRoutes());
+      await openFile("counter.v");
+
+      await lintToEnd();
+
+      const panel = await screen.findByRole("region", { name: "Problems" });
+      expect(await within(panel).findByText("1 error, 1 warning")).toBeInTheDocument();
+      expect(within(panel).getByText("src/counter.v")).toBeInTheDocument();
+      expect(within(panel).getByText("test/test_counter.py")).toBeInTheDocument();
+      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
+        "warning 1: Sinyal tidak dipakai",
+      );
+      // Only the open file's problems are markers.
+      expect(screen.getByRole("list", { name: "Penanda editor" })).not.toHaveTextContent("syntax");
+      expect(
+        await env.fetch.mock.calls.find(([r]) => r.method === "POST")![0].clone().json(),
+      ).toEqual({ kind: "lint" });
+    });
+
+    it("opens the file of a problem", async () => {
+      renderProject(lintRoutes());
+      await screen.findByRole("heading", { name: "FIFO" });
+
+      await lintToEnd();
+      await userEvent.click(await screen.findByRole("button", { name: /2:1 Verilator: syntax error/ }));
+
+      const editor = await screen.findByLabelText("Editor kode");
+      await waitFor(() => expect(editor).toHaveValue(CONTENT["test/test_counter.py"]));
+      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
+        "error 2: Verilator: syntax error",
+      );
+    });
+
+    it("says so when there is nothing to fix", async () => {
+      renderProject(lintRoutes({ status: "succeeded", lint: { errors: 0, warnings: 0, diagnostics: [] } }));
+      await lintToEnd();
+      expect(await screen.findByText("Tidak ada masalah.")).toBeInTheDocument();
+    });
+
+    it("explains a refused or failed lint", async () => {
+      renderProject({
+        [`POST ${BASE}/runs`]: () =>
+          Response.json({ detail: "smartx.yaml belum valid (baris 2): x" }, { status: 422 }),
+      });
+      await userEvent.click(await screen.findByRole("button", { name: "Lint" }));
+      expect(await screen.findByText("smartx.yaml belum valid (baris 2): x")).toBeInTheDocument();
+    });
+
+    it("shows the error of a run that did not finish", async () => {
+      renderProject(lintRoutes({ status: "timeout", error: "Melebihi batas waktu 60 detik." }));
+      await lintToEnd("timeout");
+      expect(await screen.findByText(/Melebihi batas waktu 60 detik/)).toBeInTheDocument();
+    });
+
+    it("saves pending edits before linting", async () => {
+      const env = renderProject(lintRoutes());
+      const editor = await openFile("counter.v");
+      await userEvent.type(editor, "!");
+
+      await lintToEnd();
+
+      const put = env.log.indexOf(`PUT ${BASE}/files/src/counter.v`);
+      expect(put).toBeGreaterThan(-1);
+      expect(put).toBeLessThan(env.log.indexOf(`POST ${BASE}/runs`));
     });
   });
 });
