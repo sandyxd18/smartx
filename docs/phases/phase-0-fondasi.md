@@ -16,7 +16,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
    - `app/db.py` + `app/models.py` sesuai ARCHITECTURE (Project, File, Run, ExerciseProgress).
    - `GET /api/health` mengembalikan versi app dan status Docker (bisa ping daemon atau tidak).
 
-3. **Job system**
+3. [x] **Job system**
    - `jobs/runner.py`: interface `JobRunner` (`start`, `stream_logs`, `wait`, `kill`).
    - `jobs/docker_runner.py`: implementasi Docker dengan semua batasan di ARCHITECTURE (network none, user, memory, cpus, pids, timeout).
    - `jobs/fake_runner.py`: runner palsu untuk unit test (menulis `result.json` dari fixture).

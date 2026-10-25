@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.api.health import get_docker_probe
 from app.config import Settings
 from app.docker_probe import DockerStatus
+from app.jobs.fake_runner import FakeRunner
 from app.main import create_app
 
 
@@ -23,8 +24,13 @@ def docker_status() -> DockerStatus:
 
 
 @pytest.fixture
-def app(settings: Settings, docker_status: DockerStatus) -> FastAPI:
-    app = create_app(settings)
+def runner() -> FakeRunner:
+    return FakeRunner()
+
+
+@pytest.fixture
+def app(settings: Settings, docker_status: DockerStatus, runner: FakeRunner) -> FastAPI:
+    app = create_app(settings, runner=runner)
     app.dependency_overrides[get_docker_probe] = lambda: lambda: docker_status
     return app
 

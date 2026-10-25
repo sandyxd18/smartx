@@ -56,3 +56,13 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - `Run.id` berupa uuid4 hex (bukan integer) agar folder `data/runs/<id>` tidak bentrok setelah database direset.
 - Status Docker di `/api/health` diambil lewat dependency `get_docker_probe`, yang diganti probe palsu di test. Probe tidak pernah melempar error: kalau Docker mati, health tetap 200 dengan `docker.available=false`.
 - Starlette 1.x memberi peringatan bahwa `httpx` untuk `TestClient` digantikan `httpx2`. Untuk sekarang tetap `httpx` (sesuai rencana fase) dan peringatan itu saja yang diredam di konfigurasi pytest; peringatan lain dijadikan error. Pindah ke `httpx2` setelah paketnya dicek.
+
+## D16. Job system (Fase 0 task 3)
+- Antrian memakai dua `asyncio.Semaphore` (light/heavy) di dalam proses backend, tanpa broker. Job kind menentukan kelasnya lewat konstanta `JOB_CLASS`; image dan batas resource diambil `DockerRunner` dari kelas itu (light → `TOOLCHAIN_IMAGE`, heavy → `ASIC_IMAGE`). Karena itu `prepare(run_dir, params)` tidak perlu tahu nama image.
+- Hardening container, selain yang tertulis di ARCHITECTURE: `cap_drop=ALL`, `no-new-privileges`, dan `memswap_limit` sama dengan `mem_limit` (tanpa swap tambahan). Tiap container diberi label `smartx.run_id`. Saat startup, semua container berlabel itu dihapus, karena backend yang baru tidak bisa melanjutkan job lama.
+- Di Windows tidak ada `os.getuid()`, jadi container job berjalan sebagai `1000:1000` (user `smartx` di image). Bisa diatur lewat `JOB_USER`.
+- Client Docker untuk stream log dan `wait` dibuat tanpa read timeout. Default docker-py 60 detik akan memutus stream log job yang diam lebih lama dari itu. Batas waktu job diatur oleh queue (`JOB_*_TIMEOUT_S`).
+- Saat backend dimatikan dengan rapi, container yang masih berjalan di-kill, tetapi status run dibiarkan `running`. Saat start berikutnya, pemulihan menandainya `failed` dengan pesan yang sama seperti setelah crash, jadi kedua jalur berakhir di satu perilaku.
+- `kind=echo` menerima `sleep_s` (int 0–600, divalidasi ketat) untuk menguji cancel dan timeout dari UI tanpa membuat jenis job khusus test.
+- Pesan error run untuk pengguna ditulis dalam bahasa Indonesia, termasuk pesan pemulihan ("Backend di-restart saat run ini belum selesai.").
+- Test dengan Docker asli ada di `backend/tests/integration/` dan hanya jalan jika `SMARTX_DOCKER_TESTS=1`. Unit test tetap memakai `FakeRunner`.

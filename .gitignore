@@ -13,3 +13,5 @@ results.xml
 frontend/public/surfer/
 .pytest_cache/
 .ruff_cache/
+# Run-folder fixtures for collect() tests are committed.
+!backend/tests/fixtures/**/*.log

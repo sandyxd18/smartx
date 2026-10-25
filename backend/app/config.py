@@ -29,20 +29,35 @@ class Settings(BaseSettings):
 
     job_light_concurrency: int = Field(default=2, validation_alias="JOB_LIGHT_CONCURRENCY")
     job_heavy_concurrency: int = Field(default=1, validation_alias="JOB_HEAVY_CONCURRENCY")
-    job_light_timeout_s: int = Field(default=120, validation_alias="JOB_LIGHT_TIMEOUT_S")
-    job_heavy_timeout_s: int = Field(default=7200, validation_alias="JOB_HEAVY_TIMEOUT_S")
+    job_light_timeout_s: float = Field(default=120, validation_alias="JOB_LIGHT_TIMEOUT_S")
+    job_heavy_timeout_s: float = Field(default=7200, validation_alias="JOB_HEAVY_TIMEOUT_S")
     job_light_memory: str = Field(default="4g", validation_alias="JOB_LIGHT_MEMORY")
     job_heavy_memory: str = Field(default="12g", validation_alias="JOB_HEAVY_MEMORY")
+    job_light_cpus: float = Field(default=2.0, validation_alias="JOB_LIGHT_CPUS")
+    job_heavy_cpus: float = Field(default=4.0, validation_alias="JOB_HEAVY_CPUS")
+    job_pids_limit: int = Field(default=512, validation_alias="JOB_PIDS_LIMIT")
+    # "uid:gid" for job containers. Empty = the backend's own uid:gid (1000:1000 on Windows).
+    job_user: str = Field(default="", validation_alias="JOB_USER")
 
-    @field_validator("data_dir")
+    content_dir: Path = Field(default=Path("content"), validation_alias="SMARTX_CONTENT_DIR")
+    # When the backend itself runs in a container, job containers are created by the host
+    # daemon, so bind mounts need host paths. Empty = backend runs on the host.
+    host_data_dir: str = Field(default="", validation_alias="SMARTX_HOST_DATA_DIR")
+    host_content_dir: str = Field(default="", validation_alias="SMARTX_HOST_CONTENT_DIR")
+
+    @field_validator("data_dir", "content_dir")
     @classmethod
-    def _resolve_data_dir(cls, value: Path) -> Path:
+    def _resolve_repo_path(cls, value: Path) -> Path:
         # Relative paths in .env are relative to the repo root, not the cwd.
         return value if value.is_absolute() else (REPO_ROOT / value).resolve()
 
     @property
     def db_path(self) -> Path:
         return self.data_dir / "smartx.db"
+
+    @property
+    def runs_dir(self) -> Path:
+        return self.data_dir / "runs"
 
 
 @lru_cache
