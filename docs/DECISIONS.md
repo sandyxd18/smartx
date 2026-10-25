@@ -47,3 +47,12 @@ Diuji dengan OSS CAD Suite `2026-10-24` (Yosys 0.70+219, Icarus 14.0 devel, Veri
 - `ubuntu:24.04` sudah punya user `ubuntu` dengan UID 1000, sehingga `useradd -u 1000` gagal diam-diam karena `|| true`. User `ubuntu` dihapus dulu, lalu `smartx` dibuat tanpa `|| true`.
 
 Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai versi yang sama. `make pin-toolchain` tetap ada untuk naik versi dengan sengaja; setelah naik, jalankan `make check-content`.
+
+## D15. Kerangka backend (Fase 0 task 2)
+- Dependency dan venv dikelola `uv` (`backend/pyproject.toml` + `uv.lock` di-commit, Python 3.12 lewat `.python-version`). Versi aplikasi satu sumber: `app/__init__.py`.
+- Aplikasi dibuat lewat factory `create_app(settings)` (`uvicorn --factory app.main:create_app`) supaya test bisa memberi `Settings` dan folder data sendiri.
+- Path relatif di `SMARTX_DATA_DIR` diselesaikan terhadap root repo, bukan cwd.
+- Tabel dibuat dengan `SQLModel.metadata.create_all`, belum ada migrasi. Kalau skema mulai berubah setelah ada data yang perlu dijaga, tambahkan Alembic.
+- `Run.id` berupa uuid4 hex (bukan integer) agar folder `data/runs/<id>` tidak bentrok setelah database direset.
+- Status Docker di `/api/health` diambil lewat dependency `get_docker_probe`, yang diganti probe palsu di test. Probe tidak pernah melempar error: kalau Docker mati, health tetap 200 dengan `docker.available=false`.
+- Starlette 1.x memberi peringatan bahwa `httpx` untuk `TestClient` digantikan `httpx2`. Untuk sekarang tetap `httpx` (sesuai rencana fase) dan peringatan itu saja yang diredam di konfigurasi pytest; peringatan lain dijadikan error. Pindah ke `httpx2` setelah paketnya dicek.

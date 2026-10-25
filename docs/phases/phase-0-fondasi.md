@@ -10,7 +10,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
    - `make check-content` hijau di dalam image (soal `counter-4bit` valid).
    - Jika nama binary/argumen di OSS CAD Suite berbeda dari dugaan di Dockerfile, perbaiki Dockerfile dan catat di `DECISIONS.md`.
 
-2. **Backend skeleton** (`backend/`)
+2. [x] **Backend skeleton** (`backend/`)
    - `pyproject.toml` (Python 3.12, fastapi, uvicorn, sqlmodel, pydantic-settings, docker, pyyaml, sse-starlette; dev: pytest, pytest-asyncio, httpx, ruff).
    - `app/config.py` membaca `.env`.
    - `app/db.py` + `app/models.py` sesuai ARCHITECTURE (Project, File, Run, ExerciseProgress).
