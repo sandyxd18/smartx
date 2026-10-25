@@ -199,7 +199,8 @@ class JobQueue:
         return _Outcome(RunStatus.succeeded, exit_code, None, result)
 
     async def _pump_logs(self, run_id: str, run_dir: Path, handle: JobHandle) -> None:
-        with (run_dir / "run.log").open("w", encoding="utf-8") as out:
+        # newline="\n": identical run.log on every host OS (no CRLF on Windows).
+        with (run_dir / "run.log").open("w", encoding="utf-8", newline="\n") as out:
             async for line in self._runner.stream_logs(handle):
                 out.write(line + "\n")
                 out.flush()

@@ -24,7 +24,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
    - Pemulihan saat startup: run `running`/`queued` → `failed`.
    - Job pertama: `kind=echo` yang menjalankan `yosys -V` di image toolchain. Hanya untuk membuktikan pipa jalan.
 
-4. **API run**
+4. [x] **API run**
    - `POST /api/runs` (sementara, untuk `echo`), `GET /api/runs/{id}`, `GET /api/runs/{id}/events` (SSE), `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/files/{path}` dengan pencegahan path traversal + test-nya.
 
 5. **Frontend skeleton** (`frontend/`)
@@ -42,7 +42,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
 
 - [ ] `make dev` lalu buka `http://127.0.0.1:8080`: Dashboard tampil, health OK, Docker terdeteksi.
 - [ ] Klik "Run echo job": log versi Yosys muncul live, status berakhir `succeeded`.
-- [ ] Cancel job panjang (mis. `sleep 60` di test) mengubah status jadi `cancelled` dan container hilang.
-- [ ] Restart backend saat job berjalan: run ditandai `failed` dengan alasan.
+- [x] Cancel job panjang (mis. `sleep 60` di test) mengubah status jadi `cancelled` dan container hilang.
+- [x] Restart backend saat job berjalan: run ditandai `failed` dengan alasan.
 - [ ] `make check` hijau (ruff, pytest, eslint, vitest, check-content).
-- [ ] Unit test untuk: path traversal, queue concurrency, pemulihan startup (pakai `FakeRunner`).
+- [x] Unit test untuk: path traversal, queue concurrency, pemulihan startup (pakai `FakeRunner`).

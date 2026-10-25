@@ -88,8 +88,8 @@ async def test_successful_run(settings: Settings, engine: Engine) -> None:
         "oss_cad_suite": "2026-10-24",
     }
     assert run.started_at is not None and run.finished_at is not None
-    log = (settings.runs_dir / run_id / "run.log").read_text()
-    assert log == "Yosys 0.70+219 (git sha1 5053d0e26)\ndone\n"
+    log = (settings.runs_dir / run_id / "run.log").read_bytes()
+    assert log == b"Yosys 0.70+219 (git sha1 5053d0e26)\ndone\n"
     assert runner.cleaned == {run_id}
 
 

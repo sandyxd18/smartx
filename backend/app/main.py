@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import __version__
-from app.api import health
+from app.api import health, runs
 from app.config import Settings, get_settings
 from app.db import init_db, make_engine
 from app.jobs.docker_runner import DockerRunner
@@ -53,4 +53,5 @@ def create_app(settings: Settings | None = None, runner: JobRunner | None = None
     app = FastAPI(title="SmartX", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.include_router(health.router, prefix="/api")
+    app.include_router(runs.router, prefix="/api")
     return app

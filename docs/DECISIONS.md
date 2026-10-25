@@ -66,3 +66,10 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - `kind=echo` menerima `sleep_s` (int 0–600, divalidasi ketat) untuk menguji cancel dan timeout dari UI tanpa membuat jenis job khusus test.
 - Pesan error run untuk pengguna ditulis dalam bahasa Indonesia, termasuk pesan pemulihan ("Backend di-restart saat run ini belum selesai.").
 - Test dengan Docker asli ada di `backend/tests/integration/` dan hanya jalan jika `SMARTX_DOCKER_TESTS=1`. Unit test tetap memakai `FakeRunner`.
+
+## D17. API run dan SSE (Fase 0 task 4)
+- `POST /api/runs` sementara hanya menerima `kind=echo`. Parameter divalidasi oleh model `Params` milik job kind sebelum run dibuat, jadi input salah langsung dapat 422 dan tidak menjadi run `failed`. Setiap job kind wajib punya `Params`.
+- SSE `GET /api/runs/{id}/events` mengirim event `log` (`{"line"}`) dan `status` (`{"status"}`) dalam JSON. Stream dimulai dengan replay isi `run.log` dan status terkini, lalu meneruskan event live sampai status akhir, kemudian ditutup. Tidak ada event ganda atau hilang karena queue menulis log, memperbarui status, dan mem-publish event tanpa `await` di antaranya, dan follower mengambil snapshot dengan cara yang sama (lihat `app/jobs/stream.py`). Ping tiap 15 detik.
+- `run.log` selalu ditulis dengan LF, juga di Windows.
+- Timestamp di respons API selalu berzona UTC, karena SQLite membuang info zona waktu dan browser akan membacanya sebagai waktu lokal.
+- Path artefak lewat `app/paths.py::safe_join`. Yang ditolak (400): segmen `..`, path absolut, drive Windows, UNC, NUL, dan symlink yang mengarah keluar folder run. Backslash diperlakukan sebagai pemisah. `run_id` harus 32 hex, jadi tidak bisa dipakai untuk traversal. Test symlink di-skip di Windows tanpa Developer Mode.
