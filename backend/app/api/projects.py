@@ -20,7 +20,7 @@ from app.models import File, Project, ProjectKind, Run, RunStatus
 from app.progress import load_progress
 from app.projects import tree
 from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analyze, dump_config
-from app.projects.history import prune_runs, summarize
+from app.projects.history import CHANGE_ORDER, compare_tests, prune_runs, summarize
 from app.projects.paths import InvalidProjectPath
 from app.projects.snapshot import write_snapshot
 from app.projects.templates import exercise_files, load_templates
@@ -446,6 +446,75 @@ async def start_project_run(
         shutil.rmtree(settings.runs_dir / run_id, ignore_errors=True)
     session.refresh(run)
     return _project_run(run)
+
+
+class RunSide(BaseModel):
+    id: str
+    created_at: datetime
+    summary: str | None
+    simulator: str | None
+
+    @field_validator("created_at")
+    @classmethod
+    def _assume_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+
+class TestChange(BaseModel):
+    module: str
+    name: str
+    before: Literal["passed", "failed", "missing"]
+    after: Literal["passed", "failed", "missing"]
+    change: Literal["fixed", "broken", "added", "removed", "same"]
+
+
+class RunComparison(BaseModel):
+    before: RunSide  # the older run
+    after: RunSide
+    tests: list[TestChange]  # changes first
+    counts: dict[str, int]  # per change kind, all kinds present
+
+
+def _side(run: Run) -> RunSide:
+    return RunSide(
+        id=run.id,
+        created_at=run.created_at,
+        summary=summarize(run),
+        simulator=run.params.get("simulator"),
+    )
+
+
+# Registered before /runs/{run_id}, which would otherwise take "compare" as a run id.
+@router.get("/projects/{project_id}/runs/compare")
+def compare_project_runs(
+    project_id: int,
+    a: Annotated[str, Query()],
+    b: Annotated[str, Query()],
+    session: SessionDep,
+) -> RunComparison:
+    """Which tests changed status between two finished simulations of the project."""
+    _get_project(session, project_id)
+    runs = [session.get(Run, run_id) for run_id in (a, b)]
+    if any(run is None or run.project_id != project_id for run in runs):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run tidak ditemukan.")
+    first, second = sorted(
+        [run for run in runs if run is not None], key=lambda r: (r.created_at, r.id)
+    )
+    if first.id == second.id:
+        raise _unprocessable("Pilih dua run yang berbeda.")
+    for run in (first, second):
+        if run.kind != "sim" or run.status != RunStatus.succeeded or not run.result:
+            raise _unprocessable("Hanya simulasi yang sudah selesai yang bisa dibandingkan.")
+    tests = compare_tests(first.result, second.result)
+    counts = {kind: 0 for kind in CHANGE_ORDER}
+    for row in tests:
+        counts[row["change"]] += 1
+    return RunComparison(
+        before=_side(first),
+        after=_side(second),
+        tests=[TestChange.model_validate(row) for row in tests],
+        counts=counts,
+    )
 
 
 @router.get("/projects/{project_id}/runs/{run_id}")

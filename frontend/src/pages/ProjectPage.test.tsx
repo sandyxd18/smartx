@@ -11,6 +11,7 @@ import type {
   ProjectEntry,
   ProjectRun,
   ProjectRunSummary,
+  RunComparison,
 } from "../api/client";
 import { routes } from "../routes";
 import { FakeEventSource } from "../test/fakeEventSource";
@@ -648,6 +649,52 @@ describe("ProjectPage", () => {
         "href",
         "/api/runs/s2/files/build/dump.fst",
       );
+    });
+
+    it("compares two simulations", async () => {
+      const history: ProjectRunSummary[] = [
+        HISTORY[0]!,
+        { ...HISTORY[0]!, id: "s1", created_at: "2026-10-25T10:00:00Z", summary: "3/3 test lulus" },
+        HISTORY[1]!,
+      ];
+      const comparison: RunComparison = {
+        before: { id: "s1", created_at: "2026-10-25T10:00:00Z", summary: "3/3 test lulus", simulator: "verilator" },
+        after: { id: "s2", created_at: "2026-10-25T10:05:00Z", summary: "1 dari 3 test gagal", simulator: "verilator" },
+        tests: [
+          { module: "test_fifo", name: "fills", before: "passed", after: "failed", change: "broken" },
+          { module: "test_fifo", name: "reset", before: "passed", after: "passed", change: "same" },
+        ],
+        counts: { broken: 1, fixed: 0, added: 0, removed: 0, same: 1 },
+      };
+      let asked = "";
+      renderProject({
+        [`GET ${BASE}/runs`]: () => history,
+        [`GET ${BASE}/runs/compare`]: (req: Request) => {
+          asked = new URL(req.url).search;
+          return comparison;
+        },
+      });
+      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+      const list = await screen.findByRole("list", { name: "Riwayat run" });
+
+      // Only finished simulations can be picked.
+      expect(within(list).getAllByRole("checkbox")).toHaveLength(2);
+      const compare = screen.getByRole("button", { name: "Bandingkan" });
+      expect(compare).toBeDisabled();
+      for (const box of within(list).getAllByRole("checkbox")) await userEvent.click(box);
+      await userEvent.click(compare);
+
+      expect(asked).toBe("?a=s2&b=s1");
+      const result = await screen.findByRole("region", { name: "Perbandingan run" });
+      expect(within(result).getByText("Rusak: 1")).toBeInTheDocument();
+      const rows = within(result).getAllByRole("listitem");
+      expect(rows[0]).toHaveTextContent("Rusak");
+      expect(rows[0]).toHaveTextContent("test_fifo.fills");
+      expect(rows[0]).toHaveTextContent("lulus → gagal");
+      expect(within(result).getByText("1 test tidak berubah")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "← Kembali ke riwayat" }));
+      expect(await screen.findByRole("list", { name: "Riwayat run" })).toBeInTheDocument();
     });
 
     it("says when there is no history yet", async () => {

@@ -115,6 +115,7 @@ GET | PUT /api/projects/{id}/config           smartx.yaml: teks + hasil parse + 
 POST /api/projects/{id}/config/check          {text}: periksa YAML yang sedang diketik (tidak disimpan)
 POST /api/projects/{id}/runs              {kind}: salin file proyek ke folder run, ambil params dari smartx.yaml
 GET  /api/projects/{id}/runs?limit=50     riwayat: waktu, jenis, status, durasi, ringkasan (terbaru dulu)
+GET  /api/projects/{id}/runs/compare?a=&b=  test yang berubah status antara dua simulasi
 GET  /api/projects/{id}/runs/{run_id}     run + hasil sesuai jenisnya (lint, sim)
 GET  /api/runs/{id}
 GET  /api/runs/{id}/events                SSE: log, status

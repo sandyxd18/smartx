@@ -3,9 +3,10 @@ import {
   api,
   type ProjectDiagnostic,
   type ProjectRunSummary,
+  type RunComparison,
   type SimResult,
 } from "../api/client";
-import { httpErrorMessage, UNREACHABLE } from "../api/errors";
+import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { projectProblems, type ProjectRunState } from "../hooks/useProjectRun";
 import { WaveView } from "./WaveView";
 
@@ -334,6 +335,36 @@ function HistoryList(props: {
 }) {
   const { projectId } = props;
   const [state, setState] = useState<HistoryState>({ kind: "loading" });
+  // Up to two simulations picked for comparison, in the order they were picked.
+  const [picked, setPicked] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<RunComparison | null>(null);
+  const [compareError, setCompareError] = useState<string | null>(null);
+
+  function togglePick(runId: string) {
+    setPicked((current) =>
+      current.includes(runId)
+        ? current.filter((id) => id !== runId)
+        : [...current, runId].slice(-2),
+    );
+  }
+
+  async function compare() {
+    const [a, b] = picked;
+    if (!a || !b) return;
+    setCompareError(null);
+    try {
+      const { data, error, response } = await api.GET(
+        "/api/projects/{project_id}/runs/compare",
+        {
+          params: { path: { project_id: projectId }, query: { a, b } },
+        },
+      );
+      if (data) setComparison(data);
+      else setCompareError(apiErrorMessage(error, response.status));
+    } catch {
+      setCompareError(UNREACHABLE);
+    }
+  }
 
   // Read on every opening of the tab, so runs that just finished are there.
   useEffect(() => {
@@ -369,43 +400,164 @@ function HistoryList(props: {
       <p className="text-slate-500">Belum ada run. Klik Lint atau Simulasi.</p>
     );
   }
+  if (comparison) {
+    return (
+      <ComparisonView
+        comparison={comparison}
+        onBack={() => setComparison(null)}
+      />
+    );
+  }
   return (
-    <ul aria-label="Riwayat run" className="divide-y divide-slate-100">
-      {state.runs.map((run) => {
-        const ok = run.status === "succeeded";
-        return (
-          <li key={run.id}>
-            <button
-              type="button"
-              aria-current={props.shown.includes(run.id) ? "true" : undefined}
-              onClick={() => props.onOpenRun(run.id)}
-              disabled={run.status === "queued" || run.status === "running"}
-              className="flex w-full items-baseline gap-3 rounded px-2 py-1 text-left text-xs hover:bg-slate-100 aria-[current=true]:bg-slate-100"
-            >
-              <span className="w-36 shrink-0 text-slate-500">
-                {WHEN.format(new Date(run.created_at))}
+    <>
+      <div className="mb-1 flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => void compare()}
+          disabled={picked.length !== 2}
+          className="rounded border border-slate-300 px-2 py-0.5 disabled:opacity-50"
+        >
+          Bandingkan
+        </button>
+        <span className="text-slate-500">
+          Centang dua simulasi untuk melihat test yang berubah status.
+        </span>
+        {compareError && <span className="text-red-700">{compareError}</span>}
+      </div>
+      <ul aria-label="Riwayat run" className="divide-y divide-slate-100">
+        {state.runs.map((run) => {
+          const ok = run.status === "succeeded";
+          const comparable = ok && run.kind === "sim";
+          return (
+            <li key={run.id} className="flex items-center gap-1">
+              <span className="w-5 shrink-0 text-center">
+                {comparable && (
+                  <input
+                    type="checkbox"
+                    aria-label={`Pilih run ${WHEN.format(new Date(run.created_at))} untuk dibandingkan`}
+                    checked={picked.includes(run.id)}
+                    onChange={() => togglePick(run.id)}
+                  />
+                )}
               </span>
-              <span className="w-28 shrink-0 font-medium">
-                {KIND_LABELS[run.kind] ?? run.kind}
-                {run.simulator
-                  ? ` · ${SIMULATOR_LABELS[run.simulator] ?? run.simulator}`
-                  : ""}
-              </span>
-              <span
-                className={`w-20 shrink-0 ${ok ? "text-slate-600" : "text-red-700"}`}
+              <button
+                type="button"
+                aria-current={props.shown.includes(run.id) ? "true" : undefined}
+                onClick={() => props.onOpenRun(run.id)}
+                disabled={run.status === "queued" || run.status === "running"}
+                className="flex w-full items-baseline gap-3 rounded px-2 py-1 text-left text-xs hover:bg-slate-100 aria-[current=true]:bg-slate-100"
               >
-                {STATUS_LABELS[run.status] ?? run.status}
+                <span className="w-36 shrink-0 text-slate-500">
+                  {WHEN.format(new Date(run.created_at))}
+                </span>
+                <span className="w-28 shrink-0 font-medium">
+                  {KIND_LABELS[run.kind] ?? run.kind}
+                  {run.simulator
+                    ? ` · ${SIMULATOR_LABELS[run.simulator] ?? run.simulator}`
+                    : ""}
+                </span>
+                <span
+                  className={`w-20 shrink-0 ${ok ? "text-slate-600" : "text-red-700"}`}
+                >
+                  {STATUS_LABELS[run.status] ?? run.status}
+                </span>
+                <span className="w-16 shrink-0 text-slate-500">
+                  {run.duration_s === null || run.duration_s === undefined
+                    ? ""
+                    : `${SECONDS.format(run.duration_s)} dtk`}
+                </span>
+                <span className="min-w-0 truncate">{run.summary ?? ""}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+const CHANGE_LABELS: Record<string, string> = {
+  broken: "Rusak",
+  fixed: "Diperbaiki",
+  added: "Baru",
+  removed: "Hilang",
+  same: "Sama",
+};
+const CHANGE_TONES: Record<string, string> = {
+  broken: "text-red-700",
+  fixed: "text-green-700",
+  added: "text-slate-700",
+  removed: "text-amber-800",
+  same: "text-slate-500",
+};
+const STATE_LABELS: Record<string, string> = {
+  passed: "lulus",
+  failed: "gagal",
+  missing: "tidak ada",
+};
+
+function ComparisonView(props: {
+  comparison: RunComparison;
+  onBack: () => void;
+}) {
+  const { comparison } = props;
+  const changed = comparison.tests.filter((t) => t.change !== "same");
+  const same = comparison.tests.length - changed.length;
+  const side = (label: string, run: RunComparison["before"]) => (
+    <div>
+      <span className="font-medium">{label}:</span>{" "}
+      {WHEN.format(new Date(run.created_at))}
+      {run.simulator
+        ? ` · ${SIMULATOR_LABELS[run.simulator] ?? run.simulator}`
+        : ""}{" "}
+      · {run.summary ?? ""}
+    </div>
+  );
+  return (
+    <section
+      aria-label="Perbandingan run"
+      className="flex flex-col gap-2 text-xs"
+    >
+      <div>
+        <button
+          type="button"
+          onClick={props.onBack}
+          className="text-slate-600 hover:underline"
+        >
+          ← Kembali ke riwayat
+        </button>
+      </div>
+      {side("Sebelum", comparison.before)}
+      {side("Sesudah", comparison.after)}
+      <div className="flex flex-wrap gap-3">
+        {(["broken", "fixed", "added", "removed"] as const).map((kind) => (
+          <span key={kind} className={CHANGE_TONES[kind]}>
+            {CHANGE_LABELS[kind]}: {comparison.counts[kind] ?? 0}
+          </span>
+        ))}
+      </div>
+      {changed.length === 0 ? (
+        <p className="text-slate-500">Tidak ada test yang berubah status.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {changed.map((t) => (
+            <li key={`${t.module}.${t.name}`} className="flex gap-3 py-0.5">
+              <span
+                className={`w-20 shrink-0 font-medium ${CHANGE_TONES[t.change] ?? ""}`}
+              >
+                {CHANGE_LABELS[t.change] ?? t.change}
               </span>
-              <span className="w-16 shrink-0 text-slate-500">
-                {run.duration_s === null || run.duration_s === undefined
-                  ? ""
-                  : `${SECONDS.format(run.duration_s)} dtk`}
+              <span className="min-w-0 flex-1 truncate font-mono">
+                {t.module}.{t.name}
               </span>
-              <span className="min-w-0 truncate">{run.summary ?? ""}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+              <span className="shrink-0 text-slate-600">
+                {STATE_LABELS[t.before]} → {STATE_LABELS[t.after]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {same > 0 && <p className="text-slate-500">{same} test tidak berubah</p>}
+    </section>
   );
 }

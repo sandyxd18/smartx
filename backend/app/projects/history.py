@@ -1,4 +1,6 @@
-"""A project's run history: one-line summaries and pruning of old runs."""
+"""A project's run history: summaries, comparing two runs, pruning old runs."""
+
+from typing import Any
 
 from sqlmodel import Session, col, select
 
@@ -47,3 +49,39 @@ def prune_runs(session: Session, project_id: int, keep: int) -> list[str]:
     for run in doomed:
         session.delete(run)
     return [r.id for r in doomed]
+
+
+CHANGE_ORDER = ("broken", "fixed", "added", "removed", "same")
+
+
+def _test_states(result: dict[str, Any] | None) -> dict[tuple[str, str], str]:
+    return {
+        (t.get("module", ""), t["name"]): "passed" if t.get("passed") else "failed"
+        for t in (result or {}).get("tests") or []
+    }
+
+
+def compare_tests(
+    before: dict[str, Any] | None, after: dict[str, Any] | None
+) -> list[dict[str, str]]:
+    """Every test of either run, with its state in each and how it changed.
+
+    Tests are matched by (module, name); a test missing from one run (renamed, or a
+    compile error there) is "added" or "removed". Changes come first.
+    """
+    old, new = _test_states(before), _test_states(after)
+    rows = []
+    for key in sorted(old.keys() | new.keys()):
+        was, now = old.get(key, "missing"), new.get(key, "missing")
+        if was == "missing":
+            change = "added"
+        elif now == "missing":
+            change = "removed"
+        elif was == now:
+            change = "same"
+        else:
+            change = "fixed" if now == "passed" else "broken"
+        rows.append(
+            {"module": key[0], "name": key[1], "before": was, "after": now, "change": change}
+        )
+    return sorted(rows, key=lambda r: CHANGE_ORDER.index(r["change"]))

@@ -429,6 +429,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/runs/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Project Runs
+         * @description Which tests changed status between two finished simulations of the project.
+         */
+        get: operations["compare_project_runs_api_projects__project_id__runs_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project_id}/runs/{run_id}": {
         parameters: {
             query?: never;
@@ -966,6 +986,17 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** RunComparison */
+        RunComparison: {
+            before: components["schemas"]["RunSide"];
+            after: components["schemas"]["RunSide"];
+            /** Tests */
+            tests: components["schemas"]["TestChange"][];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
         /** RunCreate */
         RunCreate: {
             /**
@@ -1015,6 +1046,20 @@ export interface components {
             exit_code: number | null;
             /** Error */
             error: string | null;
+        };
+        /** RunSide */
+        RunSide: {
+            /** Id */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Summary */
+            summary: string | null;
+            /** Simulator */
+            simulator: string | null;
         };
         /**
          * RunStatus
@@ -1086,6 +1131,28 @@ export interface components {
         SolutionRead: {
             /** Code */
             code: string;
+        };
+        /** TestChange */
+        TestChange: {
+            /** Module */
+            module: string;
+            /** Name */
+            name: string;
+            /**
+             * Before
+             * @enum {string}
+             */
+            before: "passed" | "failed" | "missing";
+            /**
+             * After
+             * @enum {string}
+             */
+            after: "passed" | "failed" | "missing";
+            /**
+             * Change
+             * @enum {string}
+             */
+            change: "fixed" | "broken" | "added" | "removed" | "same";
         };
         /** ValidationError */
         ValidationError: {
@@ -2034,6 +2101,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_project_runs_api_projects__project_id__runs_compare_get: {
+        parameters: {
+            query: {
+                a: string;
+                b: string;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunComparison"];
                 };
             };
             /** @description Validation Error */

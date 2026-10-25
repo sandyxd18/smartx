@@ -37,3 +37,4 @@ export type LintResult = components["schemas"]["LintResult"];
 export type ProjectDiagnostic = components["schemas"]["ProjectDiagnostic"];
 export type SimResult = components["schemas"]["SimResult"];
 export type ProjectRunSummary = components["schemas"]["ProjectRunSummary"];
+export type RunComparison = components["schemas"]["RunComparison"];

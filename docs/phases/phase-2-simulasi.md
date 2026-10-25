@@ -9,7 +9,7 @@ Tujuan: lingkungan kerja proyek bebas (sandbox) dengan banyak file, testbench se
 3. [x] **Job `lint`**: `verilator --lint-only -Wall` atas semua sumber. Parser output → diagnostic `{file, line, col, severity, code, message}` → tampil di panel Problems dan sebagai marker Monaco.
 4. [x] **Job `sim`**: generalisasi `grade.py` menjadi runner proyek (cocotb runner dengan banyak sumber, parameter, defines, dan pilihan simulator). Hasil per test + waveform.
 5. [x] **Riwayat run**: daftar run per proyek (waktu, jenis, status, durasi, ringkasan test). Klik untuk membuka hasil lama.
-6. **Bandingkan dua run**: test mana yang berubah status. (Diff waveform tidak perlu.)
+6. [x] **Bandingkan dua run**: test mana yang berubah status. (Diff waveform tidak perlu.)
 7. **Template testbench**: snippet cocotb untuk clock/reset, driver valid-ready, scoreboard sederhana, dan coverage dengan `cocotb-coverage` (opsional).
 8. **Materi singkat** di `content/lessons/02-*.md`: cara menulis model referensi, test acak dengan seed, membaca waveform untuk debugging. Tampilkan di sidebar workspace.
 

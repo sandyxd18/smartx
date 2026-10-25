@@ -754,3 +754,101 @@ def test_history_keeps_the_newest_finished_runs(settings: Settings, runner: Fake
 def test_history_setting_has_a_floor() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, project_run_history=49)
+
+
+def sim_result(status: str, **tests: bool) -> dict[str, Any]:
+    return {
+        "status": status,
+        "top": "fifo",
+        "simulator": "icarus",
+        "tests": [
+            {"module": "test_fifo", "name": name, "passed": passed}
+            for name, passed in tests.items()
+        ],
+    }
+
+
+class TestCompareRuns:
+    def add_sim(self, client: TestClient, pid: int, minute: int, result: dict[str, Any]) -> str:
+        return TestRunHistory.add_run(
+            TestRunHistory(),
+            client,
+            pid,
+            kind="sim",
+            status=RunStatus.succeeded,
+            result=result,
+            created_at=datetime(2026, 10, 25, 10, minute, tzinfo=UTC),
+        )
+
+    def test_reports_which_tests_changed(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        before = self.add_sim(
+            client, pid, 0, sim_result("fail", reset=True, fill=False, drain=True, old=True)
+        )
+        after = self.add_sim(
+            client, pid, 5, sim_result("fail", reset=True, fill=True, drain=False, new=False)
+        )
+
+        # Picked in either order, the older run is "before".
+        body = client.get(f"/api/projects/{pid}/runs/compare?a={after}&b={before}").json()
+
+        assert body["before"]["id"] == before and body["after"]["id"] == after
+        changes = {t["name"]: (t["change"], t["before"], t["after"]) for t in body["tests"]}
+        assert changes == {
+            "fill": ("fixed", "failed", "passed"),
+            "drain": ("broken", "passed", "failed"),
+            "new": ("added", "missing", "failed"),
+            "old": ("removed", "passed", "missing"),
+            "reset": ("same", "passed", "passed"),
+        }
+        # Changes first, then the unchanged tests.
+        assert [t["name"] for t in body["tests"]][-1] == "reset"
+        assert body["counts"] == {"fixed": 1, "broken": 1, "added": 1, "removed": 1, "same": 1}
+
+    def test_tests_are_matched_per_module(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        a = sim_result("pass", t=True)
+        b = sim_result("fail", t=False)
+        b["tests"][0]["module"] = "test_other"
+        before = self.add_sim(client, pid, 0, a)
+        after = self.add_sim(client, pid, 1, b)
+
+        body = client.get(f"/api/projects/{pid}/runs/compare?a={before}&b={after}").json()
+
+        assert sorted(t["change"] for t in body["tests"]) == ["added", "removed"]
+
+    def test_compile_error_counts_every_test_as_gone(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        before = self.add_sim(client, pid, 0, sim_result("pass", t=True))
+        after = self.add_sim(client, pid, 1, sim_result("compile_error"))
+
+        body = client.get(f"/api/projects/{pid}/runs/compare?a={before}&b={after}").json()
+
+        assert body["after"]["summary"] == "Error kompilasi"
+        assert [t["change"] for t in body["tests"]] == ["removed"]
+
+    def test_only_finished_sim_runs_of_this_project(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        other = create(client)["id"]
+        sim_a = self.add_sim(client, pid, 0, sim_result("pass", t=True))
+        lint = TestRunHistory.add_run(
+            TestRunHistory(),
+            client,
+            pid,
+            kind="lint",
+            status=RunStatus.succeeded,
+            result={"errors": 0, "warnings": 0, "diagnostics": []},
+        )
+        running = TestRunHistory.add_run(
+            TestRunHistory(), client, pid, kind="sim", status=RunStatus.running
+        )
+        foreign = self.add_sim(client, other, 0, sim_result("pass", t=True))
+
+        def compare(a: str, b: str) -> Any:
+            return client.get(f"/api/projects/{pid}/runs/compare?a={a}&b={b}")
+
+        assert compare(sim_a, lint).status_code == 422
+        assert compare(sim_a, running).status_code == 422
+        assert compare(sim_a, sim_a).status_code == 422
+        assert compare(sim_a, foreign).status_code == 404
+        assert compare(sim_a, "nope").status_code == 404
