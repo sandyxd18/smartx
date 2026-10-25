@@ -107,3 +107,11 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - `collect()` memetakan `wave_file` dari path container (`/work/...`) ke path relatif folder run dan `wave_url` (`/api/runs/<id>/files/...`). Path yang tidak berada di bawah `/work`, mengandung `..`, atau filenya tidak ada, diabaikan.
 - Error kompilasi Icarus diurai menjadi `diagnostics: [{line, severity, message}]`, hanya untuk `dut.v` (salinan kode user). Pesan dari modul dump milik cocotb (`cocotb_iverilog_dump.v`) dibuang. Icarus sering melaporkan error di baris *setelah* kesalahan sebenarnya (misalnya titik koma yang hilang), dan bisa memberi beberapa pesan untuk satu baris; nomor barisnya diteruskan apa adanya.
 - Fixture `collect()` (`tests/fixtures/runs/grade-*`) diambil dari keluaran grader yang asli di image toolchain. `.gitignore` mengecualikan `sim_build/` dan `*.fst` di folder fixture.
+
+## D22. API exercises dan progres (Fase 1 task 3)
+- Endpoint sesuai ARCHITECTURE. `GET /api/exercises/{id}` mengembalikan teks soal, starter, `code` (kode terakhir yang di-Run, atau starter), hanya hint yang sudah dibuka, `solution_available`, dan `last_run`, sehingga UI bisa menampilkan hasil terakhir setelah halaman di-refresh.
+- Setiap Run menambah `attempts` dan menyimpan `last_code` dalam transaksi yang sama dengan pembuatan run, termasuk run yang gagal kompilasi. Status menjadi `attempted`, lalu `solved` lewat hook `on_finished` di `JobQueue`. Hook ini dipanggil setelah status akhir disimpan dan sebelum event SSE dikirim, jadi saat UI menerima status akhir, progres sudah benar. `solved` tidak pernah turun lagi, dan `solved_at` adalah waktu pertama kali lulus.
+- Solusi (`GET .../solution`) adalah satu-satunya jalan `solution.v` keluar. Endpoint ini menjawab 403 sampai soal lulus atau `attempts >= SOLUTION_UNLOCK_ATTEMPTS` (default 5). Test memakai penanda di `solution.v` dan memastikan penanda itu tidak muncul di respons endpoint lain.
+- `POST .../hints/next` membuka hint berikutnya. Kalau semua hint sudah terbuka, endpoint ini tidak mengubah apa pun (tetap 200).
+- Run terakhir sebuah soal dicari lewat `params.exercise_id` (JSON di SQLite), jadi skema tabel tidak berubah dan belum perlu migrasi.
+- Diukur lewat compose (API, belum lewat UI): grade `counter-4bit` butuh 1,0–1,9 detik dari POST sampai status akhir.

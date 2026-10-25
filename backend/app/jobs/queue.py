@@ -3,7 +3,7 @@
 import asyncio
 import contextlib
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -58,9 +58,12 @@ class JobQueue:
         events: EventHub,
         context: JobContext,
         kinds: Mapping[str, JobKind] = KINDS,
+        on_finished: Callable[[str], None] | None = None,
     ) -> None:
         self._runner = runner
         self._context = context
+        # Called with the run id after the final status is stored, before it is published.
+        self._on_finished = on_finished
         self._settings = settings
         self._engine = engine
         self._events = events
@@ -129,6 +132,11 @@ class JobQueue:
             result=outcome.result,
             finished_at=utcnow(),
         )
+        if self._on_finished is not None:
+            try:
+                self._on_finished(run_id)
+            except Exception:
+                log.exception("on_finished hook failed for run %s", run_id)
         self._events.publish(run_id, {"type": "status", "status": outcome.status.value})
 
     async def _execute_inner(self, run_id: str, active: _Active) -> _Outcome:

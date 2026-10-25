@@ -106,6 +106,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exercises": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Exercises */
+        get: operations["list_exercises_api_exercises_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exercises/{exercise_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Exercise */
+        get: operations["get_exercise_api_exercises__exercise_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exercises/{exercise_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Exercise */
+        post: operations["run_exercise_api_exercises__exercise_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exercises/{exercise_id}/hints/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open Next Hint */
+        post: operations["open_next_hint_api_exercises__exercise_id__hints_next_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exercises/{exercise_id}/solution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Solution
+         * @description The only endpoint that ever returns solution.v.
+         */
+        get: operations["get_solution_api_exercises__exercise_id__solution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -118,6 +206,78 @@ export interface components {
             server_version?: string | null;
             /** Error */
             error?: string | null;
+        };
+        /** ExerciseDetail */
+        ExerciseDetail: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Step */
+            step: number;
+            /** Level */
+            level: number;
+            /** Topics */
+            topics: string[];
+            /** Order */
+            order: number | null;
+            /** Requires */
+            requires: string[];
+            status: components["schemas"]["ExerciseStatus"];
+            /** Attempts */
+            attempts: number;
+            /** Toplevel */
+            toplevel: string;
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "verilog" | "systemverilog";
+            /** Statement */
+            statement: string;
+            /** Starter */
+            starter: string;
+            /** Code */
+            code: string;
+            /** Hints */
+            hints: string[];
+            /** Hints Total */
+            hints_total: number;
+            /** Solution Available */
+            solution_available: boolean;
+            /** Solution Unlock Attempts */
+            solution_unlock_attempts: number;
+            last_run: components["schemas"]["RunRead"] | null;
+        };
+        /** ExerciseRunCreate */
+        ExerciseRunCreate: {
+            /** Code */
+            code: string;
+        };
+        /**
+         * ExerciseStatus
+         * @enum {string}
+         */
+        ExerciseStatus: "not_started" | "attempted" | "solved";
+        /** ExerciseSummary */
+        ExerciseSummary: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Step */
+            step: number;
+            /** Level */
+            level: number;
+            /** Topics */
+            topics: string[];
+            /** Order */
+            order: number | null;
+            /** Requires */
+            requires: string[];
+            status: components["schemas"]["ExerciseStatus"];
+            /** Attempts */
+            attempts: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -135,6 +295,13 @@ export interface components {
             /** Version */
             version: string;
             docker: components["schemas"]["DockerStatus"];
+        };
+        /** HintsRead */
+        HintsRead: {
+            /** Hints */
+            hints: string[];
+            /** Total */
+            total: number;
         };
         /** RunCreate */
         RunCreate: {
@@ -191,6 +358,11 @@ export interface components {
          * @enum {string}
          */
         RunStatus: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "timeout";
+        /** SolutionRead */
+        SolutionRead: {
+            /** Code */
+            code: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -379,6 +551,161 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_exercises_api_exercises_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseSummary"][];
+                };
+            };
+        };
+    };
+    get_exercise_api_exercises__exercise_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExerciseDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_exercise_api_exercises__exercise_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_next_hint_api_exercises__exercise_id__hints_next_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HintsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_solution_api_exercises__exercise_id__solution_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SolutionRead"];
+                };
+            };
+            /** @description Solusi belum terbuka */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     job_user: str = Field(default="", validation_alias="JOB_USER")
 
     content_dir: Path = Field(default=Path("content"), validation_alias="SMARTX_CONTENT_DIR")
+    # The official solution opens after passing or after this many runs of an exercise.
+    solution_unlock_attempts: int = Field(
+        default=5, ge=1, validation_alias="SOLUTION_UNLOCK_ATTEMPTS"
+    )
     # Re-read exercise.yaml files when they change (cheap stat check on each access).
     content_auto_reload: bool = Field(default=True, validation_alias="SMARTX_CONTENT_RELOAD")
     tools_dir: Path = Field(default=Path("tools"), validation_alias="SMARTX_TOOLS_DIR")

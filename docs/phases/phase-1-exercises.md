@@ -6,7 +6,7 @@ Tujuan: pengganti HDLBits versi pribadi. Tulis Verilog di browser, klik Run, lih
 
 1. [x] **Content loader**: `backend/app/content/` membaca `content/exercises/*/exercise.yaml`, memvalidasi dengan model Pydantic, dan cache di memori (reload saat file berubah di mode dev).
 2. [x] **Job `grade`**: memanggil `tools/grader/grade.py` di dalam image toolchain. Mount soal read-only; kode user ditulis ke folder run. `collect()` membaca `result.json`. Path waveform di JSON dipetakan ke URL artefak.
-3. **API exercises** sesuai ARCHITECTURE: daftar + progres, detail, run, hint berikutnya, solusi (403 sampai lulus atau `attempts >= SOLUTION_UNLOCK_ATTEMPTS`, default 5).
+3. [x] **API exercises** sesuai ARCHITECTURE: daftar + progres, detail, run, hint berikutnya, solusi (403 sampai lulus atau `attempts >= SOLUTION_UNLOCK_ATTEMPTS`, default 5).
 4. **Halaman daftar soal**: dikelompokkan per topik, badge level, status (belum/gagal/lulus), filter.
 5. **Halaman soal**: split view. Kiri: teks soal (Markdown + tabel). Kanan: Monaco editor (bahasa Verilog via Monarch), tombol Run (`Ctrl+Enter`), reset ke starter. Bawah: panel hasil dengan tab **Tests** (daftar test, hijau/merah, pesan), **Log**, **Waveform**.
 6. **Autosave** kode per soal (debounce 1 detik) ke `ExerciseProgress.last_code`.
@@ -20,5 +20,5 @@ Tujuan: pengganti HDLBits versi pribadi. Tulis Verilog di browser, klik Run, lih
 - [ ] Mengerjakan `counter-4bit` dari starter sampai lulus sepenuhnya lewat UI, termasuk melihat waveform.
 - [ ] Error kompilasi menampilkan baris dan pesan dari Icarus, dan baris itu ditandai di editor.
 - [ ] Waktu dari klik Run sampai hasil < 5 detik untuk soal kecil (ukur dan catat di log kemajuan).
-- [ ] `solution.v` tidak bisa diambil lewat API sebelum syarat terpenuhi (ada test-nya).
+- [x] `solution.v` tidak bisa diambil lewat API sebelum syarat terpenuhi (ada test-nya).
 - [ ] Refresh halaman tidak menghilangkan kode yang sedang ditulis.

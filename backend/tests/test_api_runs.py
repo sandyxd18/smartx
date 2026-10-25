@@ -1,5 +1,4 @@
 import json
-import time
 from typing import Any
 
 import pytest
@@ -7,20 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.jobs.fake_runner import FakeJob, FakeRunner
-
-TERMINAL = {"succeeded", "failed", "cancelled", "timeout"}
-
-
-def wait_for_status(
-    client: TestClient, run_id: str, statuses: set[str], timeout: float = 3.0
-) -> dict[str, Any]:
-    deadline = time.monotonic() + timeout
-    while True:
-        run = client.get(f"/api/runs/{run_id}").json()
-        if run["status"] in statuses:
-            return run
-        assert time.monotonic() < deadline, f"run stuck in {run['status']}"
-        time.sleep(0.02)
+from tests.helpers import TERMINAL, wait_for_status
 
 
 def create_echo(client: TestClient, **params: Any) -> dict[str, Any]:
