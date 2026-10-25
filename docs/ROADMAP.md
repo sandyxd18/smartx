@@ -26,4 +26,4 @@ Status: `[ ]` belum, `[~]` sedang dikerjakan, `[x]` selesai (semua kriteria terp
 Tambahkan satu baris per sesi kerja: tanggal, fase, apa yang selesai, apa yang tertunda.
 
 - 2026-10-25: paket awal dibuat (dokumen, grader, contoh soal, Dockerfile toolchain).
-- 2026-10-25: Fase 0 task 1 selesai (image toolchain OSS CAD Suite 2026-10-24, check-content hijau di Windows). Diperbaiki: libpython untuk cocotb, UID user container, Makefile lintas PowerShell/Git Bash. Berikutnya: task 2 backend skeleton.
+- 2026-10-25: Fase 0 task 1 selesai (image toolchain OSS CAD Suite 2026-10-24, check-content hijau di Windows). Diperbaiki: libpython untuk cocotb, UID user container, Makefile lintas PowerShell/Git Bash. Lalu task 2 selesai (backend FastAPI, model, /api/health; 15 test). Berikutnya: task 3 job system.
