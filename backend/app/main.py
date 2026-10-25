@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api import health, runs
 from app.config import Settings, get_settings
+from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
 from app.jobs.docker_runner import DockerRunner
 from app.jobs.events import EventHub
@@ -39,8 +40,14 @@ def create_app(settings: Settings | None = None, runner: JobRunner | None = None
         except Exception as exc:  # Docker may be down; the app still has to start.
             log.warning("could not clean up job containers: %s", exc)
 
+        catalog = ExerciseCatalog(
+            settings.content_dir / "exercises", auto_reload=settings.content_auto_reload
+        )
+        log.info("loaded %d exercise(s)", len(catalog.all()))
+
         events = EventHub()
         queue = JobQueue(runner=runner, settings=settings, engine=engine, events=events)
+        app.state.catalog = catalog
         app.state.engine = engine
         app.state.events = events
         app.state.queue = queue

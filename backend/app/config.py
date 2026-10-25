@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     job_user: str = Field(default="", validation_alias="JOB_USER")
 
     content_dir: Path = Field(default=Path("content"), validation_alias="SMARTX_CONTENT_DIR")
+    # Re-read exercise.yaml files when they change (cheap stat check on each access).
+    content_auto_reload: bool = Field(default=True, validation_alias="SMARTX_CONTENT_RELOAD")
     # When the backend itself runs in a container, job containers are created by the host
     # daemon, so bind mounts need host paths. Empty = backend runs on the host.
     host_data_dir: str = Field(default="", validation_alias="SMARTX_HOST_DATA_DIR")

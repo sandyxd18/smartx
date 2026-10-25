@@ -4,7 +4,7 @@ Tujuan: pengganti HDLBits versi pribadi. Tulis Verilog di browser, klik Run, lih
 
 ## Task
 
-1. **Content loader**: `backend/app/content/` membaca `content/exercises/*/exercise.yaml`, memvalidasi dengan model Pydantic, dan cache di memori (reload saat file berubah di mode dev).
+1. [x] **Content loader**: `backend/app/content/` membaca `content/exercises/*/exercise.yaml`, memvalidasi dengan model Pydantic, dan cache di memori (reload saat file berubah di mode dev).
 2. **Job `grade`**: memanggil `tools/grader/grade.py` di dalam image toolchain. Mount soal read-only; kode user ditulis ke folder run. `collect()` membaca `result.json`. Path waveform di JSON dipetakan ke URL artefak.
 3. **API exercises** sesuai ARCHITECTURE: daftar + progres, detail, run, hint berikutnya, solusi (403 sampai lulus atau `attempts >= SOLUTION_UNLOCK_ATTEMPTS`, default 5).
 4. **Halaman daftar soal**: dikelompokkan per topik, badge level, status (belum/gagal/lulus), filter.

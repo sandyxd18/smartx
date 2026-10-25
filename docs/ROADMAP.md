@@ -7,7 +7,7 @@ Status: `[ ]` belum, `[~]` sedang dikerjakan, `[x]` selesai (semua kriteria terp
 | Fase | Isi | Langkah belajar | Status |
 |---|---|---|---|
 | 0 | Fondasi: repo, backend, frontend, Docker runner, toolchain image | (semua) | [x] |
-| 1 | Exercises: daftar soal, editor, grading, waveform, 20 soal | 1 | [ ] |
+| 1 | Exercises: daftar soal, editor, grading, waveform, 20 soal | 1 | [~] |
 | 2 | Workspace simulasi: proyek multi-file, lint, sim, cocotb, riwayat run | 2 | [ ] |
 | 3 | FPGA: board profile, sintesis, PnR, laporan, bitstream, helper flash | 3 | [ ] |
 | 4 | Proyek terpandu: UART, SPI, I2C, RV32I, mini-SoC | 4 | [ ] |
