@@ -1,0 +1,4 @@
+read_verilog -I/work/project/src /work/project/src/blinky.v
+synth_gowin -top blinky -json netlist.json
+tee -q -o stat.txt stat
+tee -q -o stat.json stat -json

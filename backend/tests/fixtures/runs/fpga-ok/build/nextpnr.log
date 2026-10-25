@@ -167,9 +167,9 @@ Info: Setting up routing queue.
 Info: Routing 224 arcs.
 Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
 Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
-Info:        245 |       19        187 |   19   187 |         0|       0.05       0.05|
+Info:        245 |       19        187 |   19   187 |         0|       0.06       0.06|
 Info: Routing complete.
-Info: Router1 time 0.05s
+Info: Router1 time 0.06s
 Info: Checksum: 0xeb3cea3d
 
 Info: Critical path report for clock 'clk_IBUF_I_O' (posedge -> posedge):

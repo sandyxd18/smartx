@@ -2,6 +2,23 @@
   "board": "tang-nano-9k",
   "top": "blinky",
   "freq_mhz": 27.0,
+  "sources": [
+    "src/blinky.v"
+  ],
+  "resources": {
+    "LUT": [
+      "LUT4"
+    ],
+    "FF": [
+      "DFF"
+    ],
+    "BRAM": [
+      "BSRAM"
+    ],
+    "IO": [
+      "IOB"
+    ]
+  },
   "bitstream_file": "bitstream.fs",
   "stages": [
     {

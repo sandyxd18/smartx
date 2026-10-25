@@ -1,0 +1,16 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)
+
+-- Running command `read_verilog /work/project/src/latch.v; synth_gowin -top top -json latch.json' --
+
+1. Executing Verilog-2005 frontend: /work/project/src/latch.v
+Parsing Verilog input from `/work/project/src/latch.v' to AST representation.
+Warning: Latch inferred for signal `\top.\q' from process `\top.$/work/project/src/latch.v:2$proc$1': $auto$proc_dlatch.cc:559:proc_dlatch$353
+Lexer warning: The SystemVerilog keyword `bit' (at /opt/oss-cad-suite/lib/../share/yosys/abc9_map.v:35) is not recognized unless read_verilog is called with -sv!
+ABC: Warning: The network is combinational.
+Warnings: 1 unique messages, 1 total

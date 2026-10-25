@@ -1,0 +1,23 @@
+
+3. Printing statistics.
+
+=== blinky ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       29 wires
+       39 wire bits
+       29 public wires
+       39 public wire bits
+        4 ports
+        9 port bits
+       30 cells
+        6   ALU
+        6   DFF
+        6   DL
+        1   GND
+        3   IBUF
+        1   LUT1
+        6   OBUF
+        1   VCC
+

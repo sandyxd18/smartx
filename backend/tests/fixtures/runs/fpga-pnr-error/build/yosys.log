@@ -19,6 +19,8 @@ Successfully finished Verilog frontend.
 Parsing Verilog input from `/opt/oss-cad-suite/lib/../share/yosys/gowin/cells_sim.v' to AST representation.
 Generating RTLIL representation for module `\LUT1'.
 [...]
+Lexer warning: The SystemVerilog keyword `bit' (at /opt/oss-cad-suite/lib/../share/yosys/abc9_map.v:35) is not recognized unless read_verilog is called with -sv!
+ABC: Warning: The network is combinational.
         +----------Count including submodules.
         | 
        41 blinky
@@ -56,6 +58,6 @@ Checking module blinky...
 Found and reported 0 problems.
 
 2.52. Executing JSON backend.
-End of script. Logfile hash: 7e120262b5, time: 0.80s, user: 0.23s, system: 0.13s, MEM: 39.21 MB peak
+End of script. Logfile hash: 7e120262b5, time: 0.77s, user: 0.24s, system: 0.10s, MEM: 39.35 MB peak
 Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)
-Time spent: 22% 26x read_verilog (0 sec), 18% 1x synth_gowin (0 sec), ...
+Time spent: 22% 26x read_verilog (0 sec), 16% 1x synth_gowin (0 sec), ...

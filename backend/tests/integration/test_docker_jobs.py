@@ -559,3 +559,37 @@ async def test_fpga_unconstrained_pin_fails_place_and_route(
     assert [s["status"] for s in result["stages"]] == ["ok", "failed", "skipped"]
     assert "Unconstrained IO" in result["error"]
     assert result["stages"][1]["log_url"].endswith("/build/nextpnr.log")
+
+
+async def test_fpga_report_warns_about_a_latch(docker_settings: Settings, engine: Engine) -> None:
+    """Phase 3 criterion: an accidental latch gives a clear warning in the result."""
+    files = project_files(BLINKY)
+    files["src/blinky.v"] = (
+        "module blinky (input wire clk, input wire rst_n, output reg [5:0] led);\n"
+        "    reg [5:0] count = 0;\n"
+        "    always @(posedge clk) count <= count + 1'b1;\n"
+        "    always @* begin\n"
+        "        if (rst_n) led = count;\n"
+        "    end\n"
+        "endmodule\n"
+    )
+
+    run = await run_fpga(docker_settings, engine, files)
+
+    assert run.result is not None
+    [latch] = [w for w in run.result["warnings"] if w["kind"] == "latch"]
+    assert (latch["signal"], latch["file"], latch["line"]) == ("led", "src/blinky.v", 4)
+
+
+async def test_fpga_report_flags_missed_timing(docker_settings: Settings, engine: Engine) -> None:
+    """Phase 3 criterion: a design that misses timing is marked, with its critical path."""
+    run = await run_fpga(docker_settings, engine, project_files(BLINKY), freq_mhz=400)
+
+    result = run.result
+    assert result is not None
+    assert result["status"] == "ok" and result["bitstream_url"]  # still packed
+    assert result["timing_met"] is False
+    [clock] = result["clocks"]
+    assert clock["name"] == "clk" and clock["target_mhz"] == 400 and not clock["met"]
+    assert result["critical_paths"][0]["steps"]
+    assert {r["label"] for r in result["utilization"]} == {"LUT", "FF", "BRAM", "IO"}

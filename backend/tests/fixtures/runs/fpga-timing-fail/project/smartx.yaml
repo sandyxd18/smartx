@@ -1,0 +1,6 @@
+top: blinky
+sources:
+  - src/**/*.v
+fpga:
+  board: tang-nano-9k
+  constraints: constraints/tang-nano-9k.cst

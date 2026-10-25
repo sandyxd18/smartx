@@ -15,7 +15,7 @@ Dikonfirmasi 2026-10-25: pemilik belum punya board. Mulai dengan Tang Nano 9K sa
    - Synthesize: `yosys -p "synth_gowin -top <top> -json out.json"` (atau `synth_ice40`). Simpan `yosys.log` dan `stat`.
    - Place & Route: nextpnr dengan `--freq` dari `smartx.yaml`, keluarkan `--report report.json`.
    - Pack: hasilkan bitstream.
-3. [ ] **Parser laporan** di `backend/app/reports/`:
+3. [x] **Parser laporan** di `backend/app/reports/`:
    - Utilisasi resource dari `report.json` nextpnr (LUT, FF, BRAM, IO) vs kapasitas device.
    - Fmax per domain clock vs target, beri warna merah jika gagal.
    - Warning Yosys yang penting: latch terbentuk, sinyal tidak terpakai, multi-driven, inferred memory gagal.

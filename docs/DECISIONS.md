@@ -262,3 +262,19 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - Warning Apicula soal Numpy/Msgspec di setiap start `gowin_pack` dibungkam dengan `PYTHONWARNINGS=ignore` di container job.
 - Hasil (`FpgaResult`): status, tahap (status, detik, URL log), error pertama dari tahap yang gagal (dari log tahap itu, atau log run untuk pack), diagnostics Yosys, versi Yosys dan nextpnr, serta URL bitstream, `report.json`, dan `stat.txt`. Ringkasan riwayat: "Bitstream jadi" atau "Gagal di <tahap>".
 - Job memakai kelas light dengan batas waktu yang sama (120 detik). Blinky butuh sekitar 5 detik. Batas ini ditinjau lagi saat desain Fase 4 (RV32I) sudah ada.
+
+## D40. Parser laporan FPGA (Fase 3 task 3)
+- Modul `backend/app/reports/`: `yosys.py` (warning sintesis dari log dan netlist) dan `nextpnr.py` (utilisasi, Fmax per clock, jalur kritis dari `report.json`). `collect()` job fpga memasang hasilnya ke `FpgaResult`: `warnings`, `utilization`, `clocks`, `timing_met`, dan `critical_paths`. Bagian yang tahapnya belum berjalan dibiarkan kosong.
+- Setiap pola warning Yosys **diukur dulu** di image yang dipin (Yosys 0.70+219) dengan desain kecil, dan log aslinya (dipangkas) disimpan di `backend/tests/fixtures/reports/`:
+  - Latch: `Latch inferred for signal ... from process ...file.v:LINE$proc`. File dan baris diambil dari nama proses.
+  - Multi-driven: `multiple conflicting drivers for top.\x:`, tanpa baris. Yosys juga menyebut net buatannya sendiri (misalnya `a_IBUF_I_O_DFF_D_Q`), jadi hanya nama yang muncul di sumber pengguna yang dipakai, dan barisnya diambil dari deklarasinya.
+  - Tanpa driver: `Wire top.\x is used but has no driver` (muncul dua kali, digabung).
+  - Identifier implisit: `file.v:LINE: Warning: Identifier ... is implicitly declared`.
+  - Memori yang gagal dipetakan ke RAM: `using FF mapping for memory top.mem` (memory_libmap). RAM yang berhasil tertulis `mapping memory top.mem via $__GOWIN_SP_`.
+  - Warning lain tentang file proyek ditampilkan apa adanya. Warning tentang pustaka Yosys sendiri (`Lexer warning ... abc9_map.v`) dan `ABC: Warning: The network is combinational`, yang muncul di setiap build, dibuang.
+- Yosys **tidak pernah** melaporkan sinyal yang tidak terpakai. Input top yang tidak terpakai dideteksi dari `netlist.json`: bit input yang tidak dibaca cell mana pun, dengan IBUF Gowin ditembus. Input yang namanya mengandung `unused` dilewati, sama dengan aturan lint. Sinyal internal yang tidak terpakai dihapus Yosys diam-diam; daftar lengkapnya tetap dari Lint (Verilator `UNUSEDSIGNAL`).
+- Pesan warning dalam Bahasa Indonesia dan menyebut cara memperbaikinya (latch: nilai default, `else`, `default`).
+- Angka diambil dari `report.json`, bukan dari log. Fmax di report sama dengan baris "Max frequency" **terakhir** di log (yang pertama adalah perkiraan sebelum routing). Tabel "Device utilisation" di log dicetak sebelum placement dan bisa berbeda dari angka akhir (blinky: 50 vs 43 LUT4). Test `test_fmax_matches_the_raw_log` dan `test_critical_path_matches_the_raw_log` membandingkan hasil parser dengan log mentah nextpnr (Fmax, target, PASS/FAIL, ns logic/routing).
+- Nama clock untuk pengguna diambil dari net nextpnr (`clk_IBUF_I_O` menjadi `clk`, `clk$SB_IO_IN_$glb_clk` menjadi `clk`). Langkah jalur kritis menunjuk ke file dan baris proyek kalau net-nya berasal dari kode pengguna.
+- Baris utilisasi mengikuti `resources` di profil board; beberapa jenis resource nextpnr bisa dijumlahkan dalam satu baris.
+- Fixture run fpga dibuat dari container sungguhan oleh `backend/tests/fixtures/make_fpga_fixtures.py` (log Yosys dan netlist dipangkas, bitstream diganti). Jalankan ulang setelah mem-pin OSS CAD Suite baru.

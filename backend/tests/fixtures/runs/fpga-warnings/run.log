@@ -1,0 +1,8 @@
+==> Synthesize
+Warning: Latch inferred for signal `\blinky.\led' from process `\blinky.$/work/project/src/blinky.v:10$proc$3': $auto$proc_dlatch.cc:559:proc_dlatch$356
+<== Synthesize: ok (0.82 s)
+==> Place & Route
+<== Place & Route: ok (0.39 s)
+==> Pack
+<== Pack: ok (3.04 s)
+status: ok

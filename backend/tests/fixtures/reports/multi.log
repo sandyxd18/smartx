@@ -1,0 +1,24 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)
+
+-- Running command `read_verilog /work/project/src/multi.v; synth_gowin -top top -json multi.json' --
+
+1. Executing Verilog-2005 frontend: /work/project/src/multi.v
+Parsing Verilog input from `/work/project/src/multi.v' to AST representation.
+Warning: multiple conflicting drivers for top.\b:
+    module input b[0]
+    module input a[0]
+Warning: multiple conflicting drivers for top.\b:
+    module input b[0]
+    module input a[0]
+Lexer warning: The SystemVerilog keyword `bit' (at /opt/oss-cad-suite/lib/../share/yosys/abc9_map.v:35) is not recognized unless read_verilog is called with -sv!
+ABC: Warning: The network is combinational.
+Warning: multiple conflicting drivers for top.\x:
+    port O[0] of cell x_IBUF_O_1 (IBUF)
+    port O[0] of cell x_IBUF_O (IBUF)
+Warnings: 2 unique messages, 3 total

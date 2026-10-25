@@ -43,7 +43,7 @@ smartx/
 │  │  │  ├─ runner.py        interface JobRunner
 │  │  │  ├─ docker_runner.py implementasi pakai docker SDK
 │  │  │  └─ kinds/           satu file per jenis job (grade, sim, lint, fpga, asic, tt)
-│  │  └─ reports/            parser laporan (yosys stat, nextpnr json, librelane metrics)
+│  │  └─ reports/            parser laporan: yosys.py (warning sintesis), nextpnr.py (utilisasi, Fmax, jalur kritis); librelane menyusul
 │  └─ tests/
 ├─ frontend/
 │  ├─ package.json           Vite + React + TypeScript
@@ -79,7 +79,7 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 | `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
 | `lint` | light | light | salinan file proyek (`project/`) + config | `lint.sarif` → diagnostic (file, baris, kolom, severity, kode, pesan) |
 | `sim` | light | light | salinan file proyek (`project/`) + `sim.json` (config) | `result.json` (test per modul, error kompilasi, versi simulator), `.fst` |
-| `fpga` | light | light | salinan file proyek (`project/`) + `fpga.json` (perintah tiap tahap dari profil board) | `result.json` (status per tahap, error pertama, diagnostics Yosys, versi tool), `build/`: bitstream, `report.json` nextpnr, `stat`, log per tahap |
+| `fpga` | light | light | salinan file proyek (`project/`) + `fpga.json` (perintah tiap tahap dari profil board) | `result.json` (status per tahap, error pertama, diagnostics Yosys, versi tool); `collect()` menambah warning sintesis, utilisasi, Fmax, dan jalur kritis (`app/reports/`); `build/`: bitstream, `report.json` nextpnr, `stat`, log per tahap |
 | `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
 | `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |
 

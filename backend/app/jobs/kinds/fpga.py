@@ -20,6 +20,15 @@ from app.jobs.diagnostics import ProjectDiagnostic, parse_compile_log
 from app.jobs.kinds.lint import PROJECT_DIR, ProjectPath
 from app.jobs.runner import ContainerSpec, JobClass
 from app.projects.config import Name, Scalar
+from app.reports.nextpnr import (
+    ClockTiming,
+    CriticalPath,
+    ResourceUse,
+    clocks,
+    critical_paths,
+    utilization,
+)
+from app.reports.yosys import SynthWarning, parse_yosys_log, unused_input_warnings
 
 JOB_CLASS = JobClass.light
 # build.py: 0 = bitstream written, 1 = a stage failed (still a result).
@@ -76,6 +85,12 @@ class FpgaResult(BaseModel):
     bitstream_url: str | None = None
     report_url: str | None = None  # nextpnr report.json
     stat_url: str | None = None  # Yosys stat
+    # Report (empty until the stage that writes it has run).
+    warnings: list[SynthWarning] = []  # from synthesis
+    utilization: list[ResourceUse] = []  # from place & route
+    clocks: list[ClockTiming] = []
+    timing_met: bool | None = None  # None: no clocked logic, or no report
+    critical_paths: list[CriticalPath] = []
 
 
 def _board(ctx: JobContext, board_id: str) -> Board:
@@ -141,6 +156,8 @@ def prepare(run_dir: Path, params: dict[str, Any], ctx: JobContext) -> Container
         "board": board.id,
         "top": p.top,
         "freq_mhz": p.freq_mhz,
+        "sources": p.sources,
+        "resources": board.resources,
         "bitstream_file": board.bitstream_file,
         "stages": [
             {
@@ -188,6 +205,27 @@ def _first_error(run_dir: Path, stage: str) -> str | None:
     return None
 
 
+def _read_json(path: Path) -> dict[str, Any] | None:
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+def _warnings(run_dir: Path, spec: dict[str, Any]) -> list[SynthWarning]:
+    log = run_dir / WORK_DIR / STAGE_LOGS["synth"]
+    if not log.is_file():
+        return []
+    sources = {}
+    for rel in spec["sources"]:
+        path = run_dir / PROJECT_DIR / rel
+        if path.is_file():
+            sources[rel] = path.read_text(encoding="utf-8", errors="replace")
+    text = log.read_text(encoding="utf-8", errors="replace")
+    found = parse_yosys_log(text, sources, PROJECT_ROOT)
+    netlist = _read_json(run_dir / WORK_DIR / NETLIST_FILE)
+    if netlist is not None:
+        found += unused_input_warnings(netlist, spec["top"], sources)
+    return found
+
+
 def collect(run_dir: Path) -> dict[str, Any]:
     spec = json.loads((run_dir / SPEC_FILE).read_text(encoding="utf-8"))
     data = json.loads((run_dir / RESULT_FILE).read_text(encoding="utf-8"))
@@ -209,6 +247,8 @@ def collect(run_dir: Path) -> dict[str, Any]:
             diagnostics = parse_compile_log(
                 log.read_text(encoding="utf-8", errors="replace"), PROJECT_ROOT
             )
+    report = _read_json(run_dir / WORK_DIR / REPORT_FILE)
+    timing = clocks(report) if report else []
     result = FpgaResult(
         status="failed" if failed else "ok",
         board=spec["board"],
@@ -221,5 +261,10 @@ def collect(run_dir: Path) -> dict[str, Any]:
         bitstream_url=_work_file(run_dir, spec["bitstream_file"]) if not failed else None,
         report_url=_work_file(run_dir, REPORT_FILE),
         stat_url=_work_file(run_dir, STAT_FILE),
+        warnings=_warnings(run_dir, spec),
+        utilization=utilization(report, spec["resources"]) if report else [],
+        clocks=timing,
+        timing_met=all(c.met for c in timing) if timing else None,
+        critical_paths=critical_paths(report, PROJECT_ROOT) if report else [],
     )
     return result.model_dump()

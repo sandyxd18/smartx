@@ -551,6 +551,19 @@ export interface components {
             /** Constraints Template */
             constraints_template: string;
         };
+        /** ClockTiming */
+        ClockTiming: {
+            /** Net */
+            net: string;
+            /** Name */
+            name: string;
+            /** Achieved Mhz */
+            achieved_mhz: number;
+            /** Target Mhz */
+            target_mhz: number;
+            /** Met */
+            met: boolean;
+        };
         /** ConfigCheck */
         ConfigCheck: {
             /** Text */
@@ -580,6 +593,21 @@ export interface components {
             problems: components["schemas"]["ConfigProblem"][];
             /** Sources */
             sources: string[];
+        };
+        /** CriticalPath */
+        CriticalPath: {
+            /** From Clock */
+            from_clock: string;
+            /** To Clock */
+            to_clock: string;
+            /** Delay Ns */
+            delay_ns: number;
+            /** Logic Ns */
+            logic_ns: number;
+            /** Routing Ns */
+            routing_ns: number;
+            /** Steps */
+            steps: components["schemas"]["PathStep"][];
         };
         /** Diagnostic */
         Diagnostic: {
@@ -814,6 +842,28 @@ export interface components {
             report_url?: string | null;
             /** Stat Url */
             stat_url?: string | null;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: components["schemas"]["SynthWarning"][];
+            /**
+             * Utilization
+             * @default []
+             */
+            utilization: components["schemas"]["ResourceUse"][];
+            /**
+             * Clocks
+             * @default []
+             */
+            clocks: components["schemas"]["ClockTiming"][];
+            /** Timing Met */
+            timing_met?: boolean | null;
+            /**
+             * Critical Paths
+             * @default []
+             */
+            critical_paths: components["schemas"]["CriticalPath"][];
         };
         /** FpgaStage */
         FpgaStage: {
@@ -945,6 +995,21 @@ export interface components {
             from_path: string;
             /** To Path */
             to_path: string;
+        };
+        /** PathStep */
+        PathStep: {
+            /** Type */
+            type: string;
+            /** Delay Ns */
+            delay_ns: number;
+            /** Total Ns */
+            total_ns: number;
+            /** Name */
+            name: string;
+            /** File */
+            file?: string | null;
+            /** Line */
+            line?: number | null;
         };
         /** ProjectConfig */
         ProjectConfig: {
@@ -1152,6 +1217,19 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ResourceUse */
+        ResourceUse: {
+            /** Label */
+            label: string;
+            /** Types */
+            types: string[];
+            /** Used */
+            used: number;
+            /** Available */
+            available: number;
+            /** Percent */
+            percent: number;
+        };
         /** RunComparison */
         RunComparison: {
             before: components["schemas"]["RunSide"];
@@ -1321,6 +1399,24 @@ export interface components {
         SolutionRead: {
             /** Code */
             code: string;
+        };
+        /** SynthWarning */
+        SynthWarning: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "latch" | "multi_driven" | "undriven" | "implicit" | "unused_input" | "memory_ff" | "other";
+            /** Signal */
+            signal?: string | null;
+            /** Module */
+            module?: string | null;
+            /** File */
+            file?: string | null;
+            /** Line */
+            line?: number | null;
+            /** Message */
+            message: string;
         };
         /** TestChange */
         TestChange: {

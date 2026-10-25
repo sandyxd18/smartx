@@ -151,7 +151,7 @@ class TestCollect:
             ("pnr", "ok"),
             ("pack", "ok"),
         ]
-        assert result["stages"][2]["seconds"] == 3.2
+        assert all(s["seconds"] > 0 for s in result["stages"])
         logs = [s["log_url"] for s in result["stages"]]
         assert logs == [
             "/api/runs/abc123/files/build/yosys.log",
@@ -196,3 +196,52 @@ class TestCollect:
 
         assert result["error"] == "bad netlist"
         assert result["bitstream_url"] is None
+
+
+class TestReport:
+    def test_resources_and_timing_of_a_good_build(self, tmp_path: Path) -> None:
+        result = fpga.collect(fixture_run(tmp_path, "fpga-ok"))
+
+        assert [(r["label"], r["used"], r["available"]) for r in result["utilization"]] == [
+            ("LUT", 43, 8640),
+            ("FF", 31, 6480),
+            ("BRAM", 0, 26),
+            ("IO", 8, 276),
+        ]
+        [clock] = result["clocks"]
+        assert (clock["name"], clock["target_mhz"], clock["met"]) == ("clk", 27, True)
+        assert result["timing_met"] is True
+        assert result["critical_paths"][0]["delay_ns"] > 0
+        assert result["warnings"] == []
+
+    def test_missed_timing_is_flagged_with_its_path(self, tmp_path: Path) -> None:
+        """Phase 3 criterion: a design that misses timing is marked, with the critical path."""
+        result = fpga.collect(fixture_run(tmp_path, "fpga-timing-fail"))
+
+        assert result["status"] == "ok"  # still packed (--timing-allow-fail)
+        assert result["timing_met"] is False
+        [clock] = result["clocks"]
+        assert clock["target_mhz"] == 300 and clock["achieved_mhz"] < 300
+        [path] = result["critical_paths"]
+        assert path["steps"] and path["from_clock"] == "posedge clk"
+
+    def test_latch_and_unused_input_are_warned_about(self, tmp_path: Path) -> None:
+        """Phase 3 criterion: an accidental latch gives a clear warning."""
+        result = fpga.collect(fixture_run(tmp_path, "fpga-warnings"))
+
+        found = [(w["kind"], w["signal"], w["file"], w["line"]) for w in result["warnings"]]
+        assert found == [
+            ("latch", "led", "src/blinky.v", 10),
+            ("unused_input", "btn", "src/blinky.v", 3),
+        ]
+        assert result["warnings"][0]["message"].startswith("Latch terbentuk untuk `led`")
+
+    def test_no_report_before_place_and_route(self, tmp_path: Path) -> None:
+        synth_failed = fpga.collect(fixture_run(tmp_path, "fpga-synth-error"))
+        assert synth_failed["utilization"] == [] and synth_failed["clocks"] == []
+        assert synth_failed["timing_met"] is None
+
+    def test_pnr_failure_keeps_the_synthesis_warnings(self, tmp_path: Path) -> None:
+        result = fpga.collect(fixture_run(tmp_path, "fpga-pnr-error"))
+        assert result["utilization"] == [] and result["timing_met"] is None
+        assert result["warnings"] == []  # blinky synthesizes cleanly

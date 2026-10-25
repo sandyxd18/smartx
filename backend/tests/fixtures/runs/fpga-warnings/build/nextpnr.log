@@ -1,0 +1,262 @@
+Info: Using uarch 'gowin' for device 'GW1NR-LV9QN88PC6/I5'
+
+Info: Cell O_psram_ck[0] not found
+Info: Cell O_psram_ck[1] not found
+Info: Cell O_psram_ck_n[0] not found
+Info: Cell O_psram_ck_n[1] not found
+Info: Cell O_psram_cs_n[0] not found
+Info: Cell O_psram_cs_n[1] not found
+Info: Cell O_psram_reset_n[0] not found
+Info: Cell O_psram_reset_n[1] not found
+Info: Cell IO_psram_dq[0] not found
+Info: Cell IO_psram_dq[1] not found
+Info: Cell IO_psram_dq[2] not found
+Info: Cell IO_psram_dq[3] not found
+Info: Cell IO_psram_dq[4] not found
+Info: Cell IO_psram_dq[5] not found
+Info: Cell IO_psram_dq[6] not found
+Info: Cell IO_psram_dq[7] not found
+Info: Cell IO_psram_dq[8] not found
+Info: Cell IO_psram_dq[9] not found
+Info: Cell IO_psram_dq[10] not found
+Info: Cell IO_psram_dq[11] not found
+Info: Cell IO_psram_dq[12] not found
+Info: Cell IO_psram_dq[13] not found
+Info: Cell IO_psram_dq[14] not found
+Info: Cell IO_psram_dq[15] not found
+Info: Cell IO_psram_rwds[0] not found
+Info: Cell IO_psram_rwds[1] not found
+Info: Reading constraints...
+Info: Cell uart_tx not found
+Info: Cell uart_tx not found
+Info: Cell uart_rx not found
+Info: Cell uart_rx not found
+Info: Create constant nets...
+Info: Modify LUTs...
+Info: Pack IOBs...
+Info: Pack I3C IOs...
+Info: Pack MIPI IOs...
+Info: Pack diff IOBs...
+Info: Pack FFs into IO cells...
+Info: Pack IODELAY...
+Info: Pack Input Edge Monitors...
+Info: Pack IO logic...
+Info: Pack DESER16 logic...
+Info: Pack GSR...
+Info: Pack HCLK cells...
+Info: Pack DLLDLYs...
+Info: Pack wide LUTs...
+Info: Packed MUX2_LUT8:0, MUX2_LU7:0, MUX2_LUT6:0, MUX2_LUT5:0
+Info: Pack ALUs...
+Info: Pack SSRAMs...
+Info: Processed 6 latches.
+Info: Constrained 1 LUTFF pairs.
+Info: Pack PLL...
+Info: Pack ADC...
+Info: Pack GW JTAG...
+Info: Pack BSRAMs...
+Info: Pack DSP...
+Info: Pack INV...
+Info: Pack buffered nets...
+Info: Pack EMCU and UserFlash cells...
+Info: Pack UserFlash cells...
+Info: Pack DQCE cells...
+Info: Pack DCS cells...
+Info: Checksum: 0x580d0a56
+
+Info: Device utilisation:
+Info: 	                 VCC:       1/      1   100%
+Info: 	                 IOB:       9/    276     3%
+Info: 	                LUT4:       9/   8640     0%
+Info: 	              OSER16:       0/     80     0%
+Info: 	              IDES16:       0/     80     0%
+Info: 	            IOLOGICI:       0/    276     0%
+Info: 	            IOLOGICO:       0/    276     0%
+Info: 	           MUX2_LUT5:       0/   4320     0%
+Info: 	           MUX2_LUT6:       0/   2160     0%
+Info: 	           MUX2_LUT7:       0/   1080     0%
+Info: 	           MUX2_LUT8:       0/   1080     0%
+Info: 	                 ALU:       8/   6480     0%
+Info: 	                 GND:       1/      1   100%
+Info: 	                 DFF:      12/   6480     0%
+Info: 	           RAM16SDP4:       0/    270     0%
+Info: 	               BSRAM:       0/     26     0%
+Info: 	              ALU54D:       0/     10     0%
+Info: 	     MULTADDALU18X18:       0/     10     0%
+Info: 	        MULTALU18X18:       0/     10     0%
+Info: 	        MULTALU36X18:       0/     10     0%
+Info: 	           MULT36X36:       0/      5     0%
+Info: 	           MULT18X18:       0/     20     0%
+Info: 	             MULT9X9:       0/     40     0%
+Info: 	              PADD18:       0/     20     0%
+Info: 	               PADD9:       0/     40     0%
+Info: 	                 GSR:       1/      1   100%
+Info: 	                 OSC:       0/      1     0%
+Info: 	                rPLL:       0/      2     0%
+Info: 	           FLASH608K:       0/      1     0%
+Info: 	                BUFG:       0/     22     0%
+Info: 	                DQCE:       0/     24     0%
+Info: 	                 DCS:       0/      8     0%
+Info: 	               DHCEN:       0/     24     0%
+Info: 	              CLKDIV:       0/      8     0%
+Info: 	             CLKDIV2:       0/     16     0%
+Info: 	           MIPI_IBUF:       0/     22     0%
+Info: 	           MIPI_OBUF:       0/     20     0%
+
+Info: Running custom HCLK placer...
+Info: Placed 0 cells based on constraints.
+Info: Creating initial analytic placement for 13 cells, random placement wirelen = 678.
+Info:     at initial placer iter 0, wirelen = 113
+Info:     at initial placer iter 1, wirelen = 108
+Info:     at initial placer iter 2, wirelen = 108
+Info:     at initial placer iter 3, wirelen = 108
+Info: Running main analytical placer, max placement attempts per cell = 10000.
+Info:     at iteration #1, type ALL: wirelen solved = 108, spread = 124, legal = 138; time = 0.00s
+Info:     at iteration #2, type ALL: wirelen solved = 108, spread = 124, legal = 149; time = 0.00s
+Info:     at iteration #3, type ALL: wirelen solved = 108, spread = 114, legal = 135; time = 0.00s
+Info:     at iteration #4, type ALL: wirelen solved = 107, spread = 128, legal = 150; time = 0.00s
+Info:     at iteration #5, type ALL: wirelen solved = 108, spread = 128, legal = 143; time = 0.00s
+Info:     at iteration #6, type ALL: wirelen solved = 108, spread = 128, legal = 129; time = 0.00s
+Info: HeAP Placer Time: 0.04s
+Info:   of which solving equations: 0.00s
+Info:   of which spreading cells: 0.00s
+Info:   of which strict legalisation: 0.00s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 1, wirelen = 129
+Info:   at iteration #2: temp = 0.000000, timing cost = 1, wirelen = 138 
+Info: SA placement time 0.00s
+
+Info: Max frequency for clock 'clk_IBUF_I_O': 345.78 MHz (PASS at 27.00 MHz)
+
+Info: Clock 'rst_n_IBUF_I_O' has no interior paths
+
+Info: Max delay posedge clk_IBUF_I_O -> posedge rst_n_IBUF_I_O: 0.96 ns
+
+Info: Slack histogram:
+Info:  legend: times are in ps
+Info:          * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [ 34145,  34196) |* 
+Info: [ 34196,  34247) | 
+Info: [ 34247,  34298) | 
+Info: [ 34298,  34349) |* 
+Info: [ 34349,  34400) | 
+Info: [ 34400,  34451) |* 
+Info: [ 34451,  34502) |* 
+Info: [ 34502,  34553) | 
+Info: [ 34553,  34604) |* 
+Info: [ 34604,  34655) | 
+Info: [ 34655,  34706) | 
+Info: [ 34706,  34757) | 
+Info: [ 34757,  34808) | 
+Info: [ 34808,  34859) | 
+Info: [ 34859,  34910) | 
+Info: [ 34910,  34961) | 
+Info: [ 34961,  35012) | 
+Info: [ 35012,  35063) | 
+Info: [ 35063,  35114) | 
+Info: [ 35114,  35165) |* 
+Info: Checksum: 0xea576474
+Info: Routing globals...
+Info:     'clk_IBUF_I_O' net was routed using global resources only.
+
+Info: Routing..
+Info: Setting up routing queue.
+Info: Routing 53 arcs.
+Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
+Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
+Info:         53 |        0         47 |    0    47 |         0|       0.01       0.01|
+Info: Routing complete.
+Info: Router1 time 0.01s
+Info: Checksum: 0xb482af0b
+
+Info: Critical path report for clock 'clk_IBUF_I_O' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-to-q  0.46  0.46 Source count_DFF_Q_5.Q
+Info:    routing  0.41  0.87 Net count[0] (1,15) -> (1,14)
+Info:                          Sink count_DFF_Q_4_D_ALU_SUM_CIN_ALU_COUT.I1
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:7.15-7.20
+Info:      logic  1.04  1.91 Source count_DFF_Q_4_D_ALU_SUM_CIN_ALU_COUT.COUT
+Info:    routing  0.00  1.91 Net count_DFF_Q_4_D_ALU_SUM_CIN (1,14) -> (1,14)
+Info:                          Sink count_DFF_Q_4_D_ALU_SUM.CIN
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:8.36-8.48
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/arith_map.v:57.7-63.5
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/cells_sim.v:1033.25-1033.29
+Info:      logic  0.06  1.97 Source count_DFF_Q_4_D_ALU_SUM.COUT
+Info:    routing  0.00  1.97 Net count_DFF_Q_4_D_ALU_SUM_COUT (1,14) -> (1,14)
+Info:                          Sink count_DFF_Q_3_D_ALU_SUM.CIN
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:8.36-8.48
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/arith_map.v:57.7-63.5
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/cells_sim.v:1033.25-1033.29
+Info:      logic  0.06  2.03 Source count_DFF_Q_3_D_ALU_SUM.COUT
+Info:    routing  0.00  2.03 Net count_DFF_Q_3_D_ALU_SUM_COUT (1,14) -> (1,14)
+Info:                          Sink count_DFF_Q_2_D_ALU_SUM.CIN
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:8.36-8.48
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/arith_map.v:57.7-63.5
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/cells_sim.v:1033.25-1033.29
+Info:      logic  0.06  2.09 Source count_DFF_Q_2_D_ALU_SUM.COUT
+Info:    routing  0.00  2.09 Net count_DFF_Q_2_D_ALU_SUM_COUT (1,14) -> (1,14)
+Info:                          Sink count_DFF_Q_1_D_ALU_SUM.CIN
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:8.36-8.48
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/arith_map.v:57.7-63.5
+Info:                               /opt/oss-cad-suite/lib/../share/yosys/gowin/cells_sim.v:1033.25-1033.29
+Info:      logic  0.56  2.65 Source count_DFF_Q_1_D_ALU_SUM.SUM
+Info:    routing  0.41  3.06 Net count_DFF_Q_1_D (1,14) -> (1,13)
+Info:                          Sink count_DFF_Q_1_passthrough_lut$.I3
+Info:      logic  0.62  3.68 Source count_DFF_Q_1_passthrough_lut$.F
+Info:    routing  0.00  3.68 Net count_DFF_Q_1$conn$D (1,13) -> (1,13)
+Info:                          Sink count_DFF_Q_1.D
+Info:      setup  0.40  4.08 Source count_DFF_Q_1.D
+Info: 3.26 ns logic, 0.82 ns routing
+
+Info: Critical path report for cross-domain path 'posedge clk_IBUF_I_O' -> 'posedge rst_n_IBUF_I_O':
+Info:       type curr  total name
+Info:   clk-to-q  0.46  0.46 Source count_DFF_Q_2.Q
+Info:    routing  0.41  0.87 Net count[3] (1,14) -> (1,13)
+Info:                          Sink led_OBUF_O_2_I_DL_Q_passthrough_lut$.I3
+Info:                          Defined in:
+Info:                               /work/project/src/blinky.v:7.15-7.20
+Info:      logic  0.62  1.50 Source led_OBUF_O_2_I_DL_Q_passthrough_lut$.F
+Info:    routing  0.00  1.50 Net led_OBUF_O_2_I_DL_Q$conn$D (1,13) -> (1,13)
+Info:                          Sink led_OBUF_O_2_I_DL_Q.D
+Info:      setup  0.40  1.89 Source led_OBUF_O_2_I_DL_Q.D
+Info: 1.48 ns logic, 0.41 ns routing
+
+Info: Max frequency for clock 'clk_IBUF_I_O': 244.86 MHz (PASS at 27.00 MHz)
+
+Info: Clock 'rst_n_IBUF_I_O' has no interior paths
+
+Info: Max delay posedge clk_IBUF_I_O -> posedge rst_n_IBUF_I_O: 1.89 ns
+
+Info: Slack histogram:
+Info:  legend: times are in ps
+Info:          * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [ 32953,  33047) |* 
+Info: [ 33047,  33141) |* 
+Info: [ 33141,  33235) | 
+Info: [ 33235,  33329) |* 
+Info: [ 33329,  33423) | 
+Info: [ 33423,  33517) | 
+Info: [ 33517,  33611) | 
+Info: [ 33611,  33705) | 
+Info: [ 33705,  33799) | 
+Info: [ 33799,  33893) | 
+Info: [ 33893,  33987) | 
+Info: [ 33987,  34081) |* 
+Info: [ 34081,  34175) |* 
+Info: [ 34175,  34269) | 
+Info: [ 34269,  34363) | 
+Info: [ 34363,  34457) | 
+Info: [ 34457,  34551) | 
+Info: [ 34551,  34645) | 
+Info: [ 34645,  34739) | 
+Info: [ 34739,  34833) |* 
+
+Info: Program finished normally.
