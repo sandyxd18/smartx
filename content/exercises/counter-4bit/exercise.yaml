@@ -1,0 +1,17 @@
+id: counter-4bit
+title: Counter 4-bit dengan enable dan reset sinkron
+step: 1            # langkah kurikulum (1-6)
+level: 1           # 1 = dasar, 2 = menengah, 3 = lanjut
+topics: [sequential, register, counter]
+toplevel: counter4  # nama modul top yang diuji
+language: verilog
+files:
+  starter: starter.v      # yang dilihat pengguna di editor
+  solution: solution.v    # disembunyikan dari UI, dipakai untuk menguji grader
+  test: test_counter4.py  # testbench cocotb
+  statement: README.md    # teks soal
+timeout_s: 30
+hints:
+  - Logika sekuensial ditulis di dalam always @(posedge clk).
+  - Gunakan non-blocking assignment (<=) untuk register.
+  - Reset sinkron berarti reset hanya dicek saat ada sisi naik clock.

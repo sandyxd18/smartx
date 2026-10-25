@@ -1,0 +1,141 @@
+# Arsitektur ChipLab
+
+## Gambaran
+
+```
+Browser (React)
+  │  HTTP + SSE
+  ▼
+Backend (FastAPI, Python)  ── SQLite (data/chiplab.db)
+  │  Docker API (socket)
+  ▼
+Job container (sekali pakai, per run)
+  ├─ image light: chiplab/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
+  └─ image heavy: ASIC_IMAGE         (LibreLane + PDK)
+        │
+        ▼
+  data/runs/<run_id>/   (input, log, artefak: result.json, .fst, .bit, .gds, report)
+```
+
+Backend tidak menjalankan tool EDA sendiri. Backend menyiapkan folder run, menyalakan container, mengalirkan log ke browser, lalu membaca `result.json` dan artefak.
+
+## Struktur repo
+
+```
+chiplab/
+├─ CLAUDE.md                 aturan kerja untuk Claude Code
+├─ Makefile                  semua perintah (make help)
+├─ docker-compose.yml        backend + frontend (dibuat di Fase 0)
+├─ docker/
+│  ├─ toolchain/Dockerfile   image light
+│  └─ asic/                  catatan/pin image heavy (Fase 5)
+├─ backend/
+│  ├─ pyproject.toml
+│  ├─ app/
+│  │  ├─ main.py             FastAPI app, mount router
+│  │  ├─ config.py           baca .env (pydantic-settings)
+│  │  ├─ db.py               SQLite (SQLModel)
+│  │  ├─ models.py           tabel: Project, File, Run, ExerciseProgress
+│  │  ├─ api/                router per domain: exercises, projects, runs, fpga, asic, tapeout
+│  │  ├─ content/            loader soal & proyek dari folder content/
+│  │  ├─ jobs/
+│  │  │  ├─ queue.py         antrian asyncio, dua kelas: light & heavy
+│  │  │  ├─ runner.py        interface JobRunner
+│  │  │  ├─ docker_runner.py implementasi pakai docker SDK
+│  │  │  └─ kinds/           satu file per jenis job (grade, sim, lint, fpga, asic, tt)
+│  │  └─ reports/            parser laporan (yosys stat, nextpnr json, librelane metrics)
+│  └─ tests/
+├─ frontend/
+│  ├─ package.json           Vite + React + TypeScript
+│  ├─ public/surfer/         build web Surfer (diunduh oleh skrip, di-gitignore)
+│  └─ src/
+│     ├─ pages/              Dashboard, Exercises, Exercise, Workspace, Projects, Tapeout
+│     ├─ components/         Editor, FileTree, RunPanel, LogView, WaveView, GdsView, ReportTable
+│     └─ api/                client typed (dibuat dari OpenAPI backend)
+├─ content/
+│  ├─ exercises/<id>/        soal langkah 1 (format: docs/CONTENT-FORMAT.md)
+│  ├─ projects/<id>/         proyek terpandu langkah 4
+│  └─ boards/<id>.yaml       profil board FPGA
+├─ tools/
+│  ├─ grader/                grade.py, check_content.py (sudah jalan)
+│  └─ flash/chiplab-flash    helper flashing di host (Fase 3)
+└─ data/                     runtime, di-gitignore
+```
+
+## Model data (SQLite)
+
+- **Project**: `id, name, kind (exercise|sandbox|guided|tt), source (exercise_id/project_id), created_at`
+- **File**: `project_id, path, content, updated_at`. File proyek disimpan di DB supaya autosave sederhana; saat run, file ditulis ke folder run.
+- **Run**: `id, project_id, kind, status, params (JSON), result (JSON), tool_versions (JSON), created_at, started_at, finished_at, exit_code, error`
+- **ExerciseProgress**: `exercise_id, status, attempts, last_code, solved_at, hints_opened`
+
+Status run: `queued → running → succeeded | failed | cancelled | timeout`.
+
+## Jenis job
+
+| kind | Image | Kelas | Input | Output utama |
+|---|---|---|---|---|
+| `grade` | light | light | kode user + folder soal | `result.json`, `.fst` |
+| `lint` | light | light | file proyek | daftar diagnostic (file, baris, pesan) |
+| `sim` | light | light | file proyek + top + test module | `result.json`, `.fst` |
+| `fpga` | light | light | file + board + constraint | `.fs`/`.bin`, laporan resource & timing |
+| `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
+| `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |
+
+Setiap jenis job adalah satu modul di `backend/app/jobs/kinds/` dengan dua fungsi: `prepare(run_dir, params) -> ContainerSpec` dan `collect(run_dir) -> dict`. Ini membuat jenis job baru mudah ditambah dan mudah dites tanpa Docker (test unit untuk `prepare` dan `collect` memakai folder fixture).
+
+## Docker runner
+
+- Pakai Python `docker` SDK lewat `/var/run/docker.sock` yang di-mount ke container backend.
+- Setiap job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, mount `data/runs/<id>` sebagai `/work` (rw) dan `content/` sebagai `/content` (ro).
+- Path folder run harus berupa path di **host**, karena container job dibuat oleh daemon host. Simpan `CHIPLAB_DATA_DIR` host di config dan terjemahkan path.
+- Log stdout/stderr dibaca streaming dan ditulis ke `run.log` serta diteruskan ke SSE.
+- Timeout per kelas (`JOB_LIGHT_TIMEOUT_S`, `JOB_HEAVY_TIMEOUT_S`). Saat timeout atau cancel: `container.kill()`, status `timeout`/`cancelled`.
+- Saat backend start: run berstatus `running`/`queued` diubah ke `failed` dengan error "backend restarted".
+
+## API (ringkas)
+
+```
+GET  /api/health
+GET  /api/exercises                       daftar + progres
+GET  /api/exercises/{id}                  teks, starter/kode terakhir, hint terbuka
+POST /api/exercises/{id}/runs             {code} -> run
+POST /api/exercises/{id}/hints/next
+GET  /api/exercises/{id}/solution         403 sampai syarat terpenuhi
+
+GET  /api/projects | POST /api/projects
+GET  /api/projects/{id}/files | PUT /api/projects/{id}/files/{path}
+POST /api/projects/{id}/runs              {kind, params}
+GET  /api/runs/{id}
+GET  /api/runs/{id}/events                SSE: log, status
+POST /api/runs/{id}/cancel
+GET  /api/runs/{id}/files/{path}          artefak (cegah path traversal!)
+
+GET  /api/boards
+POST /api/projects/{id}/tapeout/generate
+```
+
+Frontend memakai client yang di-generate dari OpenAPI backend (`openapi-typescript`), supaya tipe tidak ditulis dua kali.
+
+## Waveform viewer
+
+Pakai **Surfer** versi web (WASM), di-host sendiri di `frontend/public/surfer/` dan ditampilkan lewat `<iframe>`. Surfer mendukung pemuatan file lewat URL dan kontrol lewat `postMessage`; API-nya didokumentasikan di `surfer/assets/integration.js` di repo Surfer dan masih bisa berubah, jadi bungkus semua interaksi di satu komponen `WaveView` dan pin versi Surfer yang dipakai.
+
+Fallback jika integrasi bermasalah: tombol unduh `.fst` untuk dibuka di GTKWave/Surfer desktop.
+
+## Viewer layout GDS
+
+Fase 5 cukup memakai PNG yang dirender KLayout dalam mode batch (`klayout -zz -r render.py`) di container ASIC, dengan beberapa level zoom. Viewer interaktif (misalnya konversi GDS → glTF untuk tampilan 3D) adalah ekstensi opsional.
+
+## Keamanan (single user)
+
+- Backend bind ke `127.0.0.1` secara default. Akses dari jaringan lain harus lewat reverse proxy yang punya autentikasi.
+- Akses ke Docker socket setara root di host. Ini diterima karena aplikasi ini pribadi, tapi tetap: job container tidak pernah mendapat socket, selalu `--network none`, dan tidak berjalan `--privileged`.
+- Semua path dari user dinormalisasi dan dicek tetap di dalam folder proyek/run.
+
+## Kebutuhan mesin
+
+| Fase | CPU | RAM | Disk |
+|---|---|---|---|
+| 0–4 | 2 core | 4 GB | ~5 GB (image toolchain ~2 GB) |
+| 5–6 | 4+ core | 12–16 GB | +25 GB (image ASIC ~4 GB + PDK + hasil run) |
