@@ -98,6 +98,10 @@ parameters:               # opsional: parameter modul top
   INIT: 8'hFF             # selain angka bulat, teks diteruskan apa adanya
 defines:                  # opsional: -DNAMA=nilai
   SIM: 1
+fpga:                     # opsional: build FPGA (Fase 3)
+  board: tang-nano-9k     # id profil di content/boards/
+  constraints: constraints/tang-nano-9k.cst   # file constraint di proyek
+  freq_mhz: 27            # opsional: target --freq nextpnr; default clock board
 ```
 
 Aturan:
@@ -107,7 +111,8 @@ Aturan:
 - `tests` berisi path file `.py` di proyek. Nama file harus berupa nama modul Python yang valid (`test_fifo.py`). Dua file tidak boleh punya nama modul yang sama, karena cocotb memuat test berdasarkan nama modul.
 - Nilai `parameters` dan `defines` berupa angka bulat atau teks. `true`/`false`, daftar, dan nilai kosong ditolak, karena cocotb runner (versi yang dipin) menulisnya apa adanya ke perintah simulator (`-P`/`-G`/`-D`). Untuk define tanpa nilai, isi `1`.
 - Peringatan, yang tidak menghalangi penyimpanan: pola yang tidak cocok dengan file mana pun, modul top yang tidak ditemukan di file sumber, file test yang tidak ada, dan `tests` yang kosong.
-- Menyimpan dari form menulis ulang file dari isi form, sehingga komentar buatan sendiri hilang. Hanya baris judul yang dipertahankan.
+- Menyimpan dari form menulis ulang file dari isi form, sehingga komentar buatan sendiri hilang. Hanya baris judul yang dipertahankan. Bagian `fpga` tidak diedit di form simulasi, tetapi ikut disimpan apa adanya.
+- `fpga.board` yang tidak dikenal dan file `fpga.constraints` yang tidak ada menjadi peringatan; tombol Build menolaknya dengan pesan yang sama. Build FPGA memakai `top`, `sources`, `parameters`, dan `defines` yang sama dengan simulasi.
 
 ## Snippet testbench: `content/snippets/*.yaml` (Fase 2)
 

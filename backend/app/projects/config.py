@@ -1,4 +1,4 @@
-"""smartx.yaml: a project's simulation settings. See docs/CONTENT-FORMAT.md.
+"""smartx.yaml: a project's simulation and FPGA settings. See docs/CONTENT-FORMAT.md.
 
 parse_config() gives errors with YAML line numbers so the editor can mark them;
 analyze() adds warnings that need the project's files (patterns that match nothing,
@@ -6,11 +6,13 @@ a top module that is not defined, missing test files). Warnings do not block sav
 """
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 
 import yaml
 from pydantic import (
+    AfterValidator,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -24,7 +26,8 @@ from app.projects.paths import InvalidProjectPath, normalize_project_path
 
 CONFIG_PATH = "smartx.yaml"
 HEADER = "# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).\n"
-FIELDS = ("top", "sources", "tests", "simulator", "parameters", "defines")
+FIELDS = ("top", "sources", "tests", "simulator", "parameters", "defines", "fpga")
+FPGA_FIELDS = ("board", "constraints", "freq_mhz")
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 _PY_MODULE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -87,6 +90,23 @@ def check_test_file(path: str) -> str:
     return path
 
 
+def _project_file(path: str) -> str:
+    try:
+        return normalize_project_path(path)
+    except InvalidProjectPath as exc:
+        raise ValueError(str(exc)) from exc
+
+
+class FpgaConfig(BaseModel):
+    """The `fpga:` section: which board to build for and with which pins."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    board: Annotated[str, Field(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]
+    constraints: Annotated[str, AfterValidator(_project_file)]  # .cst / .pcf in the project
+    freq_mhz: Annotated[float, Field(gt=0, le=1000)] | None = None  # default: board clock
+
+
 class ProjectConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -96,6 +116,7 @@ class ProjectConfig(BaseModel):
     simulator: Literal["icarus", "verilator"] = "icarus"
     parameters: dict[Name, Scalar] = {}
     defines: dict[Name, Scalar] = {}
+    fpga: FpgaConfig | None = None
 
     @field_validator("sources")
     @classmethod
@@ -191,7 +212,12 @@ def _message(error: Any) -> str:
     if kind == "missing":
         return f"{where}: wajib diisi"
     if kind == "extra_forbidden":
-        return f"{where}: tidak dikenal (yang tersedia: {', '.join(FIELDS)})"
+        known = FPGA_FIELDS if loc[0] == "fpga" else FIELDS
+        return f"{where}: tidak dikenal (yang tersedia: {', '.join(known)})"
+    if kind == "string_pattern_mismatch" and loc == ("fpga", "board"):
+        return f"{where}: id board berupa huruf kecil, angka, dan '-' (misalnya tang-nano-9k)"
+    if kind in ("greater_than", "less_than_equal", "float_parsing", "float_type"):
+        return f"{where}: harus angka MHz lebih dari 0 dan paling besar 1000"
     if kind == "literal_error":
         return f"{where}: harus salah satu dari: icarus, verilator"
     if kind == "too_short":
@@ -265,6 +291,8 @@ def dump_config(config: ProjectConfig) -> str:
         data["parameters"] = config.parameters
     if config.defines:
         data["defines"] = config.defines
+    if config.fpga is not None:
+        data["fpga"] = config.fpga.model_dump(exclude_none=True)
     body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
     return HEADER + body
 
@@ -289,8 +317,11 @@ def glob_match(pattern: str, path: str) -> bool:
     return _glob_regex(pattern).match(path) is not None
 
 
-def analyze(text: str, files: dict[str, str]) -> ConfigAnalysis:
-    """Parse text and check it against the project's files (path -> content)."""
+def analyze(
+    text: str, files: dict[str, str], boards: Collection[str] | None = None
+) -> ConfigAnalysis:
+    """Parse text and check it against the project's files (path -> content) and,
+    when given, the ids of the known FPGA boards."""
     config, problems, root = _parse(text)
     if config is None:
         return ConfigAnalysis(config=None, problems=problems)
@@ -316,5 +347,18 @@ def analyze(text: str, files: dict[str, str]) -> ConfigAnalysis:
     for i, path in enumerate(config.tests):
         if path not in files:
             warn(f"File test '{path}' tidak ada di proyek.", ("tests", i))
+
+    if config.fpga is not None:
+        if boards is not None and config.fpga.board not in boards:
+            known = ", ".join(sorted(boards)) or "-"
+            warn(
+                f"Board '{config.fpga.board}' tidak dikenal (yang tersedia: {known}).",
+                ("fpga", "board"),
+            )
+        if config.fpga.constraints not in files:
+            warn(
+                f"File constraint '{config.fpga.constraints}' tidak ada di proyek.",
+                ("fpga", "constraints"),
+            )
 
     return ConfigAnalysis(config=config, problems=problems, sources=sources)

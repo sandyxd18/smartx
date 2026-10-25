@@ -1,0 +1,7 @@
+==> Synthesize
+<== Synthesize: ok (0.82 s)
+==> Place & Route
+ERROR: Unconstrained IO:led_OBUF_O
+0 warnings, 1 error
+<== Place & Route: failed (0.13 s)
+status: failed

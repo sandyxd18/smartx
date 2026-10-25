@@ -11,8 +11,10 @@ from sqlmodel import Session, col, func, select
 from app.api.exercises import CatalogDep
 from app.api.runs import RunRead, get_app_settings, get_queue
 from app.config import Settings
+from app.content.boards import load_boards
 from app.content.models import ExerciseId
 from app.db import get_session
+from app.jobs.kinds.fpga import FpgaResult
 from app.jobs.kinds.lint import PROJECT_DIR, LintResult
 from app.jobs.kinds.sim import SimResult
 from app.jobs.queue import JobQueue
@@ -333,7 +335,13 @@ def move_entry(project_id: int, body: MoveRequest, session: SessionDep) -> Proje
     return _detail(session, project)
 
 
-def _config_read(session: Session, project_id: int, text: str | None = None) -> ConfigRead:
+def _board_ids(settings: Settings) -> set[str]:
+    return {p.board.id for p in load_boards(settings.content_dir / "boards")}
+
+
+def _config_read(
+    session: Session, settings: Settings, project_id: int, text: str | None = None
+) -> ConfigRead:
     """Analyze smartx.yaml, or `text` in its place (an unsaved draft)."""
     files = tree.read_all(session, project_id)
     if text is not None:
@@ -345,20 +353,22 @@ def _config_read(session: Session, project_id: int, text: str | None = None) -> 
         )
         return ConfigRead(text="", config=None, problems=[problem], sources=[])
     text = files[CONFIG_PATH]
-    result = analyze(text, files)
+    result = analyze(text, files, _board_ids(settings))
     return ConfigRead(
         text=text, config=result.config, problems=result.problems, sources=result.sources
     )
 
 
 @router.get("/projects/{project_id}/config")
-def read_config(project_id: int, session: SessionDep) -> ConfigRead:
+def read_config(project_id: int, session: SessionDep, settings: SettingsDep) -> ConfigRead:
     _get_project(session, project_id)
-    return _config_read(session, project_id)
+    return _config_read(session, settings, project_id)
 
 
 @router.put("/projects/{project_id}/config")
-def write_config(project_id: int, body: ProjectConfig, session: SessionDep) -> ConfigRead:
+def write_config(
+    project_id: int, body: ProjectConfig, session: SessionDep, settings: SettingsDep
+) -> ConfigRead:
     """Save the form: smartx.yaml is rewritten from the fields (comments are not kept)."""
     _get_project(session, project_id)
     try:
@@ -366,18 +376,20 @@ def write_config(project_id: int, body: ProjectConfig, session: SessionDep) -> C
     except (InvalidProjectPath, tree.TreeError) as exc:
         raise _tree_errors(exc) from exc
     session.commit()
-    return _config_read(session, project_id)
+    return _config_read(session, settings, project_id)
 
 
 @router.post("/projects/{project_id}/config/check")
-def check_config(project_id: int, body: ConfigCheck, session: SessionDep) -> ConfigRead:
+def check_config(
+    project_id: int, body: ConfigCheck, session: SessionDep, settings: SettingsDep
+) -> ConfigRead:
     """Analyze YAML that is still being typed, without saving it."""
     _get_project(session, project_id)
-    return _config_read(session, project_id, body.text)
+    return _config_read(session, settings, project_id, body.text)
 
 
 class ProjectRunCreate(BaseModel):
-    kind: Literal["lint", "sim"]
+    kind: Literal["lint", "sim", "fpga"]
 
 
 class ProjectRunRead(RunRead):
@@ -385,6 +397,7 @@ class ProjectRunRead(RunRead):
 
     lint: LintResult | None
     sim: SimResult | None
+    fpga: FpgaResult | None
 
 
 def _project_run(run: Run) -> ProjectRunRead:
@@ -393,6 +406,7 @@ def _project_run(run: Run) -> ProjectRunRead:
         **RunRead.model_validate(run).model_dump(),
         lint=LintResult.model_validate(result) if result and run.kind == "lint" else None,
         sim=SimResult.model_validate(result) if result and run.kind == "sim" else None,
+        fpga=FpgaResult.model_validate(result) if result and run.kind == "fpga" else None,
     )
 
 
@@ -413,7 +427,8 @@ async def start_project_run(
     files = tree.read_all(session, project_id)
     if CONFIG_PATH not in files:
         raise _unprocessable(f"{CONFIG_PATH} belum ada. Buat dulu lewat file baru atau form.")
-    analysis = analyze(files[CONFIG_PATH], files)
+    boards = {p.board.id: p.board for p in load_boards(settings.content_dir / "boards")}
+    analysis = analyze(files[CONFIG_PATH], files, boards)
     config = analysis.config
     if config is None:
         first = analysis.problems[0]
@@ -439,6 +454,23 @@ async def start_project_run(
         if missing:
             raise _unprocessable(f"File test tidak ada di proyek: {', '.join(missing)}.")
         params = {**params, "tests": config.tests, "simulator": config.simulator}
+    if body.kind == "fpga":
+        fpga = config.fpga
+        if fpga is None:
+            raise _unprocessable(
+                f"Bagian 'fpga' belum ada di {CONFIG_PATH}. Pilih board dan file constraint dulu."
+            )
+        board = boards.get(fpga.board)
+        if board is None:
+            raise _unprocessable(f"Board '{fpga.board}' tidak dikenal.")
+        if fpga.constraints not in files:
+            raise _unprocessable(f"File constraint '{fpga.constraints}' tidak ada di proyek.")
+        params = {
+            **params,
+            "board": board.id,
+            "constraints": fpga.constraints,
+            "freq_mhz": fpga.freq_mhz or board.clock.freq_mhz,
+        }
 
     run = Run(kind=body.kind, project_id=project_id, params=params)
     session.add(run)

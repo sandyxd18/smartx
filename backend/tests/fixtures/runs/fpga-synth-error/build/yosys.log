@@ -1,0 +1,13 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)
+
+-- Executing script file `synth.ys' --
+
+1. Executing Verilog-2005 frontend: /work/project/src/blinky.v
+Parsing Verilog input from `/work/project/src/blinky.v' to AST representation.
+/work/project/src/blinky.v:7: ERROR: syntax error, unexpected TOK_REG, expecting ',' or ';' or '=' or '['

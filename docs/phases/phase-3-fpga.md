@@ -11,7 +11,7 @@ Dikonfirmasi 2026-10-25: pemilik belum punya board. Mulai dengan Tang Nano 9K sa
 ## Task
 
 1. [x] **Profil board** di `content/boards/` (format di `CONTENT-FORMAT.md`) dan template constraint. Board pertama: Tang Nano 9K (Gowin, `nextpnr-himbaechel` + `gowin_pack`). Board kedua (iCE40) ada di task 8.
-2. [ ] **Job `fpga`** dengan tiga tahap yang terlihat terpisah di UI:
+2. [x] **Job `fpga`** dengan tiga tahap yang terlihat terpisah di UI:
    - Synthesize: `yosys -p "synth_gowin -top <top> -json out.json"` (atau `synth_ice40`). Simpan `yosys.log` dan `stat`.
    - Place & Route: nextpnr dengan `--freq` dari `smartx.yaml`, keluarkan `--report report.json`.
    - Pack: hasilkan bitstream.

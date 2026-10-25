@@ -400,6 +400,7 @@ describe("ProjectPage", () => {
         project_id: 1,
         kind: "lint",
         sim: null,
+        fpga: null,
         status: "queued",
         params: {},
         result: null,
@@ -579,6 +580,7 @@ describe("ProjectPage", () => {
         error: null,
         lint: null,
         sim: null,
+        fpga: null,
         ...overrides,
       };
     }
@@ -756,6 +758,7 @@ describe("ProjectPage", () => {
         exit_code: 1,
         error: null,
         lint: null,
+        fpga: null,
         sim: {
           status: "fail",
           top: "fifo",

@@ -1,0 +1,30 @@
+{
+  "status": "failed",
+  "stages": [
+    {
+      "id": "synth",
+      "title": "Synthesize",
+      "status": "ok",
+      "seconds": 0.82,
+      "exit_code": 0
+    },
+    {
+      "id": "pnr",
+      "title": "Place & Route",
+      "status": "failed",
+      "seconds": 0.13,
+      "exit_code": 125
+    },
+    {
+      "id": "pack",
+      "title": "Pack",
+      "status": "skipped",
+      "seconds": null,
+      "exit_code": null
+    }
+  ],
+  "versions": {
+    "yosys": "Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)",
+    "nextpnr": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-79-g22c5adf4)"
+  }
+}

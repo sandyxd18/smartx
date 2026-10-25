@@ -79,7 +79,7 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 | `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
 | `lint` | light | light | salinan file proyek (`project/`) + config | `lint.sarif` → diagnostic (file, baris, kolom, severity, kode, pesan) |
 | `sim` | light | light | salinan file proyek (`project/`) + `sim.json` (config) | `result.json` (test per modul, error kompilasi, versi simulator), `.fst` |
-| `fpga` | light | light | file + board + constraint | `.fs`/`.bin`, laporan resource & timing |
+| `fpga` | light | light | salinan file proyek (`project/`) + `fpga.json` (perintah tiap tahap dari profil board) | `result.json` (status per tahap, error pertama, diagnostics Yosys, versi tool), `build/`: bitstream, `report.json` nextpnr, `stat`, log per tahap |
 | `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
 | `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |
 
@@ -115,7 +115,7 @@ POST /api/projects/{id}/folders              {path}
 POST /api/projects/{id}/move                 {from_path, to_path}: ganti nama/pindah file atau folder
 GET | PUT /api/projects/{id}/config           smartx.yaml: teks + hasil parse + masalah | simpan dari form
 POST /api/projects/{id}/config/check          {text}: periksa YAML yang sedang diketik (tidak disimpan)
-POST /api/projects/{id}/runs              {kind}: salin file proyek ke folder run, ambil params dari smartx.yaml
+POST /api/projects/{id}/runs              {kind: lint|sim|fpga}: salin file proyek ke folder run, ambil params dari smartx.yaml
 GET  /api/projects/{id}/runs?limit=50     riwayat: waktu, jenis, status, durasi, ringkasan (terbaru dulu)
 GET  /api/projects/{id}/runs/compare?a=&b=  test yang berubah status antara dua simulasi
 GET  /api/projects/{id}/runs/{run_id}     run + hasil sesuai jenisnya (lint, sim)

@@ -408,7 +408,7 @@ class TestConfig:
         r = client.put(f"/api/projects/{pid}/config", json=config)
 
         assert r.status_code == 200
-        assert r.json()["config"] == config
+        assert r.json()["config"] == {**config, "fpga": None}
         text = read(client, pid, "smartx.yaml")
         assert "simulator: verilator" in text
         assert "WIDTH: 8" in text
@@ -612,6 +612,118 @@ class TestSimRuns:
 
         assert r.status_code == 422
         assert "test/test_counter.py" in r.json()["detail"]
+
+
+BLINKY_FILES = Path(__file__).parent / "fixtures" / "projects" / "blinky"
+
+
+class TestFpgaRuns:
+    @pytest.fixture
+    def runner(self) -> FakeRunner:
+        return FakeRunner(FakeJob(exit_code=0, fixture_dir=RUN_FIXTURES / "fpga-ok"))
+
+    def blinky(self, client: TestClient, config: str | None = None) -> int:
+        pid = create(client)["id"]
+        client.delete(f"/api/projects/{pid}/files/src/top.v")  # from the empty template
+        for path in BLINKY_FILES.rglob("*"):
+            if path.is_file():
+                rel = path.relative_to(BLINKY_FILES).as_posix()
+                content = path.read_text(encoding="utf-8")
+                if rel == "smartx.yaml" and config is not None:
+                    content = config
+                client.put(f"/api/projects/{pid}/files/{rel}", json={"content": content})
+        return pid
+
+    def start(self, client: TestClient, pid: int) -> Any:
+        return client.post(f"/api/projects/{pid}/runs", json={"kind": "fpga"})
+
+    def test_builds_for_the_board_in_the_config(
+        self, client: TestClient, settings: Settings
+    ) -> None:
+        pid = self.blinky(client)
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 201, r.text
+        run = r.json()
+        assert run["params"] == {
+            "top": "blinky",
+            "sources": ["src/blinky.v"],
+            "defines": {},
+            "parameters": {},
+            "board": "tang-nano-9k",
+            "constraints": "constraints/tang-nano-9k.cst",
+            "freq_mhz": 27,  # no freq_mhz in smartx.yaml: the board clock
+        }
+        project = settings.runs_dir / run["id"] / "project"
+        assert (project / "constraints" / "tang-nano-9k.cst").is_file()
+
+        wait_for_status(client, run["id"], TERMINAL)
+        done = client.get(f"/api/projects/{pid}/runs/{run['id']}").json()
+        assert done["fpga"]["status"] == "ok"
+        assert done["fpga"]["bitstream_url"].endswith("/files/build/bitstream.fs")
+        assert done["sim"] is None and done["lint"] is None
+        [row] = client.get(f"/api/projects/{pid}/runs").json()
+        assert row["summary"] == "Bitstream jadi"
+
+    def test_freq_from_the_config(self, client: TestClient) -> None:
+        config = (BLINKY_FILES / "smartx.yaml").read_text(encoding="utf-8") + "  freq_mhz: 50\n"
+        pid = self.blinky(client, config)
+
+        assert self.start(client, pid).json()["params"]["freq_mhz"] == 50
+
+    @pytest.mark.parametrize(
+        ("change", "message"),
+        [
+            (lambda c: c.split("fpga:")[0], "Bagian 'fpga' belum ada"),
+            (lambda c: c.replace("board: tang-nano-9k", "board: papan-x"), "Board 'papan-x'"),
+            (lambda c: c.replace("constraints/tang", "pins/tang"), "pins/tang-nano-9k.cst"),
+        ],
+    )
+    def test_config_problems_are_reported(
+        self, client: TestClient, change: Any, message: str
+    ) -> None:
+        pid = self.blinky(client, change((BLINKY_FILES / "smartx.yaml").read_text("utf-8")))
+
+        r = self.start(client, pid)
+
+        assert r.status_code == 422
+        assert message in r.json()["detail"]
+
+    def test_config_warns_about_an_unknown_board(self, client: TestClient) -> None:
+        text = (
+            (BLINKY_FILES / "smartx.yaml")
+            .read_text("utf-8")
+            .replace("board: tang-nano-9k", "board: papan-x")
+        )
+        pid = self.blinky(client, text)
+
+        problems = client.get(f"/api/projects/{pid}/config").json()["problems"]
+
+        assert {
+            "severity": "warning",
+            "message": "Board 'papan-x' tidak dikenal (yang tersedia: tang-nano-9k).",
+            "line": 5,
+        } in problems
+
+    def test_failed_stage_in_the_summary(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        engine = client.app.state.engine  # type: ignore[attr-defined]
+        result = {
+            "status": "failed",
+            "stages": [
+                {"id": "synth", "title": "Synthesize", "status": "ok"},
+                {"id": "pnr", "title": "Place & Route", "status": "failed"},
+                {"id": "pack", "title": "Pack", "status": "skipped"},
+            ],
+        }
+        with Session(engine) as s:
+            s.add(Run(project_id=pid, kind="fpga", status=RunStatus.succeeded, result=result))
+            s.commit()
+
+        [row] = client.get(f"/api/projects/{pid}/runs").json()
+
+        assert row["summary"] == "Gagal di Place & Route"
 
 
 class TestRunHistory:

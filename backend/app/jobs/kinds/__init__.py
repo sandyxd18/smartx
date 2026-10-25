@@ -6,7 +6,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel
 
 from app.jobs.context import JobContext
-from app.jobs.kinds import echo, grade, lint, sim
+from app.jobs.kinds import echo, fpga, grade, lint, sim
 from app.jobs.runner import ContainerSpec, JobClass
 
 
@@ -28,6 +28,7 @@ class JobKind(Protocol):
 
 KINDS: dict[str, JobKind] = {
     "echo": echo,
+    "fpga": fpga,
     "grade": grade,
     "lint": lint,
     "sim": sim,

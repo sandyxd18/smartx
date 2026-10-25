@@ -31,6 +31,11 @@ def summarize(run: Run) -> str | None:
                 return "Error kompilasi"
             case _:
                 return "Tidak ada hasil test"
+    if run.kind == "fpga":
+        if result.get("status") == "ok":
+            return "Bitstream jadi"
+        failed = next((s for s in result.get("stages") or [] if s.get("status") == "failed"), None)
+        return f"Gagal di {failed['title']}" if failed else "Gagal"
     return None
 
 

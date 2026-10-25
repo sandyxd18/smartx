@@ -1,4 +1,4 @@
-"""Messages about a project's files, shared by the lint and sim jobs."""
+"""Messages about a project's files, shared by the lint, sim and fpga jobs."""
 
 import re
 from typing import Any, Literal
@@ -19,7 +19,10 @@ class ProjectDiagnostic(BaseModel):
 
 
 # Icarus: "/work/project/src/a.v:12: [error: |warning: ]message"
-_ICARUS = re.compile(r"^(?P<path>/\S+?):(?P<line>\d+): (?:(?P<sev>error|warning): )?(?P<msg>.*)$")
+# Yosys:  "/work/project/src/a.v:12: ERROR: message"
+_ICARUS = re.compile(
+    r"^(?P<path>/\S+?):(?P<line>\d+): (?:(?P<sev>error|warning): |ERROR: )?(?P<msg>.*)$"
+)
 # Verilator: "%Error[-CODE]: /work/project/src/a.v:12:5: message"
 _VERILATOR = re.compile(
     r"^%(?P<sev>Error|Warning)(?:-(?P<code>[A-Z0-9_]+))?: "
@@ -28,7 +31,7 @@ _VERILATOR = re.compile(
 
 
 def parse_compile_log(log: str, root: str) -> list[dict[str, Any]]:
-    """Compiler messages (Icarus or Verilator) about files under root, sorted by place."""
+    """Compiler messages (Icarus, Verilator, Yosys) about files under root, sorted by place."""
     prefix = root.rstrip("/") + "/"
     found = []
     for raw in log.splitlines():

@@ -36,6 +36,8 @@ interface FormState {
   simulator: ProjectConfig["simulator"];
   parameters: Row[];
   defines: Row[];
+  // Edited on the FPGA page, not in this form; carried along so saving keeps it.
+  fpga: ProjectConfig["fpga"];
 }
 
 function toRows(values: Record<string, number | string>): Row[] {
@@ -58,6 +60,7 @@ function toForm(config: ProjectConfig): FormState {
     simulator: config.simulator,
     parameters: toRows(config.parameters),
     defines: toRows(config.defines),
+    fpga: config.fpga,
   };
 }
 
@@ -69,6 +72,7 @@ function toConfig(form: FormState): ProjectConfig {
     simulator: form.simulator,
     parameters: fromRows(form.parameters),
     defines: fromRows(form.defines),
+    fpga: form.fpga,
   };
 }
 

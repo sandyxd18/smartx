@@ -765,6 +765,76 @@ export interface components {
             path: string;
         };
         /**
+         * FpgaConfig
+         * @description The `fpga:` section: which board to build for and with which pins.
+         */
+        FpgaConfig: {
+            /** Board */
+            board: string;
+            /** Constraints */
+            constraints: string;
+            /** Freq Mhz */
+            freq_mhz?: number | null;
+        };
+        /**
+         * FpgaResult
+         * @description Run.result of an fpga run.
+         */
+        FpgaResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "failed";
+            /** Board */
+            board: string;
+            /** Top */
+            top: string;
+            /** Freq Mhz */
+            freq_mhz: number;
+            /** Stages */
+            stages: components["schemas"]["FpgaStage"][];
+            /** Error */
+            error?: string | null;
+            /**
+             * Diagnostics
+             * @default []
+             */
+            diagnostics: components["schemas"]["ProjectDiagnostic"][];
+            /**
+             * Versions
+             * @default {}
+             */
+            versions: {
+                [key: string]: string;
+            };
+            /** Bitstream Url */
+            bitstream_url?: string | null;
+            /** Report Url */
+            report_url?: string | null;
+            /** Stat Url */
+            stat_url?: string | null;
+        };
+        /** FpgaStage */
+        FpgaStage: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "synth" | "pnr" | "pack";
+            /** Title */
+            title: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "failed" | "skipped";
+            /** Seconds */
+            seconds?: number | null;
+            /** Log Url */
+            log_url?: string | null;
+        };
+        /**
          * GradeResult
          * @description Run.result of a grade run. Exposed in the API so the frontend gets real types.
          */
@@ -912,6 +982,7 @@ export interface components {
             defines: {
                 [key: string]: number | string;
             };
+            fpga?: components["schemas"]["FpgaConfig"] | null;
         };
         /**
          * ProjectCreate
@@ -980,7 +1051,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "lint" | "sim";
+            kind: "lint" | "sim" | "fpga";
         };
         /**
          * ProjectRunRead
@@ -1021,6 +1092,7 @@ export interface components {
             error: string | null;
             lint: components["schemas"]["LintResult"] | null;
             sim: components["schemas"]["SimResult"] | null;
+            fpga: components["schemas"]["FpgaResult"] | null;
         };
         /**
          * ProjectRunSummary

@@ -1,0 +1,4 @@
+==> Synthesize
+/work/project/src/blinky.v:7: ERROR: syntax error, unexpected TOK_REG, expecting ',' or ';' or '=' or '['
+<== Synthesize: failed (0.04 s)
+status: failed

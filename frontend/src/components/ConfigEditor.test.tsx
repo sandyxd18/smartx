@@ -89,6 +89,20 @@ describe("ConfigEditor", () => {
     expect(props.settleText).toHaveBeenCalled();
   });
 
+  it("keeps the fpga section, which the form does not edit", async () => {
+    const fpga = { board: "tang-nano-9k", constraints: "constraints/tang-nano-9k.cst" };
+    const sent: ProjectConfig[] = [];
+    setup({
+      [`POST ${BASE}/check`]: () => read({ config: { ...CONFIG, fpga } }),
+      [`PUT ${BASE}`]: recordPuts(sent),
+    });
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Verilator" }));
+
+    await waitFor(() => expect(sent.at(-1)?.simulator).toBe("verilator"), { timeout: 3000 });
+    expect(sent.at(-1)?.fpga).toEqual(fpga);
+  });
+
   it("turns numeric parameter values into numbers and keeps the rest as text", async () => {
     const sent: ProjectConfig[] = [];
     setup({ [`PUT ${BASE}`]: recordPuts(sent) });

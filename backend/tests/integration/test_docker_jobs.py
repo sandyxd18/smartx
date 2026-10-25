@@ -454,3 +454,108 @@ async def test_board_profile_builds_blinky(
     assert clock["achieved"] > clock["constraint"]
     for types in board.resources.values():
         assert all(t in report["utilization"] for t in types), types
+
+
+BLINKY = Path(__file__).parents[1] / "fixtures" / "projects" / "blinky"
+FPGA_PARAMS = {
+    "top": "blinky",
+    "sources": ["src/blinky.v"],
+    "board": "tang-nano-9k",
+    "constraints": "constraints/tang-nano-9k.cst",
+    "freq_mhz": 27,
+}
+
+
+async def run_fpga(settings: Settings, engine: Engine, files: dict[str, str], **params: Any) -> Run:
+    run_id = new_run(engine, "fpga", {**FPGA_PARAMS, **params})
+    write_snapshot(settings.runs_dir / run_id / "project", files)
+    async with asyncio.timeout(180):
+        await make_queue(settings, engine).submit(run_id)
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    return run
+
+
+async def test_fpga_blinky_builds_a_bitstream(docker_settings: Settings, engine: Engine) -> None:
+    run = await run_fpga(docker_settings, engine, project_files(BLINKY))
+
+    result = run.result
+    assert result is not None
+    assert result["status"] == "ok", result
+    assert [(s["id"], s["status"]) for s in result["stages"]] == [
+        ("synth", "ok"),
+        ("pnr", "ok"),
+        ("pack", "ok"),
+    ]
+    run_dir = docker_settings.runs_dir / run.id
+    assert result["bitstream_url"] == f"/api/runs/{run.id}/files/build/bitstream.fs"
+    assert (run_dir / "build" / "bitstream.fs").stat().st_size > 0
+    assert result["versions"]["yosys"].startswith("Yosys ")
+    assert "nextpnr" in result["versions"]["nextpnr"]
+    report = json.loads((run_dir / "build" / "report.json").read_text(encoding="utf-8"))
+    assert report["fmax"]  # the report the next task parses
+    assert (run_dir / "build" / "stat.json").is_file()
+    log = (run_dir / "run.log").read_text(encoding="utf-8")
+    assert "==> Synthesize" in log and "==> Pack" in log
+    assert "Numpy" not in log  # Apicula's start-up warnings are silenced
+
+
+async def test_fpga_parameters_and_defines_reach_yosys(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    """Without W = 6 the LED bus has pins the template does not pin (PnR fails), and
+    without ON the source does not parse (synthesis fails): both must reach Yosys."""
+    design = "".join(
+        [
+            "module blinky #(parameter W = 8) (input wire clk, output wire [W-1:0] led);\n",
+            "`ifndef ON\n  this is not verilog\n`endif\n",
+            "  assign led = {W{1'b1}};\nendmodule\n",
+        ]
+    )
+    files = {
+        "src/blinky.v": design,
+        "constraints/tang-nano-9k.cst": project_files(BLINKY)["constraints/tang-nano-9k.cst"],
+    }
+
+    built = await run_fpga(docker_settings, engine, files, parameters={"W": 6}, defines={"ON": 1})
+    no_define = await run_fpga(docker_settings, engine, files, parameters={"W": 6})
+    no_param = await run_fpga(docker_settings, engine, files, defines={"ON": 1})
+
+    assert built.result is not None and built.result["status"] == "ok", built.result
+    assert no_define.result is not None and no_define.result["stages"][0]["status"] == "failed"
+    assert no_param.result is not None and "Unconstrained IO" in no_param.result["error"]
+
+
+async def test_fpga_syntax_error_fails_synthesis_with_a_line(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    files = project_files(BLINKY)
+    files["src/blinky.v"] = files["src/blinky.v"].replace("count = 0;", "count")
+
+    run = await run_fpga(docker_settings, engine, files)
+
+    result = run.result
+    assert result is not None
+    assert result["status"] == "failed"
+    assert [s["status"] for s in result["stages"]] == ["failed", "skipped", "skipped"]
+    [diag] = result["diagnostics"]
+    assert diag["file"] == "src/blinky.v" and diag["line"] == 7
+    assert "syntax error" in diag["message"]
+    assert result["bitstream_url"] is None
+
+
+async def test_fpga_unconstrained_pin_fails_place_and_route(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    files = project_files(BLINKY)
+    cst = files["constraints/tang-nano-9k.cst"]
+    files["constraints/tang-nano-9k.cst"] = cst.replace('IO_LOC "led[5]" 16;', "")
+
+    run = await run_fpga(docker_settings, engine, files)
+
+    result = run.result
+    assert result is not None
+    assert [s["status"] for s in result["stages"]] == ["ok", "failed", "skipped"]
+    assert "Unconstrained IO" in result["error"]
+    assert result["stages"][1]["log_url"].endswith("/build/nextpnr.log")

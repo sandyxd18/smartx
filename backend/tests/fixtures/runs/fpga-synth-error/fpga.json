@@ -1,0 +1,67 @@
+{
+  "board": "tang-nano-9k",
+  "top": "blinky",
+  "freq_mhz": 27.0,
+  "bitstream_file": "bitstream.fs",
+  "stages": [
+    {
+      "id": "synth",
+      "title": "Synthesize",
+      "command": [
+        "yosys",
+        "-q",
+        "-l",
+        "yosys.log",
+        "-s",
+        "synth.ys"
+      ]
+    },
+    {
+      "id": "pnr",
+      "title": "Place & Route",
+      "command": [
+        "nextpnr-himbaechel",
+        "--json",
+        "netlist.json",
+        "--device",
+        "GW1NR-LV9QN88PC6/I5",
+        "--vopt",
+        "family=GW1N-9C",
+        "--vopt",
+        "cst=/work/project/constraints/tang-nano-9k.cst",
+        "--write",
+        "pnr.json",
+        "--freq",
+        "27",
+        "--report",
+        "report.json",
+        "-l",
+        "nextpnr.log",
+        "-q",
+        "--timing-allow-fail"
+      ]
+    },
+    {
+      "id": "pack",
+      "title": "Pack",
+      "command": [
+        "gowin_pack",
+        "-d",
+        "GW1N-9C",
+        "-o",
+        "bitstream.fs",
+        "pnr.json"
+      ]
+    }
+  ],
+  "versions": {
+    "yosys": [
+      "yosys",
+      "-V"
+    ],
+    "nextpnr": [
+      "nextpnr-himbaechel",
+      "--version"
+    ]
+  }
+}

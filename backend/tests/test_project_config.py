@@ -179,3 +179,68 @@ class TestAnalyze:
         assert result.config is None
         assert result.sources == []
         assert all(p.severity == "error" for p in result.problems)
+
+
+FPGA = """\
+top: blinky
+sources: [src/blinky.v]
+fpga:
+  board: tang-nano-9k
+  constraints: constraints/tang-nano-9k.cst
+  freq_mhz: 27
+"""
+
+
+class TestFpga:
+    def test_section_is_optional_and_parsed(self) -> None:
+        config, problems = parse_config(FPGA)
+
+        assert problems == []
+        assert config is not None and config.fpga is not None
+        assert config.fpga.board == "tang-nano-9k"
+        assert config.fpga.freq_mhz == 27
+        assert parse_config("top: x\n")[0].fpga is None  # type: ignore[union-attr]
+
+    def test_freq_defaults_to_the_board_clock(self) -> None:
+        config, _ = parse_config(FPGA.replace("  freq_mhz: 27\n", ""))
+        assert config is not None and config.fpga is not None
+        assert config.fpga.freq_mhz is None
+
+    @pytest.mark.parametrize(
+        ("old", "new", "line", "message"),
+        [
+            ("board: tang-nano-9k", "board: Tang Nano", 4, "fpga.board: id board"),
+            ("freq_mhz: 27", "freq_mhz: 27\n  warna: biru", 7, "fpga.warna: tidak dikenal"),
+            ("freq_mhz: 27", "freq_mhz: 0", 6, "fpga.freq_mhz: harus angka MHz"),
+            ("freq_mhz: 27", "freq_mhz: cepat", 6, "fpga.freq_mhz: harus angka MHz"),
+            ("constraints: constraints/", "constraints: ../", 5, "fpga.constraints:"),
+        ],
+    )
+    def test_invalid_section(self, old: str, new: str, line: int, message: str) -> None:
+        [(got_line, got)] = errors(FPGA.replace(old, new))
+        assert got.startswith(message), got
+        assert got_line == line
+
+    def test_dump_keeps_the_section(self) -> None:
+        config, _ = parse_config(FPGA)
+        assert config is not None
+
+        again, problems = parse_config(dump_config(config))
+
+        assert problems == [] and again == config
+        without_freq, _ = parse_config(FPGA.replace("  freq_mhz: 27\n", ""))
+        assert without_freq is not None
+        assert "freq_mhz" not in dump_config(without_freq)
+
+    def test_analyze_warns_about_board_and_constraints(self) -> None:
+        files = {"smartx.yaml": FPGA, "src/blinky.v": "module blinky; endmodule\n"}
+
+        problems = analyze(FPGA, files, boards={"lain"}).problems
+
+        assert [(p.line, p.message) for p in problems if p.line in (4, 5)] == [
+            (4, "Board 'tang-nano-9k' tidak dikenal (yang tersedia: lain)."),
+            (5, "File constraint 'constraints/tang-nano-9k.cst' tidak ada di proyek."),
+        ]
+        files["constraints/tang-nano-9k.cst"] = ""
+        problems = analyze(FPGA, files, boards={"tang-nano-9k"}).problems
+        assert [p.line for p in problems if p.line in (4, 5)] == []
