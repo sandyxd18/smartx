@@ -1,7 +1,7 @@
 """JobRunner backed by the Docker daemon. All container hardening lives here."""
 
 import asyncio
-import contextlib
+import hashlib
 import os
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
@@ -15,12 +15,26 @@ from app.jobs.runner import ContainerSpec, JobClass, JobHandle, JobRunner, LineS
 from app.paths import safe_join
 
 RUN_LABEL = "smartx.run_id"
+# Which SmartX installation started the container. Orphan cleanup only touches its own,
+# so a dev backend and the test suite sharing one Docker daemon leave each other alone.
+INSTANCE_LABEL = "smartx.instance"
 
 ClientFactory = Callable[[float | None], Any]
 
 
 def _default_client(timeout: float | None) -> Any:
     return docker.from_env(timeout=timeout)
+
+
+def instance_id(settings: Settings) -> str:
+    """Stable id of this installation, derived from where its data lives on the host."""
+    where = settings.host_data_dir or str(settings.data_dir.resolve())
+    return hashlib.sha256(where.encode()).hexdigest()[:16]
+
+
+def _already_gone(exc: APIError) -> bool:
+    # 404: removed; 409: "removal already in progress" (someone else is removing it).
+    return isinstance(exc, NotFound) or exc.status_code == 409
 
 
 # The 'smartx' user baked into the toolchain image.
@@ -112,7 +126,7 @@ class DockerRunner(JobRunner):
             "security_opt": ["no-new-privileges"],
             "working_dir": "/work",
             "volumes": volumes,
-            "labels": {RUN_LABEL: run_id},
+            "labels": {RUN_LABEL: run_id, INSTANCE_LABEL: instance_id(s)},
         }
 
     async def start(self, run_id: str, run_dir: Path, spec: ContainerSpec) -> JobHandle:
@@ -161,16 +175,26 @@ class DockerRunner(JobRunner):
 
     async def cleanup(self, handle: JobHandle) -> None:
         def _remove() -> None:
-            with contextlib.suppress(NotFound):
+            try:
                 self._client().containers.get(handle.container_id).remove(force=True)
+            except APIError as exc:
+                if not _already_gone(exc):
+                    raise
 
         await asyncio.to_thread(_remove)
 
     async def remove_orphans(self) -> int:
         def _remove_all() -> int:
-            leftovers = self._client().containers.list(all=True, filters={"label": RUN_LABEL})
+            mine = [RUN_LABEL, f"{INSTANCE_LABEL}={instance_id(self._settings)}"]
+            leftovers = self._client().containers.list(all=True, filters={"label": mine})
+            removed = 0
             for container in leftovers:
-                container.remove(force=True)
-            return len(leftovers)
+                try:
+                    container.remove(force=True)
+                    removed += 1
+                except APIError as exc:
+                    if not _already_gone(exc):
+                        raise
+            return removed
 
         return await asyncio.to_thread(_remove_all)

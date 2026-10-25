@@ -1,14 +1,15 @@
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from docker.errors import NotFound
+from docker.errors import APIError, NotFound
 from pydantic import ValidationError
 
 from app.config import Settings
-from app.jobs.docker_runner import DockerRunner, default_job_user, host_path
+from app.jobs.docker_runner import DockerRunner, default_job_user, host_path, instance_id
 from app.jobs.runner import ContainerSpec, JobClass, JobHandle, LineSplitter
 
 
@@ -24,6 +25,7 @@ class FakeContainer:
         self.exit_code = exit_code
         self.killed = False
         self.removed = False
+        self.remove_error: Exception | None = None
 
     def logs(self, **kwargs: Any) -> Iterator[bytes]:
         assert kwargs == {"stream": True, "follow": True, "stdout": True, "stderr": True}
@@ -37,6 +39,8 @@ class FakeContainer:
 
     def remove(self, force: bool = False) -> None:
         assert force
+        if self.remove_error is not None:
+            raise self.remove_error
         self.removed = True
 
 
@@ -108,7 +112,7 @@ async def test_start_applies_all_limits(settings: Settings, client: FakeClient) 
     assert kw["cap_drop"] == ["ALL"]
     assert kw["security_opt"] == ["no-new-privileges"]
     assert kw["working_dir"] == "/work"
-    assert kw["labels"] == {"smartx.run_id": "r1"}
+    assert kw["labels"] == {"smartx.run_id": "r1", "smartx.instance": instance_id(settings)}
     assert kw["volumes"] == {
         str(rd): {"bind": "/work", "mode": "rw"},
         str(settings.content_dir): {"bind": "/content", "mode": "ro"},
@@ -210,11 +214,62 @@ async def test_stream_wait_kill_cleanup(settings: Settings, container: FakeConta
     await runner.cleanup(handle)
 
 
-async def test_remove_orphans(settings: Settings, client: FakeClient) -> None:
+def conflict() -> APIError:
+    return APIError("409", response=SimpleNamespace(status_code=409))  # type: ignore[arg-type]
+
+
+async def test_cleanup_tolerates_a_removal_already_in_progress(
+    settings: Settings, container: FakeContainer
+) -> None:
+    # Another cleanup (e.g. a restarting backend) got there first: the run still succeeded.
+    runner = make_runner(settings, FakeClient(container))
+    handle = await runner.start("r1", run_dir(settings), ContainerSpec(command=["true"]))
+    container.remove_error = conflict()
+
+    await runner.cleanup(handle)
+
+
+async def test_cleanup_reports_real_docker_errors(
+    settings: Settings, container: FakeContainer
+) -> None:
+    runner = make_runner(settings, FakeClient(container))
+    handle = await runner.start("r1", run_dir(settings), ContainerSpec(command=["true"]))
+    container.remove_error = APIError("500", response=SimpleNamespace(status_code=500))  # type: ignore[arg-type]
+
+    with pytest.raises(APIError):
+        await runner.cleanup(handle)
+
+
+async def test_remove_orphans_only_touches_this_instance(
+    settings: Settings, client: FakeClient
+) -> None:
     runner = make_runner(settings, client)
     assert await runner.remove_orphans() == 1
-    assert client.containers.list_kwargs == {"all": True, "filters": {"label": "smartx.run_id"}}
+    assert client.containers.list_kwargs == {
+        "all": True,
+        "filters": {"label": ["smartx.run_id", f"smartx.instance={instance_id(settings)}"]},
+    }
     assert client.containers.container.removed
+
+
+@pytest.mark.parametrize("error", [NotFound("gone"), conflict()])
+async def test_remove_orphans_skips_containers_already_going(
+    settings: Settings, client: FakeClient, error: Exception
+) -> None:
+    client.containers.container.remove_error = error
+
+    assert await make_runner(settings, client).remove_orphans() == 0
+
+
+def test_instance_id_follows_the_data_folder(tmp_path: Path) -> None:
+    a = Settings(_env_file=None, data_dir=tmp_path / "a")
+    b = Settings(_env_file=None, data_dir=tmp_path / "b")
+    assert instance_id(a) == instance_id(Settings(_env_file=None, data_dir=tmp_path / "a"))
+    assert instance_id(a) != instance_id(b)
+    # In compose the data folder is /data inside the backend; the host path tells instances apart.
+    c1 = Settings(_env_file=None, data_dir=Path("/data"), host_data_dir="/home/x/one/data")
+    c2 = Settings(_env_file=None, data_dir=Path("/data"), host_data_dir="/home/x/two/data")
+    assert instance_id(c1) != instance_id(c2)
 
 
 class TestJobUser:

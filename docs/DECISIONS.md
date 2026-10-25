@@ -164,3 +164,9 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - Monaco menggarisbawahi kata di kolom yang ditunjuk Verilator, bukan seluruh baris. Tab Tests menampilkan daftar "Peringatan Verilator".
 - `check_content` sekarang juga mewajibkan `solution.v` bebas warning lint, karena solusi resmi adalah contoh yang ditiru pengguna. Ke-23 solusi yang ada sudah bersih. Aturan ini dibuktikan dengan solusi yang diberi sinyal tak terpakai: soal itu ditolak. Catatan: secara bawaan, Verilator mengabaikan sinyal yang namanya mengandung `unused`.
 - Diuji di browser dengan Docker asli: starter `pitfall-latch` menampilkan warning LATCH di baris 10, dan kata `always` digarisbawahi. Waktu dari klik Run sampai hasil 2,7 detik.
+
+## D29. Pembersihan container per instalasi (temuan review Fase 1)
+- Saat review, satu test Docker (`test_sandbox_restrictions`) gagal. Penyebabnya, backend lain yang baru menyala menjalankan pemulihan startup dan menghapus **semua** container berlabel `smartx.run_id` di Docker, termasuk container test yang sedang berjalan. Ketika test itu lalu menghapus container miliknya sendiri, Docker menjawab `409 removal already in progress`, dan run yang sebenarnya sukses tercatat `failed`.
+- Perbaikan 1: setiap container job diberi label `smartx.instance`, yaitu 16 karakter pertama SHA-256 dari lokasi data di host (`SMARTX_HOST_DATA_DIR` kalau ada, kalau tidak `data_dir` absolut). `remove_orphans` hanya menghapus container dengan instance yang sama. Dengan begitu `make dev`, compose, dan `make check` bisa memakai satu Docker tanpa saling mengganggu.
+- Perbaikan 2: `cleanup` dan `remove_orphans` menganggap 404 (sudah terhapus) dan 409 (sedang dihapus pihak lain) sebagai berhasil. Error Docker lain tetap dilaporkan.
+- Akibatnya, container sisa dari versi sebelum label ini tidak lagi dibersihkan otomatis. Kalau ada, hapus sekali dengan `docker rm -f $(docker ps -aq --filter label=smartx.run_id)`.
