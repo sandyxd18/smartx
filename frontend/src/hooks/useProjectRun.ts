@@ -62,8 +62,19 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
     [pendingId, beforeStart, projectId],
   );
 
+  /** Show a finished run from the history (ignored while a run is going). */
+  const show = useCallback(
+    (past: ProjectRun) => {
+      if (pendingId !== null) return;
+      setError(null);
+      setRun(past);
+    },
+    [pendingId],
+  );
+
   return {
     run,
+    show,
     running: pendingId !== null,
     status: pendingId !== null ? (events.status ?? "queued") : (run?.status ?? null),
     /** Log lines streamed while the run is going. */
@@ -73,7 +84,7 @@ export function useProjectRun(projectId: number, beforeStart: () => Promise<void
   };
 }
 
-export type ProjectRunState = Omit<ReturnType<typeof useProjectRun>, "start">;
+export type ProjectRunState = Omit<ReturnType<typeof useProjectRun>, "start" | "show">;
 
 /** Lint findings plus the compile errors of the last simulation. */
 export function projectProblems(lint: ProjectRunState, sim: ProjectRunState): ProjectDiagnostic[] {

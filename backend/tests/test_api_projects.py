@@ -1,12 +1,16 @@
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlmodel import Session
 
 from app.config import REPO_ROOT, Settings
 from app.jobs.fake_runner import FakeJob, FakeRunner
+from app.main import create_app
 from app.models import Run, RunStatus
 from app.projects import tree
 from app.projects.tree import MAX_ENTRIES, MAX_FILE_CHARS
@@ -14,6 +18,11 @@ from tests.helpers import TERMINAL, wait_for_status
 
 COUNTER = REPO_ROOT / "content" / "exercises" / "counter-4bit"
 RUN_FIXTURES = Path(__file__).parent / "fixtures" / "runs"
+
+
+def make_client(settings: Settings, runner: FakeRunner) -> Iterator[TestClient]:
+    with TestClient(create_app(settings, runner=runner)) as client:
+        yield client
 
 
 def create(client: TestClient, **body: Any) -> dict[str, Any]:
@@ -603,3 +612,145 @@ class TestSimRuns:
 
         assert r.status_code == 422
         assert "test/test_counter.py" in r.json()["detail"]
+
+
+class TestRunHistory:
+    def add_run(self, client: TestClient, pid: int, **fields: Any) -> str:
+        engine = client.app.state.engine  # type: ignore[attr-defined]
+        with Session(engine) as s:
+            run = Run(project_id=pid, **fields)
+            s.add(run)
+            s.commit()
+            return run.id
+
+    def test_lists_newest_first_with_a_summary(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        t0 = datetime(2026, 10, 25, 10, 0, tzinfo=UTC)
+        sim_pass = {
+            "status": "pass",
+            "top": "counter",
+            "simulator": "verilator",
+            "tests": [{"name": "a", "passed": True}, {"name": "b", "passed": True}],
+        }
+        lint = {"errors": 1, "warnings": 2, "diagnostics": []}
+        a = self.add_run(
+            client,
+            pid,
+            kind="lint",
+            status=RunStatus.succeeded,
+            result=lint,
+            created_at=t0,
+            started_at=t0,
+            finished_at=t0 + timedelta(seconds=1.5),
+        )
+        b = self.add_run(
+            client,
+            pid,
+            kind="sim",
+            status=RunStatus.succeeded,
+            result=sim_pass,
+            params={"simulator": "verilator"},
+            created_at=t0 + timedelta(minutes=1),
+            started_at=t0 + timedelta(minutes=1),
+            finished_at=t0 + timedelta(minutes=1, seconds=12),
+        )
+        c = self.add_run(
+            client,
+            pid,
+            kind="sim",
+            status=RunStatus.timeout,
+            error="Melebihi batas waktu.",
+            params={"simulator": "icarus"},
+            created_at=t0 + timedelta(minutes=2),
+        )
+
+        runs = client.get(f"/api/projects/{pid}/runs").json()
+
+        assert [r["id"] for r in runs] == [c, b, a]
+        assert runs[0]["summary"] == "Melebihi batas waktu."
+        assert runs[0]["simulator"] == "icarus"
+        assert runs[0]["duration_s"] is None
+        assert runs[1]["summary"] == "2/2 test lulus"
+        assert runs[1]["duration_s"] == 12
+        assert runs[2]["summary"] == "1 error, 2 warning"
+        assert runs[2]["simulator"] is None
+
+    @pytest.mark.parametrize(
+        ("result", "summary"),
+        [
+            (
+                {
+                    "status": "fail",
+                    "top": "t",
+                    "simulator": "icarus",
+                    "tests": [{"name": "a", "passed": False}, {"name": "b", "passed": True}],
+                },
+                "1 dari 2 test gagal",
+            ),
+            (
+                {"status": "compile_error", "top": "t", "simulator": "icarus", "tests": []},
+                "Error kompilasi",
+            ),
+            (
+                {"status": "error", "top": "t", "simulator": "icarus", "tests": []},
+                "Tidak ada hasil test",
+            ),
+        ],
+    )
+    def test_sim_summaries(self, client: TestClient, result: dict[str, Any], summary: str) -> None:
+        pid = create(client)["id"]
+        self.add_run(client, pid, kind="sim", status=RunStatus.succeeded, result=result)
+        assert client.get(f"/api/projects/{pid}/runs").json()[0]["summary"] == summary
+
+    def test_only_this_project_and_a_limit(self, client: TestClient) -> None:
+        a = create(client)["id"]
+        b = create(client)["id"]
+        for _ in range(3):
+            self.add_run(client, a, kind="lint", status=RunStatus.succeeded)
+        self.add_run(client, b, kind="lint", status=RunStatus.succeeded)
+
+        assert len(client.get(f"/api/projects/{a}/runs").json()) == 3
+        assert len(client.get(f"/api/projects/{a}/runs?limit=2").json()) == 2
+        assert client.get(f"/api/projects/{a}/runs?limit=0").status_code == 422
+        assert client.get("/api/projects/999/runs").status_code == 404
+
+
+def test_history_keeps_the_newest_finished_runs(settings: Settings, runner: FakeRunner) -> None:
+    """Starting a run prunes finished runs beyond PROJECT_RUN_HISTORY (>= 50)."""
+    settings = settings.model_copy(update={"project_run_history": 50})
+    for client in make_client(settings, runner):
+        pid = create(client, template="cocotb-basic")["id"]
+        engine = client.app.state.engine  # type: ignore[attr-defined]
+        t0 = datetime(2026, 1, 1, tzinfo=UTC)
+        with Session(engine) as s:
+            old = [
+                Run(
+                    project_id=pid,
+                    kind="lint",
+                    status=RunStatus.succeeded,
+                    created_at=t0 + timedelta(minutes=i),
+                )
+                for i in range(60)
+            ]
+            active = Run(project_id=pid, kind="sim", status=RunStatus.running, created_at=t0)
+            s.add_all([*old, active])
+            s.commit()
+            old_ids = [r.id for r in old]
+            active_id = active.id
+        for run_id in old_ids[:3]:
+            (settings.runs_dir / run_id).mkdir(parents=True)
+
+        new_id = client.post(f"/api/projects/{pid}/runs", json={"kind": "lint"}).json()["id"]
+
+        listed = [r["id"] for r in client.get(f"/api/projects/{pid}/runs?limit=200").json()]
+        # The new run + the 49 newest finished ones; the running one is never pruned.
+        assert len(listed) == 51
+        assert listed[0] == new_id and active_id in listed
+        assert set(old_ids[-49:]) <= set(listed)
+        assert not set(old_ids[:11]) & set(listed)
+        assert not (settings.runs_dir / old_ids[0]).exists()
+
+
+def test_history_setting_has_a_floor() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, project_run_history=49)

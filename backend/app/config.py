@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     solution_unlock_attempts: int = Field(
         default=5, ge=1, validation_alias="SOLUTION_UNLOCK_ATTEMPTS"
     )
+    # Runs kept per project; older finished runs (and their folders) are deleted when a
+    # new run starts. At least 50 (phase 2 criterion).
+    project_run_history: int = Field(default=100, ge=50, validation_alias="PROJECT_RUN_HISTORY")
     # Re-read exercise.yaml files when they change (cheap stat check on each access).
     content_auto_reload: bool = Field(default=True, validation_alias="SMARTX_CONTENT_RELOAD")
     tools_dir: Path = Field(default=Path("tools"), validation_alias="SMARTX_TOOLS_DIR")

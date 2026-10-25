@@ -10,6 +10,7 @@ import type {
   ProjectDetail,
   ProjectEntry,
   ProjectRun,
+  ProjectRunSummary,
 } from "../api/client";
 import { routes } from "../routes";
 import { FakeEventSource } from "../test/fakeEventSource";
@@ -564,6 +565,95 @@ describe("ProjectPage", () => {
       const source = await simulate();
       source.emit("status", { status: "timeout" });
       expect(await screen.findByText(/Melebihi batas waktu 120 detik/)).toBeInTheDocument();
+    });
+  });
+
+  describe("riwayat", () => {
+    const HISTORY: ProjectRunSummary[] = [
+      {
+        id: "s2",
+        kind: "sim",
+        status: "succeeded",
+        created_at: "2026-10-25T10:05:00Z",
+        duration_s: 12.4,
+        summary: "1 dari 3 test gagal",
+        simulator: "verilator",
+      },
+      {
+        id: "l1",
+        kind: "lint",
+        status: "succeeded",
+        created_at: "2026-10-25T10:00:00Z",
+        duration_s: 0.9,
+        summary: "0 error, 2 warning",
+        simulator: null,
+      },
+    ];
+
+    function oldSim(): ProjectRun {
+      return {
+        id: "s2",
+        project_id: 1,
+        kind: "sim",
+        status: "succeeded",
+        params: {},
+        result: null,
+        tool_versions: null,
+        created_at: "2026-10-25T10:05:00Z",
+        started_at: null,
+        finished_at: null,
+        exit_code: 1,
+        error: null,
+        lint: null,
+        sim: {
+          status: "fail",
+          top: "fifo",
+          simulator: "verilator",
+          simulator_version: "Verilator 5.053",
+          tests: [
+            { module: "test_fifo", name: "fills", passed: false, message: "baca ke-2 salah", sim_time_ns: 1 },
+          ],
+          diagnostics: [],
+          log: "",
+          wave_file: "build/dump.fst",
+          wave_url: "/api/runs/s2/files/build/dump.fst",
+        },
+      };
+    }
+
+    it("lists past runs and opens an old result with its waveform", async () => {
+      renderProject({
+        [`GET ${BASE}/runs`]: () => HISTORY,
+        [`GET ${BASE}/runs/s2`]: () => oldSim(),
+        "GET /surfer/SURFER_VERSION": () => new Response("v0.7.0"),
+      });
+
+      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+
+      const list = await screen.findByRole("list", { name: "Riwayat run" });
+      const rows = within(list).getAllByRole("listitem");
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveTextContent("Simulasi");
+      expect(rows[0]).toHaveTextContent("Verilator");
+      expect(rows[0]).toHaveTextContent("1 dari 3 test gagal");
+      expect(rows[0]).toHaveTextContent("12,4 dtk");
+      expect(rows[1]).toHaveTextContent("Lint");
+
+      await userEvent.click(within(rows[0]!).getByRole("button"));
+
+      expect(await screen.findByText("baca ke-2 salah")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Tests" })).toHaveAttribute("aria-selected", "true");
+      await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
+      expect(screen.getByRole("link", { name: /Unduh/ })).toHaveAttribute(
+        "href",
+        "/api/runs/s2/files/build/dump.fst",
+      );
+    });
+
+    it("says when there is no history yet", async () => {
+      renderProject({ [`GET ${BASE}/runs`]: () => [] });
+      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+      expect(await screen.findByText(/Belum ada run/)).toBeInTheDocument();
     });
   });
 });

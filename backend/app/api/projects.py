@@ -4,7 +4,7 @@ import shutil
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 from sqlmodel import Session, col, func, select
 
@@ -20,6 +20,7 @@ from app.models import File, Project, ProjectKind, Run, RunStatus
 from app.progress import load_progress
 from app.projects import tree
 from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analyze, dump_config
+from app.projects.history import prune_runs, summarize
 from app.projects.paths import InvalidProjectPath
 from app.projects.snapshot import write_snapshot
 from app.projects.templates import exercise_files, load_templates
@@ -394,7 +395,11 @@ def _unprocessable(message: str) -> HTTPException:
 
 @router.post("/projects/{project_id}/runs", status_code=status.HTTP_201_CREATED)
 async def start_project_run(
-    project_id: int, body: ProjectRunCreate, session: SessionDep, queue: QueueDep
+    project_id: int,
+    body: ProjectRunCreate,
+    session: SessionDep,
+    settings: SettingsDep,
+    queue: QueueDep,
 ) -> ProjectRunRead:
     """Run a job on the project as it is now: its files are copied into the run folder."""
     _get_project(session, project_id)
@@ -434,6 +439,12 @@ async def start_project_run(
     session.refresh(run)
     write_snapshot(queue.run_dir(run.id) / PROJECT_DIR, files)
     queue.submit(run.id)
+
+    pruned = prune_runs(session, project_id, settings.project_run_history)
+    session.commit()
+    for run_id in pruned:  # run ids are random hex, never user input
+        shutil.rmtree(settings.runs_dir / run_id, ignore_errors=True)
+    session.refresh(run)
     return _project_run(run)
 
 
@@ -444,3 +455,50 @@ def get_project_run(project_id: int, run_id: str, session: SessionDep) -> Projec
     if run is None or run.project_id != project_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Run tidak ditemukan.")
     return _project_run(run)
+
+
+class ProjectRunSummary(BaseModel):
+    """A row of the run history."""
+
+    id: str
+    kind: str
+    status: RunStatus
+    created_at: datetime
+    duration_s: float | None  # from start to finish; None until finished
+    summary: str | None
+    simulator: str | None  # sim runs only
+
+    @field_validator("created_at")
+    @classmethod
+    def _assume_utc(cls, value: datetime) -> datetime:
+        return _utc(value)
+
+
+@router.get("/projects/{project_id}/runs")
+def list_project_runs(
+    project_id: int,
+    session: SessionDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[ProjectRunSummary]:
+    """Newest first."""
+    _get_project(session, project_id)
+    runs = session.exec(
+        select(Run)
+        .where(Run.project_id == project_id)
+        .order_by(col(Run.created_at).desc(), col(Run.id).desc())
+        .limit(limit)
+    )
+    return [
+        ProjectRunSummary(
+            id=run.id,
+            kind=run.kind,
+            status=run.status,
+            created_at=run.created_at,
+            duration_s=(run.finished_at - run.started_at).total_seconds()
+            if run.started_at and run.finished_at
+            else None,
+            summary=summarize(run),
+            simulator=run.params.get("simulator") if run.kind == "sim" else None,
+        )
+        for run in runs
+    ]

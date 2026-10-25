@@ -412,7 +412,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Project Runs
+         * @description Newest first.
+         */
+        get: operations["list_project_runs_api_projects__project_id__runs_get"];
         put?: never;
         /**
          * Start Project Run
@@ -903,6 +907,28 @@ export interface components {
             error: string | null;
             lint: components["schemas"]["LintResult"] | null;
             sim: components["schemas"]["SimResult"] | null;
+        };
+        /**
+         * ProjectRunSummary
+         * @description A row of the run history.
+         */
+        ProjectRunSummary: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            status: components["schemas"]["RunStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Duration S */
+            duration_s: number | null;
+            /** Summary */
+            summary: string | null;
+            /** Simulator */
+            simulator: string | null;
         };
         /** ProjectSummary */
         ProjectSummary: {
@@ -1940,6 +1966,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_project_runs_api_projects__project_id__runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRunSummary"][];
                 };
             };
             /** @description Validation Error */

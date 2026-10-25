@@ -148,6 +148,28 @@ function ProjectView({ projectId }: { projectId: number }) {
     [lint, sim, openPath],
   );
 
+  async function openRun(runId: string) {
+    try {
+      const { data, error: apiError, response } = await api.GET(
+        "/api/projects/{project_id}/runs/{run_id}",
+        { params: { path: { project_id: projectId, run_id: runId } } },
+      );
+      if (!data) {
+        setError(apiErrorMessage(apiError, response.status));
+        return;
+      }
+      if (data.kind === "lint") {
+        lint.show(data);
+        setRunTab("problems");
+      } else {
+        sim.show(data);
+        setRunTab("tests");
+      }
+    } catch {
+      setError(UNREACHABLE);
+    }
+  }
+
   async function openProblem(d: ProjectDiagnostic) {
     if (d.file !== openPath) await openFile(d.file);
     setReveal({ line: d.line, column: d.col ?? 1 });
@@ -334,11 +356,13 @@ function ProjectView({ projectId }: { projectId: number }) {
       </div>
 
       <RunPanel
+        projectId={projectId}
         lint={lint}
         sim={sim}
         tab={runTab}
         onTab={setRunTab}
         onOpen={(d) => void openProblem(d)}
+        onOpenRun={(id) => void openRun(id)}
       />
     </section>
   );
