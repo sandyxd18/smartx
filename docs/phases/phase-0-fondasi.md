@@ -4,7 +4,7 @@ Tujuan: kerangka aplikasi berjalan end-to-end untuk satu jenis job sederhana, se
 
 ## Task
 
-1. **Image toolchain**
+1. [x] **Image toolchain**
    - `make pin-toolchain && make toolchain` berhasil.
    - `make tool-versions` mencetak versi yosys, iverilog, verilator, nextpnr-himbaechel, cocotb.
    - `make check-content` hijau di dalam image (soal `counter-4bit` valid).

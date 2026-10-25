@@ -14,6 +14,7 @@ RUN test -n "$OSS_CAD_SUITE_DATE" || (echo "Set OSS_CAD_SUITE_DATE (mis. lewat '
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl xz-utils make git python3 python3-venv \
+        libpython3.12t64 \
     && rm -rf /var/lib/apt/lists/*
 
 # OSS CAD Suite: nama file memakai tanggal tanpa tanda hubung.
@@ -32,6 +33,7 @@ COPY tools/grader/requirements.txt /tmp/req.txt
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tmp/req.txt
 
 # Job berjalan sebagai user non-root; uid disesuaikan saat 'docker run --user'.
-RUN useradd -m -u 1000 smartx || true
+# ubuntu:24.04 sudah punya user 'ubuntu' dengan UID 1000; hapus dulu.
+RUN (userdel -r ubuntu 2>/dev/null || true) && useradd -m -u 1000 smartx
 WORKDIR /work
 CMD ["bash"]

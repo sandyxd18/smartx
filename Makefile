@@ -1,10 +1,24 @@
 # SmartX: perintah utama. Jalankan `make help`.
+# Di Windows, pakai bash dari Git for Windows agar make bisa dipanggil dari
+# PowerShell maupun Git Bash. Path 8.3 menghindari spasi di "Program Files".
+ifeq ($(OS),Windows_NT)
+GIT_BASH ?= C:/Progra~1/Git/bin/bash.exe
+SHELL := $(GIT_BASH)
+# Cegah MSYS mengubah path container (mis. /work) menjadi path Windows.
+export MSYS_NO_PATHCONV := 1
+else
 SHELL := /bin/bash
+endif
 -include .env
 export
 
 TOOLCHAIN_IMAGE ?= smartx/toolchain:local
+# Di Windows, 'python3' biasanya stub Microsoft Store; pakai 'python'.
+ifeq ($(OS),Windows_NT)
+PY ?= python
+else
 PY ?= python3
+endif
 
 .PHONY: help
 help: ## Tampilkan daftar target

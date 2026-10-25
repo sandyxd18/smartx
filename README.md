@@ -6,9 +6,17 @@ Status: rancangan + fondasi awal. Pengembangan dilakukan bersama Claude Code men
 
 ## Kebutuhan
 
-- Linux (atau WSL2 / macOS dengan Docker Desktop), Docker, GNU Make, Git, Python 3.10+
+- Linux, macOS, atau Windows dengan Docker Desktop; GNU Make, Git, Python 3.10+
 - Node.js 20+ (untuk frontend, mulai Fase 0)
 - Fase 5–6: RAM 12–16 GB, ruang disk kosong ±30 GB
+
+### Windows
+
+Perintah `make` bisa dijalankan dari PowerShell maupun Git Bash. Yang dibutuhkan:
+
+- [Git for Windows](https://git-scm.com/download/win) di lokasi default (`C:\Program Files\Git`). Makefile memakai bash-nya. Kalau Git dipasang di tempat lain, set `GIT_BASH` ke path `bash.exe` tanpa spasi.
+- GNU Make: `winget install ezwinports.make`, lalu buka terminal baru.
+- Docker Desktop dalam keadaan menyala.
 
 ## Mulai
 
