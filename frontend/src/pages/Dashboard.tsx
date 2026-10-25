@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, TERMINAL_STATUSES, type Health } from "../api/client";
+import { httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { StatusBadge } from "../components/StatusBadge";
 import { useRunEvents } from "../hooks/useRunEvents";
 
@@ -7,13 +8,6 @@ type HealthState =
   | { kind: "loading" }
   | { kind: "ok"; health: Health }
   | { kind: "error"; message: string };
-
-/** Explain a non-2xx answer. 502–504 come from the dev proxy when the backend is down. */
-function httpErrorMessage(status: number): string {
-  return status >= 502 && status <= 504
-    ? `Backend tidak bisa dihubungi (HTTP ${status}).`
-    : `Backend menjawab HTTP ${status}.`;
-}
 
 function HealthCard() {
   const [state, setState] = useState<HealthState>({ kind: "loading" });
@@ -31,7 +25,7 @@ function HealthCard() {
         );
       },
       () => {
-        if (!cancelled) setState({ kind: "error", message: "Backend tidak bisa dihubungi." });
+        if (!cancelled) setState({ kind: "error", message: UNREACHABLE });
       },
     );
     return () => {
@@ -95,7 +89,7 @@ function EchoJobCard() {
       if (data) setRunId(data.id);
       else setError(`Gagal membuat run. ${httpErrorMessage(response.status)}`);
     } catch {
-      setError("Backend tidak bisa dihubungi.");
+      setError(UNREACHABLE);
     } finally {
       setBusy(false);
     }

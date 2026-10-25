@@ -115,3 +115,9 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - `POST .../hints/next` membuka hint berikutnya. Kalau semua hint sudah terbuka, endpoint ini tidak mengubah apa pun (tetap 200).
 - Run terakhir sebuah soal dicari lewat `params.exercise_id` (JSON di SQLite), jadi skema tabel tidak berubah dan belum perlu migrasi.
 - Diukur lewat compose (API, belum lewat UI): grade `counter-4bit` butuh 1,0–1,9 detik dari POST sampai status akhir.
+
+## D23. Halaman daftar soal (Fase 1 task 4)
+- Soal dikelompokkan menurut **topik pertama** (`combinational`, `sequential`, `fsm`, `pitfalls` → Kombinasional, Sekuensial, FSM, Jebakan umum), dengan urutan grup mengikuti kurikulum. Di dalam grup, urutannya sama dengan API (step, order, id). Konvensi ini dicatat di CONTENT-FORMAT, bagian "Topik".
+- Label status mengikuti rencana fase: `not_started` = "Belum", `attempted` = "Gagal", `solved` = "Lulus". Jumlah percobaan ditampilkan di sampingnya. Level 1–3 = Dasar, Menengah, Lanjut.
+- Filter (teks, status, level) disimpan di query string (`?q=&status=&level=`), sehingga tetap berlaku setelah refresh dan bisa dibagikan sebagai tautan.
+- `/latihan/:id` sementara menampilkan placeholder sampai halaman soal dibuat di task 5.

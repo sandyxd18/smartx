@@ -20,7 +20,7 @@ id: counter-4bit          # = nama folder, kebab-case
 title: Counter 4-bit dengan enable dan reset sinkron
 step: 1                   # langkah kurikulum 1-6
 level: 1                  # 1 dasar, 2 menengah, 3 lanjut
-topics: [sequential, register, counter]
+topics: [sequential, register, counter]   # topik pertama = grup di daftar soal
 toplevel: counter4        # modul yang diuji
 language: verilog         # verilog | systemverilog
 files: {starter: starter.v, solution: solution.v, test: test_counter4.py, statement: README.md}
@@ -29,6 +29,19 @@ hints: ["...", "..."]     # dibuka berurutan
 order: 120                # opsional, urutan tampil dalam topik
 requires: [dff-basic]     # opsional, soal prasyarat
 ```
+
+### Topik
+
+Halaman daftar soal mengelompokkan soal menurut **topik pertama** di `topics`. Pakai salah satu id ini agar soal masuk grup kurikulum yang benar (urutan grup juga mengikuti tabel ini):
+
+| id | Grup |
+|---|---|
+| `combinational` | Kombinasional |
+| `sequential` | Sekuensial |
+| `fsm` | FSM |
+| `pitfalls` | Jebakan umum |
+
+Topik lain boleh dipakai sebagai topik kedua dan seterusnya (misalnya `mux`, `counter`). Topik pertama di luar tabel tetap tampil, tetapi sebagai grup sendiri di akhir daftar.
 
 ### Aturan testbench
 
