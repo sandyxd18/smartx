@@ -10,6 +10,7 @@ export const TANG: Board = {
   clock_mhz: 27,
   constraints_format: "cst",
   constraints_template: 'IO_LOC "clk" 52;\n',
+  flash_command: ["openFPGALoader", "-b", "tangnano9k"],
 };
 
 /** A build that packed but missed its 300 MHz target (numbers from a real run). */

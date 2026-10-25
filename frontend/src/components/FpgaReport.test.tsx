@@ -93,6 +93,9 @@ describe("FpgaReport", () => {
     const download = screen.getByRole("link", { name: "Unduh bitstream" });
     expect(download).toHaveAttribute("href", MISSED_TIMING.bitstream_url);
     expect(download).toHaveAttribute("download", "blinky-tang-nano-9k.fs");
+    expect(
+      screen.getByText("python tools/flash/smartx-flash --run f1"),
+    ).toBeInTheDocument();
   });
 
   it("keeps the critical path folded when timing is met", () => {

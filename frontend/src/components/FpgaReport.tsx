@@ -129,6 +129,15 @@ export function FpgaReport({ fpga, onOpenSource }: FpgaReportProps) {
           </a>
         )}
       </div>
+      {result.bitstream_url && (
+        <p className="text-slate-600">
+          Ke board (di komputer tempat board tercolok):{" "}
+          <code className="rounded bg-slate-100 px-1 select-all">
+            python tools/flash/smartx-flash --run {run.id}
+          </code>{" "}
+          · tambah <code>--flash</code> agar tetap ada setelah board dicabut.
+        </p>
+      )}
 
       {failed && result.error && (
         <p className="text-red-700">

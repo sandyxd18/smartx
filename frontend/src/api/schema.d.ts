@@ -550,6 +550,8 @@ export interface components {
             constraints_format: string;
             /** Constraints Template */
             constraints_template: string;
+            /** Flash Command */
+            flash_command: string[];
         };
         /** ClockTiming */
         ClockTiming: {

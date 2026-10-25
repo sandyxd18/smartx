@@ -22,6 +22,8 @@ class BoardRead(BaseModel):
     clock_mhz: float
     constraints_format: str  # cst | pcf
     constraints_template: str  # starting point for a project's constraint file
+    # Host command that loads a bitstream (tools/flash/smartx-flash adds the file).
+    flash_command: list[str]
 
 
 @router.get("")
@@ -38,6 +40,7 @@ def list_boards(settings: SettingsDep) -> list[BoardRead]:
             clock_mhz=b.clock.freq_mhz,
             constraints_format=b.constraints.format,
             constraints_template=p.constraints_template,
+            flash_command=[b.flash.binary, *b.flash.args],
         )
         for p in load_boards(settings.content_dir / "boards")
         for b in [p.board]

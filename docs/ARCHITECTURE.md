@@ -58,7 +58,7 @@ smartx/
 │  └─ boards/<id>.yaml       profil board FPGA
 ├─ tools/
 │  ├─ grader/                grade.py, check_content.py (sudah jalan)
-│  └─ flash/smartx-flash    helper flashing di host (Fase 3)
+│  └─ flash/smartx-flash    helper flashing di host (Python stdlib + openFPGALoader; README untuk instalasi)
 └─ data/                     runtime, di-gitignore
 ```
 
@@ -124,7 +124,7 @@ GET  /api/runs/{id}/events                SSE: log, status
 POST /api/runs/{id}/cancel
 GET  /api/runs/{id}/files/{path}          artefak (cegah path traversal!)
 
-GET  /api/boards                          profil board FPGA + template constraint (content/boards/)
+GET  /api/boards                          profil board FPGA + template constraint + perintah flash (content/boards/)
 POST /api/projects/{id}/tapeout/generate
 ```
 

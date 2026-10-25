@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""smartx-flash: muat bitstream dari SmartX ke board FPGA dengan openFPGALoader.
+
+Dijalankan di komputer tempat board tercolok (bukan di container), karena akses USB
+dari Docker tidak andal. Bitstream diambil dari backend SmartX, atau dari file lokal.
+Perintah openFPGALoader untuk setiap board berasal dari profil board (GET /api/boards).
+
+Contoh:
+    python tools/flash/smartx-flash --project 3          build FPGA terakhir proyek 3
+    python tools/flash/smartx-flash --run 0261944555be   run tertentu
+    python tools/flash/smartx-flash --file blinky.fs --board tang-nano-9k
+    python tools/flash/smartx-flash --project 3 --flash  simpan permanen di flash board
+    python tools/flash/smartx-flash --project 3 --dry-run   hanya tampilkan perintahnya
+
+Argumen sesudah "--" diteruskan ke openFPGALoader (misalnya: -- --verbose).
+Tanpa --flash bitstream masuk ke SRAM: cepat, tetapi hilang saat board dicabut.
+
+Kode keluar: kode keluar openFPGALoader, 0 untuk --dry-run, 2 untuk kesalahan
+pemakaian atau backend.
+
+Hanya memakai pustaka standar Python (3.8+), jadi tidak perlu instalasi tambahan.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+DEFAULT_API = "http://127.0.0.1:8000"
+README = "tools/flash/README.md"
+
+
+class FlashError(Exception):
+    """A problem to report to the user (in Indonesian) before anything is flashed."""
+
+
+class Api:
+    def __init__(self, base: str) -> None:
+        self.base = base.rstrip("/")
+
+    def _open(self, path: str) -> Any:
+        url = self.base + urllib.parse.quote(path, safe="/?=&")
+        try:
+            return urllib.request.urlopen(url, timeout=30)
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            if exc.code == 404:
+                raise FlashError(f"Tidak ditemukan di backend: {path}") from exc
+            raise FlashError(f"Backend menjawab HTTP {exc.code} untuk {path}") from exc
+        except (urllib.error.URLError, OSError) as exc:
+            raise FlashError(
+                f"Backend SmartX tidak bisa dihubungi di {self.base}. Jalankan `make dev`, "
+                "atau atur alamatnya dengan --api / SMARTX_API."
+            ) from exc
+
+    def json(self, path: str) -> Any:
+        with self._open(path) as response:
+            return json.load(response)
+
+    def download(self, path: str, target: Path) -> None:
+        with self._open(path) as response, target.open("wb") as out:
+            shutil.copyfileobj(response, out)
+
+
+def board_command(api: Api, board_id: str) -> list[str]:
+    for board in api.json("/api/boards"):
+        if board["id"] == board_id:
+            return list(board["flash_command"])
+    raise FlashError(f"Board '{board_id}' tidak dikenal oleh backend.")
+
+
+def run_build(api: Api, run_id: str) -> dict[str, Any]:
+    """The fpga result of one run, checked to have a bitstream."""
+    run = api.json(f"/api/runs/{run_id}")
+    if run.get("kind") != "fpga":
+        raise FlashError(f"Run {run_id} bukan build FPGA (jenisnya: {run.get('kind')}).")
+    result = run.get("result") or {}
+    if run.get("status") != "succeeded" or not result.get("bitstream_url"):
+        raise FlashError(f"Run {run_id} tidak menghasilkan bitstream.")
+    return result
+
+
+def latest_build(api: Api, project_id: int) -> tuple[str, dict[str, Any]]:
+    """The newest FPGA build of a project that produced a bitstream."""
+    try:
+        rows = api.json(f"/api/projects/{project_id}/runs?limit=200")
+    except FlashError as exc:
+        if "Tidak ditemukan" in str(exc):
+            raise FlashError(f"Proyek {project_id} tidak ditemukan.") from exc
+        raise
+    for row in rows:
+        if row["kind"] != "fpga" or row["status"] != "succeeded":
+            continue
+        run = api.json(f"/api/projects/{project_id}/runs/{row['id']}")
+        build = run.get("fpga") or {}
+        if build.get("bitstream_url"):
+            return row["id"], build
+    raise FlashError(
+        f"Proyek {project_id} belum punya build FPGA yang menghasilkan bitstream. "
+        "Klik Build di halaman proyek dulu."
+    )
+
+
+def flash_command(base: list[str], bitstream: Path, persist: bool, extra: list[str]) -> list[str]:
+    return [*base, *(["-f"] if persist else []), *extra, str(bitstream)]
+
+
+def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
+    extra: list[str] = []
+    if "--" in argv:
+        cut = argv.index("--")
+        argv, extra = argv[:cut], argv[cut + 1 :]
+    ap = argparse.ArgumentParser(
+        prog="smartx-flash", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    source = ap.add_mutually_exclusive_group(required=True)
+    source.add_argument("--project", type=int, help="ambil build FPGA terakhir proyek ini")
+    source.add_argument("--run", help="ambil bitstream dari run ini")
+    source.add_argument("--file", type=Path, help="pakai file bitstream lokal (perlu --board)")
+    ap.add_argument("--board", help="id board, untuk --file (misalnya tang-nano-9k)")
+    ap.add_argument("--flash", action="store_true", help="tulis ke flash board (permanen)")
+    ap.add_argument("--dry-run", action="store_true", help="tampilkan perintah tanpa menjalankannya")
+    ap.add_argument(
+        "--api",
+        default=os.environ.get("SMARTX_API", DEFAULT_API),
+        help=f"alamat backend SmartX (default: SMARTX_API atau {DEFAULT_API})",
+    )
+    args = ap.parse_args(argv)
+    if args.file is not None and not args.board:
+        ap.error("--file perlu --board, misalnya --board tang-nano-9k")
+    return args, extra
+
+
+def main(argv: list[str] | None = None) -> int:
+    args, extra = parse_args(sys.argv[1:] if argv is None else argv)
+    api = Api(args.api)
+    try:
+        with tempfile.TemporaryDirectory(prefix="smartx-flash-") as tmp:
+            if args.file is not None:
+                bitstream = args.file.resolve()
+                if not bitstream.is_file():
+                    raise FlashError(f"File bitstream tidak ada: {args.file}")
+                board_id = args.board
+                build: dict[str, Any] = {}
+            else:
+                if args.run:
+                    run_id, build = args.run, run_build(api, args.run)
+                else:
+                    run_id, build = latest_build(api, args.project)
+                board_id = build["board"]
+                url = build["bitstream_url"]
+                name = f"{build.get('top', 'design')}-{board_id}{Path(url).suffix}"
+                bitstream = Path(tmp) / name
+                api.download(url, bitstream)
+                print(f"Bitstream run {run_id}: {bitstream.stat().st_size} byte")
+            if build.get("timing_met") is False:
+                print(
+                    "Peringatan: build ini tidak mencapai target clock. Desain bisa salah "
+                    "jalan di board; lihat jalur kritis di tab FPGA."
+                )
+
+            command = flash_command(board_command(api, board_id), bitstream, args.flash, extra)
+            print("Perintah:", " ".join(command))
+            if args.dry_run:
+                return 0
+            if shutil.which(command[0]) is None:
+                raise FlashError(
+                    f"{command[0]} tidak ditemukan di PATH. Cara memasangnya ada di {README}."
+                )
+            print("Ke flash board (permanen)…" if args.flash else "Ke SRAM board…", flush=True)
+            return subprocess.run(command).returncode
+    except FlashError as exc:
+        print(f"smartx-flash: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

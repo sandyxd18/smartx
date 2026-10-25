@@ -128,5 +128,6 @@ def test_api_lists_boards_with_template(client: TestClient) -> None:
     assert tang["clock_port"] == "clk" and tang["clock_mhz"] == 27
     assert tang["constraints_format"] == "cst"
     assert 'IO_LOC "clk" 52;' in tang["constraints_template"]
-    # Tool arguments are internal to the fpga job.
+    # Build tool arguments are internal to the fpga job; flashing runs on the host.
     assert "nextpnr" not in tang
+    assert tang["flash_command"] == ["openFPGALoader", "-b", "tangnano9k"]
