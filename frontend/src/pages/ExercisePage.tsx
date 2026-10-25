@@ -11,6 +11,7 @@ import { httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { Markdown } from "../components/Markdown";
+import { WaveView } from "../components/WaveView";
 import { LEVEL_LABELS, STATUS_LABELS } from "../content/labels";
 import { type SaveFn, type SaveStatus, useAutosave } from "../hooks/useAutosave";
 import { useRunEvents } from "../hooks/useRunEvents";
@@ -386,6 +387,18 @@ function ResultPanel(props: {
   const grade = run?.grade ?? null;
   const ids = { tests: useId(), log: useId(), wave: useId() };
 
+  // Once opened, the waveform viewer stays mounted so switching tabs does not reload Surfer.
+  const [waveOpened, setWaveOpened] = useState(tab === "wave");
+  function selectTab(next: Tab) {
+    if (next === "wave") setWaveOpened(true);
+    onTab(next);
+  }
+  // While a new run is going, keep showing the previous waveform instead of an empty panel.
+  const [lastWave, setLastWave] = useState<string | null>(null);
+  const currentWave = grade?.wave_url ?? null;
+  if (currentWave !== null && currentWave !== lastWave) setLastWave(currentWave);
+  const waveUrl = running ? lastWave : currentWave;
+
   let header: React.ReactNode = (
     <span className="text-slate-500">Belum ada hasil. Tekan Run untuk menguji kode.</span>
   );
@@ -413,7 +426,11 @@ function ResultPanel(props: {
   ];
 
   return (
-    <section className="flex h-72 shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <section
+      className={`flex shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white ${
+        tab === "wave" ? "h-[32rem]" : "h-72"
+      }`}
+    >
       <div className="flex items-center gap-4 border-b border-slate-100 px-4 py-2 text-sm">
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate">{header}</span>
@@ -430,7 +447,7 @@ function ResultPanel(props: {
               id={`${ids[t.id]}-tab`}
               aria-controls={ids[t.id]}
               aria-selected={tab === t.id}
-              onClick={() => onTab(t.id)}
+              onClick={() => selectTab(t.id)}
               className={`rounded px-2 py-1 text-xs ${
                 tab === t.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
@@ -452,7 +469,11 @@ function ResultPanel(props: {
             {running ? liveLines.join("\n") : grade?.log || run?.error || "Belum ada log."}
           </pre>
         )}
-        {tab === "wave" && <WaveTab grade={grade} />}
+        {waveOpened && (
+          <div className={tab === "wave" ? "h-full" : "hidden"}>
+            <WaveTab url={waveUrl} />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -489,18 +510,9 @@ function TestsTab({ grade }: { grade: GradeResult | null }) {
   );
 }
 
-function WaveTab({ grade }: { grade: GradeResult | null }) {
-  if (!grade?.wave_url) {
+function WaveTab({ url }: { url: string | null }) {
+  if (!url) {
     return <p className="text-slate-500">Belum ada waveform. Jalankan kode sampai simulasi selesai.</p>;
   }
-  return (
-    <div className="flex flex-col gap-2">
-      <a href={grade.wave_url} download className="text-blue-700 underline">
-        Unduh waveform (.fst)
-      </a>
-      <p className="text-xs text-slate-500">
-        Buka di GTKWave atau Surfer desktop. Viewer di dalam halaman menyusul.
-      </p>
-    </div>
-  );
+  return <WaveView url={url} />;
 }

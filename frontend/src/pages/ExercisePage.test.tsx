@@ -252,17 +252,46 @@ describe("ExercisePage", () => {
   });
 
   it("has log and waveform tabs", async () => {
-    renderPage({ [`GET ${BASE}`]: () => detail({ last_run: run() }) });
+    renderPage({
+      [`GET ${BASE}`]: () => detail({ last_run: run() }),
+      "GET /surfer/SURFER_VERSION": () => new Response("v0.7.0"),
+    });
     await screen.findByText("Lulus semua test (3/3)");
 
     await userEvent.click(screen.getByRole("tab", { name: "Log" }));
     expect(screen.getByText("cocotb log line")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
-    expect(screen.getByRole("link", { name: /Unduh waveform/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Unduh \.fst/ })).toHaveAttribute(
       "href",
       `/api/runs/${RUN_ID}/files/build/sim_build/counter4.fst`,
     );
+    expect(await screen.findByTitle("Waveform (Surfer)")).toBeInTheDocument();
+  });
+
+  it("keeps the waveform viewer when switching tabs", async () => {
+    renderPage({
+      [`GET ${BASE}`]: () => detail({ last_run: run() }),
+      "GET /surfer/SURFER_VERSION": () => new Response("v0.7.0"),
+    });
+    await screen.findByText("Lulus semua test (3/3)");
+    await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
+    const iframe = await screen.findByTitle("Waveform (Surfer)");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Tests" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
+
+    expect(screen.getByTitle("Waveform (Surfer)")).toBe(iframe);
+  });
+
+  it("says there is no waveform after a compile error", async () => {
+    const broken = grade({ status: "compile_error", tests: [], wave_file: null, wave_url: null });
+    renderPage({ [`GET ${BASE}`]: () => detail({ last_run: run({ grade: broken }) }) });
+    await screen.findByText("Kode tidak bisa dikompilasi");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
+
+    expect(screen.getByText(/Belum ada waveform/)).toBeInTheDocument();
   });
 
   it("opens hints one by one", async () => {
