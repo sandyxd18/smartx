@@ -30,8 +30,9 @@ python tools/grader/grade.py --exercise content/exercises/counter-4bit --use-sta
 
 ## Melanjutkan dengan Claude Code
 
+Folder ini sudah berupa repo Git dengan satu commit awal. Masuk ke foldernya lalu jalankan:
+
 ```bash
-git init && git add -A && git commit -m "chore: initial ChipLab plan and grader"   # jika belum ada repo
 claude
 ```
 
