@@ -5,21 +5,21 @@
       "id": "synth",
       "title": "Synthesize",
       "status": "ok",
-      "seconds": 0.95,
+      "seconds": 0.81,
       "exit_code": 0
     },
     {
       "id": "pnr",
       "title": "Place & Route",
       "status": "ok",
-      "seconds": 0.44,
+      "seconds": 0.43,
       "exit_code": 0
     },
     {
       "id": "pack",
       "title": "Pack",
       "status": "ok",
-      "seconds": 3.16,
+      "seconds": 3.05,
       "exit_code": 0
     }
   ],

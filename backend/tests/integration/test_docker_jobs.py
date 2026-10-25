@@ -28,8 +28,10 @@ from app.jobs.kinds import KINDS
 from app.jobs.queue import JobQueue
 from app.jobs.runner import ContainerSpec, JobClass
 from app.models import Run, RunStatus
+from app.projects.run_params import run_params
 from app.projects.snapshot import write_snapshot
 from app.projects.snippets import assemble, load_snippets
+from app.projects.templates import load_templates
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("SMARTX_DOCKER_TESTS") != "1", reason="set SMARTX_DOCKER_TESTS=1"
@@ -621,3 +623,85 @@ async def test_lesson_code_builds_for_the_board(docker_settings: Settings, engin
     assert result["status"] == "ok", result["error"]
     assert result["timing_met"] is True
     assert result["warnings"] == []
+
+
+FPGA_TEMPLATES = ["fpga-blinky", "fpga-counter-led", "fpga-button"]
+# One plausible mistake per example; its testbench must catch it.
+TEMPLATE_MUTANTS = {
+    "fpga-blinky": ("src/blinky.v", "HALF_PERIOD[W-1:0] - 1'b1", "HALF_PERIOD[W-1:0]"),
+    "fpga-counter-led": ("src/counter_led.v", "if (!run) begin", "if (1'b0) begin"),
+    "fpga-button": (
+        "src/button_counter.v",
+        "debounce #(.CYCLES(DEBOUNCE_CYCLES)) u_db (.clk(clk), .noisy(btn_sync), .clean(pressed));",
+        "assign pressed = btn_sync;",
+    ),
+}
+
+
+def template_files(template_id: str) -> dict[str, str]:
+    [template] = [
+        t for t in load_templates(REPO_ROOT / "content" / "templates") if t.id == template_id
+    ]
+    return template.files()
+
+
+async def run_template(
+    settings: Settings, engine: Engine, kind: str, files: dict[str, str], **override: Any
+) -> Run:
+    params = {**run_params(kind, files, {b: p.board for b, p in BOARDS.items()}), **override}
+    run_id = new_run(engine, kind, params)
+    write_snapshot(settings.runs_dir / run_id / "project", files)
+    async with asyncio.timeout(240):
+        await make_queue(settings, engine).submit(run_id)
+    run = get_run(engine, run_id)
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    return run
+
+
+@pytest.mark.parametrize("simulator", ["icarus", "verilator"])
+@pytest.mark.parametrize("template_id", FPGA_TEMPLATES)
+async def test_fpga_template_simulates(
+    docker_settings: Settings, engine: Engine, template_id: str, simulator: str
+) -> None:
+    """The example's testbench passes as shipped, on both simulators."""
+    run = await run_template(
+        docker_settings, engine, "sim", template_files(template_id), simulator=simulator
+    )
+    result = run.result
+    assert result is not None
+    assert result["status"] == "pass", result["tests"] or result["log"][-2000:]
+
+
+@pytest.mark.parametrize("template_id", FPGA_TEMPLATES)
+async def test_fpga_template_testbench_catches_a_mistake(
+    docker_settings: Settings, engine: Engine, template_id: str
+) -> None:
+    files = template_files(template_id)
+    path, old, new = TEMPLATE_MUTANTS[template_id]
+    assert old in files[path]
+    files[path] = files[path].replace(old, new)
+
+    run = await run_template(docker_settings, engine, "sim", files)
+
+    assert run.result is not None and run.result["status"] == "fail", run.result
+
+
+@pytest.mark.parametrize("template_id", FPGA_TEMPLATES)
+async def test_fpga_template_builds_cleanly(
+    docker_settings: Settings, engine: Engine, template_id: str
+) -> None:
+    """The example builds for its board with the board-only parameters, meets
+    timing, and has nothing to warn about."""
+    files = template_files(template_id)
+    run = await run_template(docker_settings, engine, "fpga", files)
+
+    result = run.result
+    assert result is not None
+    assert result["status"] == "ok", result["error"]
+    assert result["timing_met"] is True
+    assert result["warnings"] == []
+    [clock] = result["clocks"]
+    assert clock["name"] == "clk" and clock["target_mhz"] == 27
+    script = (docker_settings.runs_dir / run.id / "build" / "synth.ys").read_text("utf-8")
+    assert "chparam -set" in script and "-set HALF_PERIOD 4 " not in script

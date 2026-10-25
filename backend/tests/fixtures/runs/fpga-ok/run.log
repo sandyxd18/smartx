@@ -1,7 +1,7 @@
 ==> Synthesize
-<== Synthesize: ok (0.78 s)
+<== Synthesize: ok (0.85 s)
 ==> Place & Route
 <== Place & Route: ok (0.47 s)
 ==> Pack
-<== Pack: ok (3.52 s)
+<== Pack: ok (3.02 s)
 status: ok

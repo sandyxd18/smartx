@@ -1,0 +1,14 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: blinky
+sources:
+  - src/**/*.v
+tests:
+  - test/test_blinky.py
+simulator: icarus
+parameters:
+  HALF_PERIOD: 4            # simulasi: berganti tiap 4 siklus supaya test singkat
+fpga:
+  board: tang-nano-9k
+  constraints: constraints/tang-nano-9k.cst
+  parameters:
+    HALF_PERIOD: 13500000   # board: 0,5 detik pada clock 27 MHz

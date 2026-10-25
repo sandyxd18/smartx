@@ -244,3 +244,22 @@ class TestFpga:
         files["constraints/tang-nano-9k.cst"] = ""
         problems = analyze(FPGA, files, boards={"tang-nano-9k"}).problems
         assert [p.line for p in problems if p.line in (4, 5)] == []
+
+
+def test_fpga_only_parameters_and_defines() -> None:
+    text = FPGA + "  parameters:\n    HALF_PERIOD: 13500000\n  defines:\n    BOARD: 1\n"
+    config, problems = parse_config(text)
+
+    assert problems == []
+    assert config is not None and config.fpga is not None
+    assert config.fpga.parameters == {"HALF_PERIOD": 13500000}
+    assert config.fpga.defines == {"BOARD": 1}
+    # They survive a save from the form, and empty ones are not written.
+    again, _ = parse_config(dump_config(config))
+    assert again == config
+    plain, _ = parse_config(FPGA)
+    assert plain is not None
+    assert "parameters" not in dump_config(plain)
+    [(line, message)] = errors(text.replace("13500000", "true"))
+    assert message.startswith("fpga.parameters.HALF_PERIOD"), message
+    assert line == 8

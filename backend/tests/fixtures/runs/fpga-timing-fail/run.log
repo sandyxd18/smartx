@@ -1,9 +1,9 @@
 ==> Synthesize
-<== Synthesize: ok (0.95 s)
+<== Synthesize: ok (0.81 s)
 ==> Place & Route
 Warning: Max frequency for clock 'clk_IBUF_I_O': 159.08 MHz (FAIL at 300.00 MHz)
 1 warning, 0 errors
-<== Place & Route: ok (0.44 s)
+<== Place & Route: ok (0.43 s)
 ==> Pack
-<== Pack: ok (3.16 s)
+<== Pack: ok (3.05 s)
 status: ok

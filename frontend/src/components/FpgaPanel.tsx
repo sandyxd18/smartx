@@ -147,7 +147,12 @@ export function FpgaPanel(props: FpgaPanelProps) {
       }
       setConstraints(path);
       setFreq("");
-      if (await save({ board: id, constraints: path })) {
+      // Build-only parameters belong to the design, so they stay when the board changes.
+      const kept = {
+        parameters: fpga?.parameters ?? {},
+        defines: fpga?.defines ?? {},
+      };
+      if (await save({ ...kept, board: id, constraints: path })) {
         if (created) await onFileCreated();
         onOpenFile(path);
       }

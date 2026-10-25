@@ -90,7 +90,12 @@ describe("ConfigEditor", () => {
   });
 
   it("keeps the fpga section, which the form does not edit", async () => {
-    const fpga = { board: "tang-nano-9k", constraints: "constraints/tang-nano-9k.cst" };
+    const fpga = {
+      board: "tang-nano-9k",
+      constraints: "constraints/tang-nano-9k.cst",
+      parameters: { HALF_PERIOD: 13500000 },
+      defines: {},
+    };
     const sent: ProjectConfig[] = [];
     setup({
       [`POST ${BASE}/check`]: () => read({ config: { ...CONFIG, fpga } }),

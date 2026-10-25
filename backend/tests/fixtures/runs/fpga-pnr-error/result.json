@@ -5,14 +5,14 @@
       "id": "synth",
       "title": "Synthesize",
       "status": "ok",
-      "seconds": 0.78,
+      "seconds": 0.84,
       "exit_code": 0
     },
     {
       "id": "pnr",
       "title": "Place & Route",
       "status": "failed",
-      "seconds": 0.13,
+      "seconds": 0.15,
       "exit_code": 125
     },
     {

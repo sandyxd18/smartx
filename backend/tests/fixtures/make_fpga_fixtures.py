@@ -87,13 +87,15 @@ def keep(run_dir: Path, dest: Path) -> None:
         middle = [x for x in lines[20:-40] if any(w in x for w in wanted)]
         kept = lines if len(lines) < 80 else [*lines[:20], "[...]\n", *middle, *lines[-40:]]
         (dest / "build" / "yosys.log").write_text("".join(kept), encoding="utf-8", newline="\n")
-    if (build / "netlist.json").is_file():  # 1 MB: keep what unused_inputs() reads
+    if (build / "netlist.json").is_file():  # 1 MB: keep what unused_inputs()/input_ports() read
         top = json.loads((build / "netlist.json").read_text(encoding="utf-8"))["modules"]["blinky"]
         cells = {
             name: {k: cell[k] for k in ("type", "port_directions", "connections")}
             for name, cell in top["cells"].items()
         }
-        small = {"modules": {"blinky": {"ports": top["ports"], "cells": cells}}}
+        netnames = {name: {"bits": net["bits"]} for name, net in top["netnames"].items()}
+        module = {"ports": top["ports"], "cells": cells, "netnames": netnames}
+        small = {"modules": {"blinky": module}}
         (dest / "build" / "netlist.json").write_text(json.dumps(small), encoding="utf-8")
     if (build / "bitstream.fs").is_file():  # 2 MB; collect() only needs it to exist
         (dest / "build" / "bitstream.fs").write_text("stand-in for a 2 MB bitstream\n")

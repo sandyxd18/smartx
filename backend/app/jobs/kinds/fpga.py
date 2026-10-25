@@ -26,6 +26,7 @@ from app.reports.nextpnr import (
     ResourceUse,
     clocks,
     critical_paths,
+    input_ports,
     utilization,
 )
 from app.reports.yosys import SynthWarning, parse_yosys_log, unused_input_warnings
@@ -209,7 +210,9 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 
-def _warnings(run_dir: Path, spec: dict[str, Any]) -> list[SynthWarning]:
+def _warnings(
+    run_dir: Path, spec: dict[str, Any], netlist: dict[str, Any] | None
+) -> list[SynthWarning]:
     log = run_dir / WORK_DIR / STAGE_LOGS["synth"]
     if not log.is_file():
         return []
@@ -220,7 +223,6 @@ def _warnings(run_dir: Path, spec: dict[str, Any]) -> list[SynthWarning]:
             sources[rel] = path.read_text(encoding="utf-8", errors="replace")
     text = log.read_text(encoding="utf-8", errors="replace")
     found = parse_yosys_log(text, sources, PROJECT_ROOT)
-    netlist = _read_json(run_dir / WORK_DIR / NETLIST_FILE)
     if netlist is not None:
         found += unused_input_warnings(netlist, spec["top"], sources)
     return found
@@ -248,7 +250,9 @@ def collect(run_dir: Path) -> dict[str, Any]:
                 log.read_text(encoding="utf-8", errors="replace"), PROJECT_ROOT
             )
     report = _read_json(run_dir / WORK_DIR / REPORT_FILE)
-    timing = clocks(report) if report else []
+    netlist = _read_json(run_dir / WORK_DIR / NETLIST_FILE)
+    ports = input_ports(netlist, spec["top"]) if netlist else {}
+    timing = clocks(report, ports) if report else []
     result = FpgaResult(
         status="failed" if failed else "ok",
         board=spec["board"],
@@ -261,10 +265,10 @@ def collect(run_dir: Path) -> dict[str, Any]:
         bitstream_url=_work_file(run_dir, spec["bitstream_file"]) if not failed else None,
         report_url=_work_file(run_dir, REPORT_FILE),
         stat_url=_work_file(run_dir, STAT_FILE),
-        warnings=_warnings(run_dir, spec),
+        warnings=_warnings(run_dir, spec, netlist),
         utilization=utilization(report, spec["resources"]) if report else [],
         clocks=timing,
         timing_met=all(c.met for c in timing) if timing else None,
-        critical_paths=critical_paths(report, PROJECT_ROOT) if report else [],
+        critical_paths=critical_paths(report, PROJECT_ROOT, ports) if report else [],
     )
     return result.model_dump()

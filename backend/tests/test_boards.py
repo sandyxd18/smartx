@@ -131,3 +131,26 @@ def test_api_lists_boards_with_template(client: TestClient) -> None:
     # Build tool arguments are internal to the fpga job; flashing runs on the host.
     assert "nextpnr" not in tang
     assert tang["flash_command"] == ["openFPGALoader", "-b", "tangnano9k"]
+
+
+def test_fpga_templates_match_their_board() -> None:
+    """Example projects carry a copy of the board's constraint template; keep it in step,
+    and keep their smartx.yaml valid for Build."""
+    from app.projects.run_params import run_params
+    from app.projects.templates import load_templates
+
+    profiles = {p.board.id: p for p in load_boards(REPO_ROOT / "content" / "boards")}
+    boards = {board_id: p.board for board_id, p in profiles.items()}
+    fpga_templates = [
+        t for t in load_templates(REPO_ROOT / "content" / "templates") if t.id.startswith("fpga-")
+    ]
+
+    assert [t.id for t in fpga_templates] == ["fpga-blinky", "fpga-counter-led", "fpga-button"]
+    for template in fpga_templates:
+        files = template.files()
+        params = run_params("fpga", files, boards)
+        board = profiles[params["board"]]
+        assert files[params["constraints"]] == board.constraints_template, template.id
+        # The simulation and the board use different values for the same parameter.
+        sim = run_params("sim", files, boards)
+        assert sim["parameters"] != params["parameters"], template.id

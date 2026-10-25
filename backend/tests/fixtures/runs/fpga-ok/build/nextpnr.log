@@ -120,7 +120,7 @@ Info:     at iteration #5, type ALL: wirelen solved = 176, spread = 259, legal =
 Info:     at iteration #6, type ALL: wirelen solved = 152, spread = 240, legal = 253; time = 0.00s
 Info:     at iteration #7, type ALL: wirelen solved = 178, spread = 285, legal = 301; time = 0.00s
 Info:     at iteration #8, type ALL: wirelen solved = 179, spread = 257, legal = 303; time = 0.00s
-Info: HeAP Placer Time: 0.07s
+Info: HeAP Placer Time: 0.06s
 Info:   of which solving equations: 0.01s
 Info:   of which spreading cells: 0.00s
 Info:   of which strict legalisation: 0.00s
@@ -167,9 +167,9 @@ Info: Setting up routing queue.
 Info: Routing 224 arcs.
 Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
 Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
-Info:        245 |       19        187 |   19   187 |         0|       0.06       0.06|
+Info:        245 |       19        187 |   19   187 |         0|       0.05       0.05|
 Info: Routing complete.
-Info: Router1 time 0.06s
+Info: Router1 time 0.05s
 Info: Checksum: 0xeb3cea3d
 
 Info: Critical path report for clock 'clk_IBUF_I_O' (posedge -> posedge):

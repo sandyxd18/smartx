@@ -55,10 +55,13 @@ def clock_name(net: str) -> str:
     return match["port"] if match else net
 
 
-def _edge(text: str) -> str:
+def _edge(text: str, ports: dict[str, str]) -> str:
     """'posedge clk_IBUF_I_O' -> 'posedge clk'."""
     edge, _, net = text.partition(" ")
-    return f"{edge} {clock_name(net)}" if net else clock_name(edge)
+    if not net:
+        edge, net = "", edge
+    name = ports.get(net) or clock_name(net)
+    return f"{edge} {name}" if edge else name
 
 
 def utilization(report: dict[str, Any], rows: dict[str, list[str]]) -> list[ResourceUse]:
@@ -74,11 +77,39 @@ def utilization(report: dict[str, Any], rows: dict[str, list[str]]) -> list[Reso
     return result
 
 
-def clocks(report: dict[str, Any]) -> list[ClockTiming]:
+def input_ports(netlist: dict[str, Any], top: str) -> dict[str, str]:
+    """Net name -> the top-level input port it carries, from the Yosys netlist.
+
+    In a hierarchical design nextpnr may name the clock after a submodule's net
+    (`u_db.clk`). That net is the output of the port's input buffer (Gowin IBUF), so
+    it is traced back: net bits -> IBUF output -> IBUF input -> port.
+    """
+    module = netlist.get("modules", {}).get(top, {})
+    port_of = {
+        tuple(port.get("bits", [])): name
+        for name, port in module.get("ports", {}).items()
+        if port.get("direction") == "input"
+    }
+    for cell in module.get("cells", {}).values():
+        if cell.get("type") == "IBUF":
+            connections = cell.get("connections", {})
+            port = port_of.get(tuple(connections.get("I", [])))
+            if port is not None:
+                port_of.setdefault(tuple(connections.get("O", [])), port)
+    found = {}
+    for net, info in module.get("netnames", {}).items():
+        port = port_of.get(tuple(info.get("bits", [])))
+        if port is not None:
+            found[net] = port
+    return found
+
+
+def clocks(report: dict[str, Any], ports: dict[str, str] | None = None) -> list[ClockTiming]:
+    """Fmax per clock. `ports` (from input_ports()) names clocks after the top port."""
     return [
         ClockTiming(
             net=net,
-            name=clock_name(net),
+            name=(ports or {}).get(net) or clock_name(net),
             achieved_mhz=round(f["achieved"], 2),
             target_mhz=round(f["constraint"], 2),
             met=f["achieved"] >= f["constraint"],
@@ -96,7 +127,9 @@ def _place(sources: list[str], root: str) -> tuple[str | None, int | None]:
     return None, None
 
 
-def critical_paths(report: dict[str, Any], root: str) -> list[CriticalPath]:
+def critical_paths(
+    report: dict[str, Any], root: str, ports: dict[str, str] | None = None
+) -> list[CriticalPath]:
     paths = []
     for entry in report.get("critical_paths", []):
         steps: list[PathStep] = []
@@ -124,8 +157,8 @@ def critical_paths(report: dict[str, Any], root: str) -> list[CriticalPath]:
             )
         paths.append(
             CriticalPath(
-                from_clock=_edge(entry.get("from", "")),
-                to_clock=_edge(entry.get("to", "")),
+                from_clock=_edge(entry.get("from", ""), ports or {}),
+                to_clock=_edge(entry.get("to", ""), ports or {}),
                 delay_ns=round(total, 2),
                 logic_ns=round(logic, 2),
                 routing_ns=round(routing, 2),

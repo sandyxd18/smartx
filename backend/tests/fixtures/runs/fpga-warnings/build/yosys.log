@@ -59,6 +59,6 @@ Found and reported 0 problems.
 
 2.52. Executing JSON backend.
 Warnings: 1 unique messages, 1 total
-End of script. Logfile hash: 9ea4f407b9, time: 0.80s, user: 0.26s, system: 0.13s, MEM: 38.57 MB peak
+End of script. Logfile hash: 9ea4f407b9, time: 0.74s, user: 0.23s, system: 0.13s, MEM: 39.10 MB peak
 Yosys 0.70+219 (git sha1 5053d0e26, Release, Clang /usr/bin/clang++ 21.1.8)
-Time spent: 24% 26x read_verilog (0 sec), 19% 1x synth_gowin (0 sec), ...
+Time spent: 26% 26x read_verilog (0 sec), 19% 1x synth_gowin (0 sec), ...

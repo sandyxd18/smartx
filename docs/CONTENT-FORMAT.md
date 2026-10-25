@@ -82,6 +82,8 @@ cocotb-basic/
 
 File and folder names in `files/` must follow the project path rules: letters, digits, `_`, `-`, `.`; not starting with `.`; not a name reserved by Windows (`con`, `nul`, `aux`, and so on). Template testbenches follow the testbench rules above and must fail for a wrong design. For `cocotb-basic` this is checked with two mutants (enable ignored, `wrap` without `en`).
 
+The FPGA examples (`fpga-blinky`, `fpga-counter-led`, `fpga-button`) are templates too. Each holds a copy of its board's constraint template (a test keeps it identical), a cocotb testbench that follows the rules above with simulation-sized parameters, and the board values in `fpga.parameters`. The Docker tests check, per example: the testbench passes on Icarus and Verilator, it fails for one plausible mistake, and the build meets timing without synthesis warnings. Designs use `initial` blocks for register initial values, which Verilator lint accepts (an initial value in the declaration gives `PROCASSINIT`).
+
 "Copy from exercise X" creates a project with `src/<toplevel>.v` (the user's latest code, or the starter), `test/<test_*.py>` (the exercise testbench), `README.md` (the statement), and `smartx.yaml`. `solution.v` is never included.
 
 ## Workspace project: `smartx.yaml`
@@ -104,6 +106,10 @@ fpga:                     # optional: FPGA build (Phase 3)
   board: tang-nano-9k     # profile id in content/boards/
   constraints: constraints/tang-nano-9k.cst   # constraint file in the project
   freq_mhz: 27            # optional: nextpnr --freq target; default is the board clock
+  parameters:             # optional: build-only values, merged over the ones above
+    WIDTH: 16
+  defines:                # optional: build-only defines, merged the same way
+    BOARD: 1
 ```
 
 Rules:
@@ -114,7 +120,7 @@ Rules:
 - `parameters` and `defines` values are integers or text. `true`/`false`, lists, and empty values are rejected, because the cocotb runner (pinned version) writes them as they are onto the simulator command line (`-P`/`-G`/`-D`). For a define without a value, use `1`.
 - Warnings, which do not block saving: a pattern that matches no file, a top module not found in the source files, a missing test file, and an empty `tests`.
 - Saving from the form rewrites the file from the form's contents, so hand-written comments are lost. Only the header line is kept. The `fpga` section is not edited in the simulation form, but it is saved along unchanged.
-- An unknown `fpga.board` and a missing `fpga.constraints` file are warnings; the Build button refuses them with the same message. The FPGA build uses the same `top`, `sources`, `parameters`, and `defines` as the simulation.
+- An unknown `fpga.board` and a missing `fpga.constraints` file are warnings; the Build button refuses them with the same message. The FPGA build uses the same `top` and `sources` as the simulation, and the top-level `parameters` and `defines` with `fpga.parameters` and `fpga.defines` merged over them (the build-only value wins). Typical use: a short blink period for the testbench at the top level, the real one in `fpga.parameters`.
 
 ## Testbench snippets: `content/snippets/*.yaml` (Phase 2)
 

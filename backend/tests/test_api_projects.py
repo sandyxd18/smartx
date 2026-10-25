@@ -672,6 +672,17 @@ class TestFpgaRuns:
 
         assert self.start(client, pid).json()["params"]["freq_mhz"] == 50
 
+    def test_fpga_parameters_override_the_simulation_ones(self, client: TestClient) -> None:
+        base = (BLINKY_FILES / "smartx.yaml").read_text(encoding="utf-8")
+        config = base.replace("fpga:", "parameters: {HALF: 4, W: 6}\ndefines: {SIM: 1}\nfpga:")
+        config += "  parameters: {HALF: 13500000}\n  defines: {BOARD: 1}\n"
+        pid = self.blinky(client, config)
+
+        params = self.start(client, pid).json()["params"]
+
+        assert params["parameters"] == {"HALF": 13500000, "W": 6}
+        assert params["defines"] == {"SIM": 1, "BOARD": 1}
+
     @pytest.mark.parametrize(
         ("change", "message"),
         [

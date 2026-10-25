@@ -1,0 +1,3 @@
+title: FPGA counter ke LED
+description: Counter 6-bit tampil di enam LED Tang Nano 9K dan naik empat kali per detik; tombol S2 me-reset lewat synchronizer.
+order: 31

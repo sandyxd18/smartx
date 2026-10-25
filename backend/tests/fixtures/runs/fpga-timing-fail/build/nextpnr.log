@@ -122,7 +122,7 @@ Info:     at iteration #7, type ALL: wirelen solved = 178, spread = 285, legal =
 Info:     at iteration #8, type ALL: wirelen solved = 179, spread = 257, legal = 303; time = 0.00s
 Info: HeAP Placer Time: 0.06s
 Info:   of which solving equations: 0.01s
-Info:   of which spreading cells: 0.00s
+Info:   of which spreading cells: 0.01s
 Info:   of which strict legalisation: 0.00s
 
 Info: Running simulated annealing placer for refinement.

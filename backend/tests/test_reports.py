@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from app.reports.nextpnr import clock_name, clocks, critical_paths, utilization
+from app.reports.nextpnr import clock_name, clocks, critical_paths, input_ports, utilization
 from app.reports.yosys import parse_yosys_log, unused_inputs
 
 REPORTS = Path(__file__).parent / "fixtures" / "reports"
@@ -162,3 +162,39 @@ class TestNextpnrReport:
     )
     def test_clock_names(self, net: str, name: str) -> None:
         assert clock_name(net) == name
+
+
+def test_hierarchical_clock_net_is_named_after_the_top_port() -> None:
+    """Shape measured on button_counter: nextpnr reports 'u_db.clk', the IBUF output."""
+    netlist = {
+        "modules": {
+            "button_counter": {
+                "ports": {
+                    "clk": {"direction": "input", "bits": [2]},
+                    "btn": {"direction": "input", "bits": [3]},
+                    "led": {"direction": "output", "bits": [4, 5]},
+                },
+                "cells": {
+                    "u_db.clk_IBUF_O": {"type": "IBUF", "connections": {"I": [2], "O": [12]}},
+                    "btn_IBUF_I": {"type": "IBUF", "connections": {"I": [3], "O": [10]}},
+                },
+                "netnames": {
+                    "clk": {"bits": [2]},
+                    "u_db.clk": {"bits": [12]},
+                    "u_sync.clk": {"bits": [12]},
+                    "u_db.count": {"bits": [20, 21]},
+                },
+            }
+        }
+    }
+    ports = input_ports(netlist, "button_counter")
+    assert ports == {"clk": "clk", "u_db.clk": "clk", "u_sync.clk": "clk"}
+
+    report = {"fmax": {"u_db.clk": {"achieved": 169.38, "constraint": 27}}}
+    [clock] = clocks(report, ports)
+    assert (clock.net, clock.name) == ("u_db.clk", "clk")
+    # Without the netlist the net name is kept as it is.
+    assert clocks(report)[0].name == "u_db.clk"
+    paths = {"critical_paths": [{"from": "posedge u_db.clk", "to": "posedge u_db.clk"}]}
+    [path] = critical_paths(paths, ROOT, ports)
+    assert (path.from_clock, path.to_clock) == ("posedge clk", "posedge clk")

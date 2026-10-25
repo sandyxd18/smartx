@@ -27,7 +27,7 @@ from app.projects.paths import InvalidProjectPath, normalize_project_path
 CONFIG_PATH = "smartx.yaml"
 HEADER = "# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).\n"
 FIELDS = ("top", "sources", "tests", "simulator", "parameters", "defines", "fpga")
-FPGA_FIELDS = ("board", "constraints", "freq_mhz")
+FPGA_FIELDS = ("board", "constraints", "freq_mhz", "parameters", "defines")
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 _PY_MODULE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -105,6 +105,10 @@ class FpgaConfig(BaseModel):
     board: Annotated[str, Field(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]
     constraints: Annotated[str, AfterValidator(_project_file)]  # .cst / .pcf in the project
     freq_mhz: Annotated[float, Field(gt=0, le=1000)] | None = None  # default: board clock
+    # Build-only values, merged over the top-level ones: a simulation can use a short
+    # blink period while the bitstream uses the real one.
+    parameters: dict[Name, Scalar] = {}
+    defines: dict[Name, Scalar] = {}
 
 
 class ProjectConfig(BaseModel):
@@ -292,7 +296,7 @@ def dump_config(config: ProjectConfig) -> str:
     if config.defines:
         data["defines"] = config.defines
     if config.fpga is not None:
-        data["fpga"] = config.fpga.model_dump(exclude_none=True)
+        data["fpga"] = config.fpga.model_dump(exclude_defaults=True)
     body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
     return HEADER + body
 

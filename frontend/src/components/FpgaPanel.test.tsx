@@ -91,6 +91,8 @@ describe("FpgaPanel", () => {
         fpga: {
           board: "tang-nano-9k",
           constraints: "constraints/tang-nano-9k.cst",
+          parameters: {},
+          defines: {},
         },
       },
     ]);
@@ -116,10 +118,39 @@ describe("FpgaPanel", () => {
     expect(posts).toEqual([]);
   });
 
+  it("keeps build-only parameters when the board is picked again", async () => {
+    const fpga = {
+      board: "tang-nano-9k",
+      constraints: "constraints/tang-nano-9k.cst",
+      parameters: { HALF_PERIOD: 13500000 },
+      defines: { BOARD: 1 },
+      freq_mhz: 50,
+    };
+    const { puts } = setup(
+      { ...SIM, fpga },
+      { files: ["constraints/tang-nano-9k.cst"] },
+    );
+
+    await userEvent.selectOptions(
+      await screen.findByRole("combobox", { name: "Board" }),
+      "tang-nano-9k",
+    );
+
+    await waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]?.fpga).toEqual({
+      board: "tang-nano-9k",
+      constraints: "constraints/tang-nano-9k.cst",
+      parameters: { HALF_PERIOD: 13500000 },
+      defines: { BOARD: 1 },
+    });
+  });
+
   it("saves the target clock, and an empty field means the board clock", async () => {
     const fpga = {
       board: "tang-nano-9k",
       constraints: "constraints/tang-nano-9k.cst",
+      parameters: {},
+      defines: {},
     };
     const { puts } = setup(
       { ...SIM, fpga },
@@ -149,7 +180,12 @@ describe("FpgaPanel", () => {
   });
 
   it("offers the board template when the constraint file is missing", async () => {
-    const fpga = { board: "tang-nano-9k", constraints: "pins/board.cst" };
+    const fpga = {
+      board: "tang-nano-9k",
+      constraints: "pins/board.cst",
+      parameters: {},
+      defines: {},
+    };
     const { props, posts } = setup({ ...SIM, fpga });
 
     expect(

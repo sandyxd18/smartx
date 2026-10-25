@@ -1,0 +1,14 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: button_counter
+sources:
+  - src/**/*.v
+tests:
+  - test/test_button_counter.py
+simulator: icarus
+parameters:
+  DEBOUNCE_CYCLES: 8        # simulasi: pantulan cukup beberapa siklus
+fpga:
+  board: tang-nano-9k
+  constraints: constraints/tang-nano-9k.cst
+  parameters:
+    DEBOUNCE_CYCLES: 270000 # board: 10 ms pada clock 27 MHz

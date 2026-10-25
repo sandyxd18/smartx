@@ -23,7 +23,7 @@ Confirmed on 2026-10-25: the owner has no board yet. Start with the Tang Nano 9K
 4. [x] **FPGA page** in the workspace: board picker, constraint editor, Build button, report tables, bitstream download.
 5. [x] **Flashing helper** `tools/flash/smartx-flash`: a host script that downloads the bitstream of the latest run from the backend (or takes a local path) and calls `openFPGALoader` according to the board profile. Document installing `openFPGALoader` and the udev rules in a README.
 6. [x] **Lessons** `content/lessons/03-*.md`: code that does not synthesize, the 2-flop synchronizer, debounce, reading the timing report, why simulation passes but the FPGA fails.
-7. [ ] **Example FPGA projects**: blinky, counter on the LEDs, button with debounce.
+7. [x] **Example FPGA projects**: blinky, counter on the LEDs, button with debounce.
 8. [ ] **Second board: iCE40** (`nextpnr-ice40` + `icepack`), once the Tang Nano 9K is complete: profile, `.pcf` template, blinky fixture, and example projects.
 
 ## Done criteria

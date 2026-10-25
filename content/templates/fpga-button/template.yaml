@@ -1,0 +1,3 @@
+title: FPGA tombol dengan debounce
+description: Setiap tekanan tombol S1 menaikkan counter di enam LED Tang Nano 9K, dengan synchronizer dan debouncer supaya pantulan tidak terhitung.
+order: 32

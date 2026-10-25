@@ -1,0 +1,14 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: counter_led
+sources:
+  - src/**/*.v
+tests:
+  - test/test_counter_led.py
+simulator: icarus
+parameters:
+  TICK: 3                   # simulasi: naik tiap 3 siklus supaya test singkat
+fpga:
+  board: tang-nano-9k
+  constraints: constraints/tang-nano-9k.cst
+  parameters:
+    TICK: 6750000           # board: empat kali per detik pada clock 27 MHz

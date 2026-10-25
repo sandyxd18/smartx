@@ -2,7 +2,7 @@
 
 import shutil
 from datetime import UTC, datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
@@ -24,6 +24,7 @@ from app.projects import tree
 from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analyze, dump_config
 from app.projects.history import CHANGE_ORDER, compare_tests, prune_runs, summarize
 from app.projects.paths import InvalidProjectPath
+from app.projects.run_params import RunConfigError, run_params
 from app.projects.snapshot import write_snapshot
 from app.projects.snippets import Snippet, load_snippets
 from app.projects.templates import exercise_files, load_templates
@@ -425,52 +426,11 @@ async def start_project_run(
     """Run a job on the project as it is now: its files are copied into the run folder."""
     _get_project(session, project_id)
     files = tree.read_all(session, project_id)
-    if CONFIG_PATH not in files:
-        raise _unprocessable(f"{CONFIG_PATH} belum ada. Buat dulu lewat file baru atau form.")
     boards = {p.board.id: p.board for p in load_boards(settings.content_dir / "boards")}
-    analysis = analyze(files[CONFIG_PATH], files, boards)
-    config = analysis.config
-    if config is None:
-        first = analysis.problems[0]
-        where = f" (baris {first.line})" if first.line else ""
-        raise _unprocessable(f"{CONFIG_PATH} belum valid{where}: {first.message}")
-    if not analysis.sources:
-        raise _unprocessable(
-            f"Pola 'sources' di {CONFIG_PATH} tidak cocok dengan file apa pun di proyek."
-        )
-
-    params: dict[str, Any] = {
-        "top": config.top,
-        "sources": analysis.sources,
-        "defines": config.defines,
-        "parameters": config.parameters,
-    }
-    if body.kind == "sim":
-        if not config.tests:
-            raise _unprocessable(
-                f"Belum ada testbench di 'tests' pada {CONFIG_PATH}. Pilih minimal satu file test."
-            )
-        missing = [t for t in config.tests if t not in files]
-        if missing:
-            raise _unprocessable(f"File test tidak ada di proyek: {', '.join(missing)}.")
-        params = {**params, "tests": config.tests, "simulator": config.simulator}
-    if body.kind == "fpga":
-        fpga = config.fpga
-        if fpga is None:
-            raise _unprocessable(
-                f"Bagian 'fpga' belum ada di {CONFIG_PATH}. Pilih board dan file constraint dulu."
-            )
-        board = boards.get(fpga.board)
-        if board is None:
-            raise _unprocessable(f"Board '{fpga.board}' tidak dikenal.")
-        if fpga.constraints not in files:
-            raise _unprocessable(f"File constraint '{fpga.constraints}' tidak ada di proyek.")
-        params = {
-            **params,
-            "board": board.id,
-            "constraints": fpga.constraints,
-            "freq_mhz": fpga.freq_mhz or board.clock.freq_mhz,
-        }
+    try:
+        params = run_params(body.kind, files, boards)
+    except RunConfigError as exc:
+        raise _unprocessable(str(exc)) from exc
 
     run = Run(kind=body.kind, project_id=project_id, params=params)
     session.add(run)

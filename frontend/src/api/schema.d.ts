@@ -805,6 +805,20 @@ export interface components {
             constraints: string;
             /** Freq Mhz */
             freq_mhz?: number | null;
+            /**
+             * Parameters
+             * @default {}
+             */
+            parameters: {
+                [key: string]: number | string;
+            };
+            /**
+             * Defines
+             * @default {}
+             */
+            defines: {
+                [key: string]: number | string;
+            };
         };
         /**
          * FpgaResult
