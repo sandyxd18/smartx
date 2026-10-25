@@ -54,6 +54,16 @@ class File(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utcnow)
 
 
+class Folder(SQLModel, table=True):
+    """Every folder in a project's tree, so empty folders survive. See app/projects/tree.py."""
+
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    path: str
+
+
 class Run(SQLModel, table=True):
     # Random ids so run folders under data/runs/ never collide after a DB reset.
     id: str = Field(default_factory=lambda: uuid.uuid4().hex, primary_key=True)

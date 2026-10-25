@@ -70,6 +70,31 @@ Urutan disarankan; tiap baris satu soal. Target minimal 20 soal.
 | FSM | deteksi pola `1011` (Moore), deteksi pola (Mealy), lampu lalu lintas, debouncer, edge detector |
 | Jebakan umum | latch tak sengaja (soal "perbaiki kode ini"), blocking vs non-blocking, multi-driven net |
 
+## Template proyek: `content/templates/<id>/` (Fase 2)
+
+```
+cocotb-basic/
+├─ template.yaml      title, description, order
+└─ files/             isi proyek baru, apa adanya (src/, test/, smartx.yaml, README.md)
+```
+
+Nama file dan folder di `files/` harus lolos aturan path proyek: huruf, angka, `_`, `-`, `.`; tidak diawali `.`; tidak memakai nama yang dicadangkan Windows (`con`, `nul`, `aux`, dan sejenisnya). Testbench template mengikuti aturan testbench di atas dan harus gagal untuk desain yang salah. Untuk `cocotb-basic` hal ini dicek dengan dua mutan (enable diabaikan, `wrap` tanpa `en`).
+
+"Salin dari soal X" membuat proyek berisi `src/<toplevel>.v` (kode terakhir pengguna, atau starter), `test/<test_*.py>` (testbench soal), `README.md` (teks soal), dan `smartx.yaml`. `solution.v` tidak pernah ikut.
+
+## Proyek workspace: `smartx.yaml`
+
+Draf; formatnya difinalkan dan divalidasi di Fase 2 task 2.
+
+```yaml
+top: counter              # modul top
+sources:                  # glob, relatif ke root proyek
+  - src/**/*.v
+tests:                    # file testbench cocotb
+  - test/test_counter.py
+simulator: icarus         # icarus | verilator
+```
+
 ## Proyek terpandu: `content/projects/<id>/` (Fase 4)
 
 ```

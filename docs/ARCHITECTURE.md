@@ -66,6 +66,7 @@ smartx/
 
 - **Project**: `id, name, kind (exercise|sandbox|guided|tt), source (exercise_id/project_id), created_at`
 - **File**: `project_id, path, content, updated_at`. File proyek disimpan di DB supaya autosave sederhana; saat run, file ditulis ke folder run.
+- **Folder**: `project_id, path`. Setiap folder di tree punya baris (termasuk induk setiap file), jadi folder kosong tetap ada. Path divalidasi di `app/projects/paths.py` dan unik tanpa membedakan huruf besar/kecil.
 - **Run**: `id, project_id, kind, status, params (JSON), result (JSON), tool_versions (JSON), created_at, started_at, finished_at, exit_code, error`
 - **ExerciseProgress**: `exercise_id, status, attempts, last_code, solved_at, hints_opened`
 
@@ -103,8 +104,13 @@ POST /api/exercises/{id}/runs             {code} -> run
 POST /api/exercises/{id}/hints/next
 GET  /api/exercises/{id}/solution         403 sampai syarat terpenuhi
 
-GET  /api/projects | POST /api/projects
-GET  /api/projects/{id}/files | PUT /api/projects/{id}/files/{path}
+GET  /api/project-templates
+GET  /api/projects | POST /api/projects       {name, template | exercise_id}
+GET | PATCH | DELETE /api/projects/{id}       detail + tree | ganti nama | hapus
+POST /api/projects/{id}/files                {path, content} (409 kalau sudah ada)
+GET | PUT | DELETE /api/projects/{id}/files/{path}   PUT = simpan (autosave), DELETE folder = rekursif
+POST /api/projects/{id}/folders              {path}
+POST /api/projects/{id}/move                 {from_path, to_path}: ganti nama/pindah file atau folder
 POST /api/projects/{id}/runs              {kind, params}
 GET  /api/runs/{id}
 GET  /api/runs/{id}/events                SSE: log, status

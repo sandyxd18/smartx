@@ -11,9 +11,10 @@ import { httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { Markdown } from "../components/Markdown";
+import { SaveIndicator } from "../components/SaveIndicator";
 import { WaveView } from "../components/WaveView";
 import { LEVEL_LABELS, STATUS_LABELS } from "../content/labels";
-import { type SaveFn, type SaveStatus, useAutosave } from "../hooks/useAutosave";
+import { type SaveFn, useAutosave } from "../hooks/useAutosave";
 import { useRunEvents } from "../hooks/useRunEvents";
 
 type LoadState =
@@ -218,24 +219,6 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
       </div>
     </div>
   );
-}
-
-function SaveIndicator({ status }: { status: SaveStatus }) {
-  switch (status) {
-    case "pending":
-    case "saving":
-      return <span className="text-xs text-slate-500">Menyimpan…</span>;
-    case "saved":
-      return <span className="text-xs text-slate-500">Tersimpan</span>;
-    case "error":
-      return (
-        <span className="text-xs text-red-700">
-          Gagal menyimpan. Dicoba lagi saat Anda mengetik.
-        </span>
-      );
-    default:
-      return null;
-  }
 }
 
 function BackLink() {

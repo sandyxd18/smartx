@@ -1,0 +1,7 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: counter
+sources:
+  - src/**/*.v
+tests:
+  - test/test_counter.py
+simulator: icarus

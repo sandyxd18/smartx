@@ -9,7 +9,8 @@ type Handler = (request: Request) => unknown;
  */
 export function mockFetch(routes: Record<string, Handler>) {
   const fn = vi.fn(async (input: Request) => {
-    const key = `${input.method} ${new URL(input.url).pathname}`;
+    // Decoded, so a file path parameter ("src%2Fa.v") reads as it is written ("src/a.v").
+    const key = `${input.method} ${decodeURIComponent(new URL(input.url).pathname)}`;
     const handler = routes[key];
     if (!handler) return new Response("not mocked", { status: 500 });
     const result = await handler(input);

@@ -3,19 +3,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
 /** `keepalive` is true when the page may be going away (the request must outlive it). */
-export type SaveFn = (value: string, options: { keepalive: boolean }) => Promise<void>;
+export type SaveFn<T = string> = (value: T, options: { keepalive: boolean }) => Promise<void>;
 
 /**
  * Debounced autosave. Call `schedule(value)` on every change; the latest value is saved
  * `delayMs` after the last change. Saves run one at a time, in order. A pending change
  * is flushed (with keepalive) on unmount and when the page is hidden or unloaded, so
- * a refresh right after typing does not lose the last keystrokes.
+ * a refresh right after typing does not lose the last keystrokes. `settle()` saves a
+ * pending change right away and resolves when every save has finished: await it before
+ * anything that must see the stored text (switching files, renaming, deleting).
  */
-export function useAutosave(save: SaveFn, delayMs = 1000) {
+export function useAutosave<T = string>(save: SaveFn<T>, delayMs = 1000) {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const saveRef = useRef(save);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
+  // Boxed, so any T (even null) can be pending.
+  const pending = useRef<{ value: T } | null>(null);
   const chain = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
@@ -27,13 +30,13 @@ export function useAutosave(save: SaveFn, delayMs = 1000) {
       clearTimeout(timer.current);
       timer.current = null;
     }
-    const value = pending.current;
-    if (value === null) return;
+    const box = pending.current;
+    if (box === null) return;
     pending.current = null;
     setStatus("saving");
     chain.current = chain.current.then(async () => {
       try {
-        await saveRef.current(value, { keepalive });
+        await saveRef.current(box.value, { keepalive });
         setStatus(pending.current === null ? "saved" : "pending");
       } catch {
         // The next change schedules a new save with the newer text.
@@ -43,8 +46,8 @@ export function useAutosave(save: SaveFn, delayMs = 1000) {
   }, []);
 
   const schedule = useCallback(
-    (value: string) => {
-      pending.current = value;
+    (value: T) => {
+      pending.current = { value };
       setStatus("pending");
       if (timer.current !== null) clearTimeout(timer.current);
       timer.current = setTimeout(() => flush(false), delayMs);
@@ -66,5 +69,10 @@ export function useAutosave(save: SaveFn, delayMs = 1000) {
     };
   }, [flush]);
 
-  return { status, schedule };
+  const settle = useCallback(async () => {
+    flush(false);
+    await chain.current;
+  }, [flush]);
+
+  return { status, schedule, settle };
 }

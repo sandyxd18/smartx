@@ -6,3 +6,19 @@ export function httpErrorMessage(status: number): string {
 }
 
 export const UNREACHABLE = "Backend tidak bisa dihubungi.";
+
+/** The backend's own explanation (`detail`), falling back to the HTTP status. */
+export function apiErrorMessage(error: unknown, status: number): string {
+  if (typeof error === "object" && error !== null && "detail" in error) {
+    const { detail } = error;
+    if (typeof detail === "string") return detail;
+    // FastAPI validation errors: [{msg, loc, ...}]
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first: unknown = detail[0];
+      if (typeof first === "object" && first !== null && "msg" in first) {
+        return String(first.msg).replace(/^Value error, /, "");
+      }
+    }
+  }
+  return httpErrorMessage(status);
+}

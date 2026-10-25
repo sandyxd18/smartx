@@ -22,3 +22,9 @@ export const TERMINAL_STATUSES: ReadonlySet<RunStatus> = new Set([
   "cancelled",
   "timeout",
 ]);
+
+export type ProjectSummary = components["schemas"]["ProjectSummary"];
+export type ProjectDetail = components["schemas"]["ProjectDetail"];
+export type ProjectEntry = components["schemas"]["EntryRead"];
+export type ProjectTemplate = components["schemas"]["ProjectTemplateRead"];
+export type ProjectFile = components["schemas"]["FileRead"];

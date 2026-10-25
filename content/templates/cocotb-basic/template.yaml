@@ -1,0 +1,3 @@
+title: cocotb dasar
+description: Counter 8-bit beserta testbench cocotb dengan clock, reset, model referensi, dan test acak ber-seed.
+order: 20

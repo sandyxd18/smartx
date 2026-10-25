@@ -155,4 +155,54 @@ describe("useAutosave", () => {
 
     expect(save).toHaveBeenCalledTimes(1);
   });
+
+  it("settle saves a pending change now and resolves once it is stored", async () => {
+    let finish: () => void = () => undefined;
+    const save = vi.fn<SaveFn>(() => new Promise<void>((resolve) => (finish = resolve)));
+    const { result } = setup(save);
+    act(() => result.current.schedule("draft"));
+
+    let settled = false;
+    let done: Promise<void> = Promise.resolve();
+    act(() => {
+      done = result.current.settle().then(() => {
+        settled = true;
+      });
+    });
+    await settle();
+    expect(save).toHaveBeenCalledWith("draft", { keepalive: false });
+    expect(settled).toBe(false); // still waiting for the request
+
+    finish();
+    await act(async () => {
+      await done;
+    });
+    expect(settled).toBe(true);
+    // The 1-second timer was cancelled: nothing is saved twice.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    await settle();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("settle resolves right away when nothing is pending", async () => {
+    const { result, save } = setup();
+    await act(async () => {
+      await result.current.settle();
+    });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("saves any value type, e.g. a file path with its content", async () => {
+    const save = vi.fn<SaveFn<{ path: string; content: string }>>(() => Promise.resolve());
+    const { result } = renderHook(() => useAutosave(save, 1000));
+
+    act(() => result.current.schedule({ path: "src/a.v", content: "x" }));
+    await act(async () => {
+      await result.current.settle();
+    });
+
+    expect(save).toHaveBeenCalledWith({ path: "src/a.v", content: "x" }, { keepalive: false });
+  });
 });

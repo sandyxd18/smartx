@@ -6,8 +6,15 @@ import type { CodeEditorProps } from "./codeEditorTypes";
 type StandaloneEditor = Parameters<OnMount>[0];
 
 const MARKER_OWNER = "smartx-grader";
+const NO_DIAGNOSTICS: NonNullable<CodeEditorProps["diagnostics"]> = [];
 
-export function CodeEditor({ value, onChange, onRun, diagnostics, language }: CodeEditorProps) {
+export function CodeEditor({
+  value,
+  onChange,
+  onRun,
+  diagnostics = NO_DIAGNOSTICS,
+  language,
+}: CodeEditorProps) {
   const [editor, setEditor] = useState<StandaloneEditor | null>(null);
   // The keybinding is registered once; read the latest callback through a ref.
   const onRunRef = useRef(onRun);
@@ -16,8 +23,10 @@ export function CodeEditor({ value, onChange, onRun, diagnostics, language }: Co
   }, [onRun]);
 
   const handleMount: OnMount = (instance) => {
+    // Monaco defaults to CRLF on Windows for a new or one-line file; keep sources LF.
+    instance.getModel()?.setEOL(monaco.editor.EndOfLineSequence.LF);
     instance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
-      onRunRef.current(instance.getValue()),
+      onRunRef.current?.(instance.getValue()),
     );
     setEditor(instance);
   };

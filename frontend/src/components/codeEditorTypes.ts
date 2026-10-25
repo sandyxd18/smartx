@@ -9,6 +9,14 @@ export interface EditorDiagnostic {
   code?: string | null;
 }
 
+export type EditorLanguage =
+  | "verilog"
+  | "systemverilog"
+  | "python"
+  | "yaml"
+  | "markdown"
+  | "plaintext";
+
 export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -16,8 +24,8 @@ export interface CodeEditorProps {
    * Ctrl+Enter / Cmd+Enter inside the editor, with the text the editor holds right now.
    * Do not rely on `value` here: right after a keystroke React may not have re-rendered.
    */
-  onRun: (currentCode: string) => void;
+  onRun?: (currentCode: string) => void;
   /** Shown as squiggles and in the gutter; cleared when the list is empty. */
-  diagnostics: EditorDiagnostic[];
-  language: "verilog" | "systemverilog";
+  diagnostics?: EditorDiagnostic[];
+  language: EditorLanguage;
 }

@@ -1,0 +1,6 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: top
+sources:
+  - src/**/*.v
+tests: []
+simulator: icarus
