@@ -66,3 +66,21 @@ def test_api_filters_by_step(client: TestClient) -> None:
     assert body[0]["body"].startswith("# Menulis model referensi")
     assert client.get("/api/lessons?step=6").json() == []  # no lessons for step 6 yet
     assert client.get("/api/lessons?step=9").status_code == 422  # steps are 1..6
+
+
+def test_content_lessons_cover_phase_3() -> None:
+    lessons = {x.id: x for x in load_lessons(REPO_ROOT / "content" / "lessons") if x.step == 3}
+
+    assert list(lessons) == [
+        "03-tidak-bisa-disintesis",
+        "03-synchronizer",
+        "03-debounce",
+        "03-laporan-timing",
+        "03-simulasi-lulus-fpga-gagal",
+    ]
+    # The topics the phase plan asks for.
+    assert "always @*" in lessons["03-tidak-bisa-disintesis"].body
+    assert "metastabil" in lessons["03-synchronizer"].body
+    assert "270.000 siklus" in lessons["03-debounce"].body
+    assert "Jalur kritis" in lessons["03-laporan-timing"].body
+    assert "Unconstrained IO" in lessons["03-simulasi-lulus-fpga-gagal"].body

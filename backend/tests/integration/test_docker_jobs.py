@@ -593,3 +593,31 @@ async def test_fpga_report_flags_missed_timing(docker_settings: Settings, engine
     assert clock["name"] == "clk" and clock["target_mhz"] == 400 and not clock["met"]
     assert result["critical_paths"][0]["steps"]
     assert {r["label"] for r in result["utilization"]} == {"LUT", "FF", "BRAM", "IO"}
+
+
+def lesson_modules(*names: str) -> dict[str, str]:
+    """Verilog blocks of lessons, one file per module (src/<module>.v)."""
+    files = {}
+    for name in names:
+        text = (REPO_ROOT / "content" / "lessons" / f"{name}.md").read_text(encoding="utf-8")
+        for block in text.split("```verilog\n")[1:]:
+            code = block.split("```")[0]
+            module = code.split("module ", 1)[1].split()[0]
+            files[f"src/{module}.v"] = code
+    return files
+
+
+async def test_lesson_code_builds_for_the_board(docker_settings: Settings, engine: Engine) -> None:
+    """The synchronizer and debounce code in the step 3 lessons builds cleanly."""
+    files = lesson_modules("03-synchronizer", "03-debounce")
+    assert sorted(files) == ["src/debounce.v", "src/sync2.v", "src/top.v"]
+    sources = sorted(files)
+    files["constraints/tang-nano-9k.cst"] = project_files(BLINKY)["constraints/tang-nano-9k.cst"]
+
+    run = await run_fpga(docker_settings, engine, files, top="top", sources=sources)
+
+    result = run.result
+    assert result is not None
+    assert result["status"] == "ok", result["error"]
+    assert result["timing_met"] is True
+    assert result["warnings"] == []

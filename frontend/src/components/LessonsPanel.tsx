@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, type Lesson } from "../api/client";
 import { httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { Markdown } from "./Markdown";
@@ -8,19 +8,34 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "ok"; lessons: Lesson[] };
 
-/** Short lessons of one learning step, read next to the work. */
-export function LessonsPanel({ step }: { step: number }) {
+const STEP_TITLES: Record<number, string> = {
+  1: "Langkah 1 · Latihan Verilog",
+  2: "Langkah 2 · Simulasi dan verifikasi",
+  3: "Langkah 3 · FPGA",
+  4: "Langkah 4 · Proyek bertahap",
+  5: "Langkah 5 · ASIC",
+  6: "Langkah 6 · Tapeout",
+};
+
+/** Short lessons of some learning steps, grouped per step, read next to the work. */
+export function LessonsPanel({ steps }: { steps: number[] }) {
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [openId, setOpenId] = useState<string | null>(null);
+  // A stable dependency for the effect, whatever array the caller passes.
+  const key = steps.join(",");
+  const wanted = useMemo(() => key.split(",").map(Number), [key]);
 
   useEffect(() => {
     let cancelled = false;
-    api.GET("/api/lessons", { params: { query: { step } } }).then(
+    api.GET("/api/lessons").then(
       ({ data, response }) => {
         if (cancelled) return;
         setLoad(
           data
-            ? { kind: "ok", lessons: data }
+            ? {
+                kind: "ok",
+                lessons: data.filter((x) => wanted.includes(x.step)),
+              }
             : { kind: "error", message: httpErrorMessage(response.status) },
         );
       },
@@ -31,7 +46,7 @@ export function LessonsPanel({ step }: { step: number }) {
     return () => {
       cancelled = true;
     };
-  }, [step]);
+  }, [wanted]);
 
   let content;
   if (load.kind === "loading")
@@ -53,23 +68,38 @@ export function LessonsPanel({ step }: { step: number }) {
         </div>
         <Markdown>{lesson.body}</Markdown>
       </div>
+    ) : load.lessons.length === 0 ? (
+      <p className="text-slate-500">Belum ada materi.</p>
     ) : (
-      <ul className="flex flex-col gap-1">
-        {load.lessons.map((x) => (
-          <li key={x.id}>
-            <button
-              type="button"
-              onClick={() => setOpenId(x.id)}
-              className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+      <div className="flex flex-col gap-3">
+        {wanted.map((step) => {
+          const items = load.lessons.filter((x) => x.step === step);
+          if (items.length === 0) return null;
+          return (
+            <section
+              key={step}
+              aria-label={STEP_TITLES[step] ?? `Langkah ${step}`}
             >
-              {x.title}
-            </button>
-          </li>
-        ))}
-        {load.lessons.length === 0 && (
-          <li className="text-slate-500">Belum ada materi.</li>
-        )}
-      </ul>
+              <h2 className="mb-1 text-xs font-medium text-slate-500">
+                {STEP_TITLES[step] ?? `Langkah ${step}`}
+              </h2>
+              <ul className="flex flex-col gap-1">
+                {items.map((x) => (
+                  <li key={x.id}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(x.id)}
+                      className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+                    >
+                      {x.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
     );
   }
 

@@ -143,7 +143,7 @@ order: 40        # urutan dalam satu langkah
 ...
 ```
 
-`NN` adalah langkah belajar (misalnya `02-`). Isinya Markdown biasa (tabel dan blok kode didukung) dan tampil di sidebar "Materi" halaman proyek. Klaim tentang perilaku tool sebaiknya diukur dulu di image toolchain dan disebut versinya, bukan ditulis dari ingatan.
+`NN` adalah langkah belajar (misalnya `02-`). Isinya Markdown biasa (tabel dan blok kode didukung) dan tampil di sidebar "Materi" halaman proyek, yang menampilkan langkah 2 dan 3, dikelompokkan per langkah. Blok ```verilog di materi langkah 3 yang dibangun oleh test Docker harus tetap bisa di-Build tanpa peringatan. Klaim tentang perilaku tool sebaiknya diukur dulu di image toolchain dan disebut versinya, bukan ditulis dari ingatan.
 
 ## Proyek terpandu: `content/projects/<id>/` (Fase 4)
 

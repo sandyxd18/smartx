@@ -483,7 +483,7 @@ function ProjectView({ projectId }: { projectId: number }) {
           )}
         </div>
 
-        {side === "lessons" && <LessonsPanel step={2} />}
+        {side === "lessons" && <LessonsPanel steps={[2, 3]} />}
         {side === "fpga" && (
           <FpgaPanel
             projectId={projectId}

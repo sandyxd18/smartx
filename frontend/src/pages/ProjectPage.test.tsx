@@ -925,16 +925,24 @@ describe("ProjectPage", () => {
         order: 40,
         body: "# Icarus vs Verilator\n\nIcarus 4-state, Verilator 2-state.\n",
       },
+      {
+        id: "03-a",
+        title: "Synchronizer 2-flop",
+        step: 3,
+        order: 20,
+        body: "# Synchronizer 2-flop\n",
+      },
+      {
+        id: "04-a",
+        title: "UART",
+        step: 4,
+        order: 10,
+        body: "# UART\n",
+      },
     ];
 
-    it("opens step 2 lessons in a sidebar", async () => {
-      let asked = "";
-      renderProject({
-        "GET /api/lessons": (req: Request) => {
-          asked = new URL(req.url).search;
-          return LESSONS;
-        },
-      });
+    it("opens step 2 and 3 lessons in a sidebar, grouped per step", async () => {
+      renderProject({ "GET /api/lessons": () => LESSONS });
 
       const toggle = await screen.findByRole("button", { name: "Materi" });
       expect(toggle).toHaveAttribute("aria-pressed", "false");
@@ -943,7 +951,19 @@ describe("ProjectPage", () => {
       const panel = await screen.findByRole("complementary", {
         name: "Materi",
       });
-      expect(asked).toBe("?step=2");
+      const fpga = await within(panel).findByRole("region", {
+        name: "Langkah 3 · FPGA",
+      });
+      expect(
+        within(fpga).getByRole("button", { name: "Synchronizer 2-flop" }),
+      ).toBeInTheDocument();
+      expect(
+        within(panel).getByRole("region", {
+          name: "Langkah 2 · Simulasi dan verifikasi",
+        }),
+      ).toHaveTextContent("Menulis model referensi");
+      // Step 4 lessons belong to guided projects, not to this page.
+      expect(within(panel).queryByText("UART")).not.toBeInTheDocument();
       await userEvent.click(
         await within(panel).findByRole("button", {
           name: "Icarus vs Verilator",

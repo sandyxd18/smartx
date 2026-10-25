@@ -299,3 +299,16 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - Cara instalasi dan aturan udev di README diambil dari panduan resmi openFPGALoader (Debian/Ubuntu, Arch, Fedora, Homebrew, MSYS2 UCRT64; `99-openfpgaloader.rules` dengan grup `plugdev`, atau `70-...` dengan `dialout`). Panduan itu tidak membahas driver Windows, jadi saran Zadig/WinUSB ditandai belum diuji.
 - Tab FPGA menampilkan perintah `smartx-flash --run <id>` untuk run yang sedang dibuka.
 - Test `backend/tests/test_flash_tool.py` menjalankan skrip terhadap backend tiruan lewat HTTP sungguhan: pemilihan build terbaru, isi bitstream yang diunduh sama persis, `--flash`/argumen tambahan, `--file`, `--dry-run`, dan pesan kesalahan. Flashing ke board fisik **belum diuji** karena pemilik belum punya board.
+
+## D43. Materi langkah 3 (Fase 3 task 6)
+- Lima materi ditulis sendiri: kode yang tidak bisa disintesis, synchronizer 2-flop, debounce tombol, membaca laporan timing, dan simulasi lulus tapi FPGA gagal.
+- Klaim tentang tool **diukur dulu** di image yang dipin (Yosys 0.70 `synth_gowin`, nextpnr 0.11.1-79, Icarus 14, Verilator 5.053):
+  - Ditolak Yosys: always dual-edge (`Multiple edge sensitive events found for this signal!`) dan `while` dengan batas data (`While loops are only allowed in constant functions!`).
+  - Diabaikan tanpa warning, baik oleh Yosys maupun Verilator lint `-Wall`: `assign #5` (menjadi `y = a`), `initial q = 0; #10 q = 1;` (menjadi **konstan 1**), `$display`, dan sensitivity list tidak lengkap. Untuk `always @(a) y = a & b`, Icarus memberi `y = 0` setelah `a = 1, b = 1`, sedangkan Yosys membangun LUT2 `a & b`.
+  - Pembagi 16-bit menjadi 376 ALU dan 128 LUT. Pengali 16×16 menjadi satu `MULT18X18`. Nilai awal register (`initial q = 9`) disimpan Yosys (DFFS untuk bit 1).
+  - Verilator lint memberi `PROCASSINIT` untuk register bernilai awal yang juga ditulis di always. Materi menjelaskan bahwa ini sah di FPGA tetapi tidak di ASIC.
+  - Desain tombol + `sync2` + `debounce` (10 ms = 270.000 siklus di 27 MHz) lolos PnR Tang Nano 9K dengan Fmax 169 MHz. Angka timing di materi timing adalah angka blinky dari task 3 dan 4 (159,08 MHz, 6,29 ns = 3,70 + 2,59, perkiraan awal 209,42 MHz).
+  - Hal yang tidak diukur (pantulan tombol beberapa milidetik, nilai register tanpa nilai awal di chip, polaritas LED dan tombol dari template yang belum dicoba di board) ditulis sebagai umum, atau disebut sumbernya.
+- Test Docker `test_lesson_code_builds_for_the_board` mengambil blok ```verilog dari materi synchronizer dan debounce, lalu membangunnya dengan job fpga untuk Tang Nano 9K. Hasilnya harus ok, timing tercapai, dan tanpa peringatan sintesis, jadi kode di materi tidak bisa diam-diam rusak.
+- Sidebar Materi di halaman proyek kini menampilkan langkah 2 dan 3, dikelompokkan per langkah dengan judul langkah. Panel mengambil semua materi lalu menyaring langkahnya di klien.
+- Ditemukan saat mengukur: untuk desain bertingkat, nextpnr menamai clock dengan net hierarkis (`u_db.clk`, bukan `clk_IBUF_I_O`), jadi nama clock di laporan tidak selalu sama dengan port top. Dicatat untuk contoh proyek di task 7.
