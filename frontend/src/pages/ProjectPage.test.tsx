@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { ProjectDetail, ProjectEntry } from "../api/client";
+import type { ConfigRead, ProjectConfig, ProjectDetail, ProjectEntry } from "../api/client";
 import { routes } from "../routes";
 import { mockFetch } from "../test/mockFetch";
 
@@ -242,6 +242,49 @@ describe("ProjectPage", () => {
     await userEvent.type(editor, "?");
     await waitFor(() => expect(env.saved["rtl/counter.v"]).toBe(`${CONTENT["src/counter.v"]}?`), {
       timeout: 3000,
+    });
+  });
+
+  describe("smartx.yaml", () => {
+    const config: ProjectConfig = {
+      top: "counter",
+      sources: ["src/**/*.v"],
+      tests: ["test/test_counter.py"],
+      simulator: "icarus",
+      parameters: {},
+      defines: {},
+    };
+    const configRead = (overrides: Partial<ConfigRead> = {}): ConfigRead => ({
+      text: CONTENT["smartx.yaml"] ?? "",
+      config,
+      problems: [],
+      sources: ["src/counter.v"],
+      ...overrides,
+    });
+
+    it("opens as a form, offering the project's Python files as tests", async () => {
+      renderProject({ [`POST ${BASE}/config/check`]: () => configRead() });
+
+      await userEvent.click(await screen.findByRole("button", { name: "smartx.yaml" }));
+
+      expect(await screen.findByLabelText("Modul top")).toHaveValue("counter");
+      expect(screen.getByRole("checkbox", { name: "test/test_counter.py" })).toBeChecked();
+    });
+
+    it("saves a pending form change before another file opens", async () => {
+      const env = renderProject({
+        [`POST ${BASE}/config/check`]: () => configRead(),
+        [`PUT ${BASE}/config`]: async (req: Request) =>
+          configRead({ config: (await req.json()) as ProjectConfig }),
+      });
+      await userEvent.click(await screen.findByRole("button", { name: "smartx.yaml" }));
+      await userEvent.click(await screen.findByRole("radio", { name: "Verilator" }));
+
+      await openFile("counter.v");
+
+      const put = env.log.indexOf(`PUT ${BASE}/config`);
+      expect(put).toBeGreaterThan(-1);
+      expect(put).toBeLessThan(env.log.indexOf(`GET ${BASE}/files/src/counter.v`));
     });
   });
 });

@@ -16,6 +16,7 @@ from app.db import get_session
 from app.models import File, Project, ProjectKind, Run, RunStatus
 from app.progress import load_progress
 from app.projects import tree
+from app.projects.config import CONFIG_PATH, ConfigProblem, ProjectConfig, analyze, dump_config
 from app.projects.paths import InvalidProjectPath
 from app.projects.templates import exercise_files, load_templates
 
@@ -110,6 +111,19 @@ class FolderCreate(BaseModel):
 class MoveRequest(BaseModel):
     from_path: str
     to_path: str
+
+
+class ConfigCheck(BaseModel):
+    text: FileContent
+
+
+class ConfigRead(BaseModel):
+    """smartx.yaml as text, parsed (None while it has errors), and what it selects."""
+
+    text: str
+    config: ProjectConfig | None
+    problems: list[ConfigProblem]
+    sources: list[str]  # files matched by the source patterns, in pattern order
 
 
 def _tree_errors(exc: InvalidProjectPath | tree.TreeError) -> HTTPException:
@@ -304,3 +318,46 @@ def move_entry(project_id: int, body: MoveRequest, session: SessionDep) -> Proje
         raise _tree_errors(exc) from exc
     session.commit()
     return _detail(session, project)
+
+
+def _config_read(session: Session, project_id: int, text: str | None = None) -> ConfigRead:
+    """Analyze smartx.yaml, or `text` in its place (an unsaved draft)."""
+    files = tree.read_all(session, project_id)
+    if text is not None:
+        files[CONFIG_PATH] = text
+    if CONFIG_PATH not in files:
+        problem = ConfigProblem(
+            severity="error",
+            message=f"{CONFIG_PATH} belum ada. Buat file itu di root proyek, atau isi form.",
+        )
+        return ConfigRead(text="", config=None, problems=[problem], sources=[])
+    text = files[CONFIG_PATH]
+    result = analyze(text, files)
+    return ConfigRead(
+        text=text, config=result.config, problems=result.problems, sources=result.sources
+    )
+
+
+@router.get("/projects/{project_id}/config")
+def read_config(project_id: int, session: SessionDep) -> ConfigRead:
+    _get_project(session, project_id)
+    return _config_read(session, project_id)
+
+
+@router.put("/projects/{project_id}/config")
+def write_config(project_id: int, body: ProjectConfig, session: SessionDep) -> ConfigRead:
+    """Save the form: smartx.yaml is rewritten from the fields (comments are not kept)."""
+    _get_project(session, project_id)
+    try:
+        tree.write_file(session, project_id, CONFIG_PATH, dump_config(body))
+    except (InvalidProjectPath, tree.TreeError) as exc:
+        raise _tree_errors(exc) from exc
+    session.commit()
+    return _config_read(session, project_id)
+
+
+@router.post("/projects/{project_id}/config/check")
+def check_config(project_id: int, body: ConfigCheck, session: SessionDep) -> ConfigRead:
+    """Analyze YAML that is still being typed, without saving it."""
+    _get_project(session, project_id)
+    return _config_read(session, project_id, body.text)

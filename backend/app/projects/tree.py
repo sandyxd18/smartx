@@ -195,5 +195,10 @@ def delete_tree(session: Session, project_id: int) -> None:
         session.delete(row)
 
 
+def read_all(session: Session, project_id: int) -> dict[str, str]:
+    """Every file's content by path."""
+    return {f.path: f.content for f in _files(session, project_id)}
+
+
 def file_count(session: Session, project_id: int) -> int:
     return len(session.exec(select(col(File.id)).where(File.project_id == project_id)).all())

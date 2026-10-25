@@ -111,6 +111,8 @@ POST /api/projects/{id}/files                {path, content} (409 kalau sudah ad
 GET | PUT | DELETE /api/projects/{id}/files/{path}   PUT = simpan (autosave), DELETE folder = rekursif
 POST /api/projects/{id}/folders              {path}
 POST /api/projects/{id}/move                 {from_path, to_path}: ganti nama/pindah file atau folder
+GET | PUT /api/projects/{id}/config           smartx.yaml: teks + hasil parse + masalah | simpan dari form
+POST /api/projects/{id}/config/check          {text}: periksa YAML yang sedang diketik (tidak disimpan)
 POST /api/projects/{id}/runs              {kind, params}
 GET  /api/runs/{id}
 GET  /api/runs/{id}/events                SSE: log, status

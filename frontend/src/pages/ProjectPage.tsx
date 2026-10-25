@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { api, type ProjectDetail, type ProjectEntry } from "../api/client";
 import { apiErrorMessage, httpErrorMessage, UNREACHABLE } from "../api/errors";
 import { CodeEditor } from "../components/CodeEditor";
+import { ConfigEditor } from "../components/ConfigEditor";
 import { FileTree } from "../components/FileTree";
 import { SaveIndicator } from "../components/SaveIndicator";
 import { languageForPath } from "../editor/languages";
@@ -24,6 +25,8 @@ interface Draft {
   path: string;
   content: string;
 }
+
+const CONFIG_PATH = "smartx.yaml";
 
 function within(path: string, folder: string): boolean {
   return path === folder || path.startsWith(`${folder}/`);
@@ -53,7 +56,19 @@ function ProjectView({ projectId }: { projectId: number }) {
     [projectId],
   );
   const autosave = useAutosave(saveFile);
-  const { settle } = autosave;
+  const { settle: settleText } = autosave;
+  // The config form saves on its own; every tree change waits for it too.
+  const formSettle = useRef<(() => Promise<void>) | null>(null);
+  const settle = useCallback(async () => {
+    await formSettle.current?.();
+    await settleText();
+  }, [settleText]);
+  const registerFormSettle = useCallback((fn: (() => Promise<void>) | null) => {
+    formSettle.current = fn;
+  }, []);
+  const showSavedConfig = useCallback((text: string) => {
+    setOpen((current) => current && { ...current, content: text });
+  }, []);
 
   const refresh = useCallback(
     () =>
@@ -221,7 +236,21 @@ function ProjectView({ projectId }: { projectId: number }) {
         </aside>
 
         <div className="flex min-h-96 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-          {open ? (
+          {open?.path === CONFIG_PATH ? (
+            <div className="min-h-0 flex-1" key={open.id}>
+              <ConfigEditor
+                projectId={projectId}
+                text={open.content}
+                pyFiles={load.detail.entries
+                  .filter((e) => e.kind === "file" && e.path.endsWith(".py"))
+                  .map((e) => e.path)}
+                onEdit={edit}
+                onSaved={showSavedConfig}
+                settleText={settleText}
+                registerSettle={registerFormSettle}
+              />
+            </div>
+          ) : open ? (
             <>
               <div className="border-b border-slate-200 px-3 py-1.5 font-mono text-xs text-slate-600">
                 {open.path}

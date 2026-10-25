@@ -28,3 +28,6 @@ export type ProjectDetail = components["schemas"]["ProjectDetail"];
 export type ProjectEntry = components["schemas"]["EntryRead"];
 export type ProjectTemplate = components["schemas"]["ProjectTemplateRead"];
 export type ProjectFile = components["schemas"]["FileRead"];
+export type ProjectConfig = components["schemas"]["ProjectConfig"];
+export type ConfigRead = components["schemas"]["ConfigRead"];
+export type ConfigProblem = components["schemas"]["ConfigProblem"];

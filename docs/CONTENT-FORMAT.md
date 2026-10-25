@@ -84,16 +84,30 @@ Nama file dan folder di `files/` harus lolos aturan path proyek: huruf, angka, `
 
 ## Proyek workspace: `smartx.yaml`
 
-Draf; formatnya difinalkan dan divalidasi di Fase 2 task 2.
+File di root proyek. Divalidasi oleh `backend/app/projects/config.py`, dan bisa diedit lewat form atau sebagai YAML.
 
 ```yaml
-top: counter              # modul top
-sources:                  # glob, relatif ke root proyek
+top: counter              # wajib: modul top (identifier Verilog)
+sources:                  # glob relatif ke root proyek; default [src/**/*.v]
   - src/**/*.v
-tests:                    # file testbench cocotb
+tests:                    # file testbench cocotb (.py); default []
   - test/test_counter.py
-simulator: icarus         # icarus | verilator
+simulator: icarus         # icarus | verilator; default icarus
+parameters:               # opsional: parameter modul top
+  WIDTH: 8
+  INIT: 8'hFF             # selain angka bulat, teks diteruskan apa adanya
+defines:                  # opsional: -DNAMA=nilai
+  SIM: 1
 ```
+
+Aturan:
+
+- Kunci yang tidak dikenal ditolak, supaya salah ketik (`simulater`) langsung terlihat.
+- Pola `sources` boleh memakai `*` dan `?` (dalam satu folder) serta `**` sebagai satu segmen utuh (lintas folder, termasuk nol folder). Pola harus relatif, tanpa `..` dan tanpa `\`. File yang cocok dipakai sesuai urutan pola, tanpa duplikat.
+- `tests` berisi path file `.py` di proyek. Nama file harus berupa nama modul Python yang valid (`test_fifo.py`). Dua file tidak boleh punya nama modul yang sama, karena cocotb memuat test berdasarkan nama modul.
+- Nilai `parameters` dan `defines` berupa angka bulat atau teks. `true`/`false`, daftar, dan nilai kosong ditolak, karena cocotb runner (versi yang dipin) menulisnya apa adanya ke perintah simulator (`-P`/`-G`/`-D`). Untuk define tanpa nilai, isi `1`.
+- Peringatan, yang tidak menghalangi penyimpanan: pola yang tidak cocok dengan file mana pun, modul top yang tidak ditemukan di file sumber, file test yang tidak ada, dan `tests` yang kosong.
+- Menyimpan dari form menulis ulang file dari isi form, sehingga komentar buatan sendiri hilang. Hanya baris judul yang dipertahankan.
 
 ## Proyek terpandu: `content/projects/<id>/` (Fase 4)
 

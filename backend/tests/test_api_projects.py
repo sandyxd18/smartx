@@ -340,3 +340,118 @@ class TestMove:
         assert self.move(client, pid, "src", "src/inner").status_code == 409  # into itself
         assert self.move(client, pid, "missing.v", "c.v").status_code == 404
         assert self.move(client, pid, "b.v", "../b.v").status_code == 422
+
+
+class TestConfig:
+    def test_reads_the_template_config(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+
+        r = client.get(f"/api/projects/{pid}/config")
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["text"] == read(client, pid, "smartx.yaml")
+        assert body["config"]["top"] == "counter"
+        assert body["config"]["tests"] == ["test/test_counter.py"]
+        assert body["sources"] == ["src/counter.v"]
+        assert body["problems"] == []
+
+    def test_reports_problems_with_lines(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        client.put(
+            f"/api/projects/{pid}/files/smartx.yaml",
+            json={"content": "top: counter\nsimulator: modelsim\n"},
+        )
+
+        body = client.get(f"/api/projects/{pid}/config").json()
+
+        assert body["config"] is None
+        assert body["text"].startswith("top: counter")
+        (problem,) = body["problems"]
+        assert problem["severity"] == "error"
+        assert problem["line"] == 2
+
+    def test_missing_config_file(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        client.delete(f"/api/projects/{pid}/files/smartx.yaml")
+
+        body = client.get(f"/api/projects/{pid}/config").json()
+
+        assert body["text"] == ""
+        assert body["config"] is None
+        assert "smartx.yaml" in body["problems"][0]["message"]
+
+    def test_form_save_writes_yaml(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        config = {
+            "top": "counter",
+            "sources": ["src/**/*.v"],
+            "tests": ["test/test_counter.py"],
+            "simulator": "verilator",
+            "parameters": {"WIDTH": 8},
+            "defines": {"SIM": 1},
+        }
+
+        r = client.put(f"/api/projects/{pid}/config", json=config)
+
+        assert r.status_code == 200
+        assert r.json()["config"] == config
+        text = read(client, pid, "smartx.yaml")
+        assert "simulator: verilator" in text
+        assert "WIDTH: 8" in text
+        assert r.json()["text"] == text
+
+    def test_check_does_not_save(self, client: TestClient) -> None:
+        pid = create(client, template="cocotb-basic")["id"]
+        before = read(client, pid, "smartx.yaml")
+
+        r = client.post(
+            f"/api/projects/{pid}/config/check",
+            json={"text": "top: counter\nsources: [rtl/*.v]\ntests: [test/test_counter.py]\n"},
+        )
+
+        assert r.status_code == 200
+        body = r.json()
+        assert body["config"]["sources"] == ["rtl/*.v"]
+        assert body["sources"] == []
+        assert [p["severity"] for p in body["problems"]] == ["warning", "warning"]
+        assert read(client, pid, "smartx.yaml") == before
+
+    def test_check_size_limit(self, client: TestClient) -> None:
+        pid = create(client)["id"]
+        r = client.post(
+            f"/api/projects/{pid}/config/check", json={"text": "x" * (MAX_FILE_CHARS + 1)}
+        )
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"top": "9bad"},
+            {"top": "a", "simulator": "questa"},
+            {"top": "a", "sources": ["../x.v"]},
+            {"top": "a", "parameters": {"W": True}},
+            {"top": "a", "unknown": 1},
+        ],
+    )
+    def test_form_save_rejects_invalid(self, client: TestClient, config: dict[str, Any]) -> None:
+        pid = create(client)["id"]
+        before = read(client, pid, "smartx.yaml")
+
+        assert client.put(f"/api/projects/{pid}/config", json=config).status_code == 422
+        assert read(client, pid, "smartx.yaml") == before
+
+
+def test_every_template_and_exercise_copy_has_a_valid_config(client: TestClient) -> None:
+    ids = [t["id"] for t in client.get("/api/project-templates").json()]
+    projects = [create(client, template=t) for t in ids]
+    projects.append(create(client, exercise_id="counter-4bit"))
+
+    for p in projects:
+        body = client.get(f"/api/projects/{p['id']}/config").json()
+        assert body["config"] is not None, (p["source"], body["problems"])
+        errors = [x for x in body["problems"] if x["severity"] == "error"]
+        assert errors == [], p["source"]
+        assert body["sources"], p["source"]
+        if p["source"] != "template:empty":
+            assert body["problems"] == [], (p["source"], body["problems"])

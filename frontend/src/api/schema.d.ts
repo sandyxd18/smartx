@@ -364,10 +364,81 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Config */
+        get: operations["read_config_api_projects__project_id__config_get"];
+        /**
+         * Write Config
+         * @description Save the form: smartx.yaml is rewritten from the fields (comments are not kept).
+         */
+        put: operations["write_config_api_projects__project_id__config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/config/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Config
+         * @description Analyze YAML that is still being typed, without saving it.
+         */
+        post: operations["check_config_api_projects__project_id__config_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ConfigCheck */
+        ConfigCheck: {
+            /** Text */
+            text: string;
+        };
+        /** ConfigProblem */
+        ConfigProblem: {
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning";
+            /** Message */
+            message: string;
+            /** Line */
+            line?: number | null;
+        };
+        /**
+         * ConfigRead
+         * @description smartx.yaml as text, parsed (None while it has errors), and what it selects.
+         */
+        ConfigRead: {
+            /** Text */
+            text: string;
+            config: components["schemas"]["ProjectConfig"] | null;
+            /** Problems */
+            problems: components["schemas"]["ConfigProblem"][];
+            /** Sources */
+            sources: string[];
+        };
         /** Diagnostic */
         Diagnostic: {
             /** Line */
@@ -637,6 +708,43 @@ export interface components {
             from_path: string;
             /** To Path */
             to_path: string;
+        };
+        /** ProjectConfig */
+        ProjectConfig: {
+            /** Top */
+            top: string;
+            /**
+             * Sources
+             * @default [
+             *       "src/**\/*.v"
+             *     ]
+             */
+            sources: string[];
+            /**
+             * Tests
+             * @default []
+             */
+            tests: string[];
+            /**
+             * Simulator
+             * @default icarus
+             * @enum {string}
+             */
+            simulator: "icarus" | "verilator";
+            /**
+             * Parameters
+             * @default {}
+             */
+            parameters: {
+                [key: string]: number | string;
+            };
+            /**
+             * Defines
+             * @default {}
+             */
+            defines: {
+                [key: string]: number | string;
+            };
         };
         /**
          * ProjectCreate
@@ -1553,6 +1661,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_config_api_projects__project_id__config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_config_api_projects__project_id__config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_config_api_projects__project_id__config_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigCheck"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigRead"];
                 };
             };
             /** @description Validation Error */
