@@ -56,6 +56,7 @@ function grade(overrides: Partial<GradeResult> = {}): GradeResult {
       { name: "random_stimulus", passed: true, message: "", sim_time_ns: 900 },
     ],
     diagnostics: [],
+    lint: [],
     log: "cocotb log line",
     wave_file: "build/sim_build/counter4.fst",
     wave_url: `/api/runs/${RUN_ID}/files/build/sim_build/counter4.fst`,
@@ -202,6 +203,34 @@ describe("ExercisePage", () => {
     expect(screen.getByText("Baris 4: syntax error")).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
       "error 4: syntax error",
+    );
+  });
+
+  it("shows Verilator lint warnings next to the test results", async () => {
+    const linted = grade({
+      lint: [
+        {
+          line: 10,
+          column: 5,
+          code: "LATCH",
+          severity: "warning",
+          message: "Latch tak sengaja (Verilator LATCH: Latch inferred for signal 'y')",
+        },
+      ],
+    });
+    const fetch = renderPage({
+      [`GET ${BASE}`]: () => detail(),
+      [`POST ${BASE}/runs`]: () => Response.json(run({ status: "queued", grade: null }), { status: 201 }),
+      [`GET ${BASE}/runs/${RUN_ID}`]: () => run({ exit_code: 0, grade: linted }),
+    });
+    await editor();
+
+    await runToEnd(fetch);
+
+    const warnings = await screen.findByRole("list", { name: "Peringatan Verilator" });
+    expect(warnings).toHaveTextContent("Baris 10: Latch tak sengaja");
+    expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
+      "warning 10: Latch tak sengaja",
     );
   });
 

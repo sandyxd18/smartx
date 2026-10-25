@@ -75,7 +75,7 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 
 | kind | Image | Kelas | Input | Output utama |
 |---|---|---|---|---|
-| `grade` | light | light | kode user + folder soal | `result.json`, `.fst` |
+| `grade` | light | light | kode user + folder soal | `result.json` (test, diagnostics Icarus, lint Verilator), `.fst` |
 | `lint` | light | light | file proyek | daftar diagnostic (file, baris, pesan) |
 | `sim` | light | light | file proyek + top + test module | `result.json`, `.fst` |
 | `fpga` | light | light | file + board + constraint | `.fs`/`.bin`, laporan resource & timing |

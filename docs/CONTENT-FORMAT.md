@@ -53,6 +53,7 @@ Topik lain boleh dipakai sebagai topik kedua dan seterusnya (misalnya `mux`, `co
 6. Jangan andalkan `timescale` di file user; grader memaksa `1ns/1ps`.
 7. Pakai `assert kondisi, "pesan"` dengan pesan lengkap. Yang ditampilkan ke pengguna hanya pesan itu; introspeksi assertion dari cocotb dibuang oleh grader.
 8. Untuk soal "jebakan umum", pesan gagal starter sebaiknya mengarahkan ke penyebab bug (contoh: `pitfall-latch`).
+9. `solution.v` harus bersih dari warning `verilator --lint-only -Wall` (dicek `make check-content`). Sinyal yang memang sengaja tidak dipakai beri nama dengan kata `unused`, atau bungkus dengan `/* verilator lint_off ... */`.
 
 ### Validasi
 

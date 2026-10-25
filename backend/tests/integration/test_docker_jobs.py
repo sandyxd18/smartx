@@ -189,6 +189,7 @@ async def test_grade_solution_passes_with_waveform(
     assert len(run.result["tests"]) == 3
     wave = docker_settings.runs_dir / run.id / run.result["wave_file"]
     assert wave.is_file() and wave.stat().st_size > 0
+    assert run.result["lint"] == []
 
 
 async def test_grade_starter_fails(docker_settings: Settings, engine: Engine) -> None:
@@ -197,6 +198,8 @@ async def test_grade_starter_fails(docker_settings: Settings, engine: Engine) ->
     assert run.status == RunStatus.succeeded, run.error
     assert run.exit_code == 1
     assert run.result is not None and run.result["status"] == "fail"
+    # Verilator lint ran in the same job: the starter never drives q (line 5).
+    assert (5, "UNDRIVEN") in {(d["line"], d["code"]) for d in run.result["lint"]}
 
 
 async def test_grade_compile_error_has_line_numbers(

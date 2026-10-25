@@ -3,6 +3,10 @@ export interface EditorDiagnostic {
   line: number;
   severity: "error" | "warning";
   message: string;
+  /** 1-based; without it the whole line is marked. */
+  column?: number | null;
+  /** Tool-specific name such as Verilator's LATCH. */
+  code?: string | null;
 }
 
 export interface CodeEditorProps {

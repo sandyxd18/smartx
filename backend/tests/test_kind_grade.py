@@ -121,6 +121,22 @@ class TestCollect:
         assert "XXXX" in result["tests"][0]["message"]
         assert result["wave_url"] is not None
 
+    def test_lint_findings_from_verilator(self, tmp_path: Path) -> None:
+        result = grade.collect(copy_fixture("grade-fail", tmp_path))
+
+        # The starter's ports are unused and q is never driven.
+        assert [(d["line"], d["code"]) for d in result["lint"]] == [
+            (2, "UNUSEDSIGNAL"),
+            (3, "UNUSEDSIGNAL"),
+            (4, "UNUSEDSIGNAL"),
+            (5, "UNDRIVEN"),
+        ]
+        assert all(d["severity"] == "warning" for d in result["lint"])
+        assert result["diagnostics"] == []
+
+    def test_old_results_without_lint(self, tmp_path: Path) -> None:
+        assert grade.collect(copy_fixture("grade-pass", tmp_path))["lint"] == []
+
     def test_compile_error_lists_lines_of_user_code_only(self, tmp_path: Path) -> None:
         result = grade.collect(copy_fixture("grade-compile-error", tmp_path))
 
@@ -128,11 +144,13 @@ class TestCollect:
         assert result["tests"] == []
         assert result["wave_file"] is None and result["wave_url"] is None
         # cocotb's own cocotb_iverilog_dump.v errors are not the user's lines.
-        assert result["diagnostics"] == [
-            {"line": 4, "severity": "error", "message": "syntax error"},
-            {"line": 5, "severity": "error", "message": "Syntax in assignment statement l-value."},
-            {"line": 6, "severity": "error", "message": "syntax error"},
+        assert [(d["line"], d["severity"], d["message"]) for d in result["diagnostics"]] == [
+            (4, "error", "syntax error"),
+            (5, "error", "Syntax in assignment statement l-value."),
+            (6, "error", "syntax error"),
         ]
+        # Icarus already marks these lines; Verilator would only repeat them.
+        assert result["lint"] == []
 
     @pytest.mark.parametrize(
         "wave_file",

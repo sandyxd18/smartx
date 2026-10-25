@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -51,6 +52,48 @@ def clean_message(text: str) -> str:
     text = text.strip()
     head, sep, _ = text.partition("\nassert ")
     return head.strip() if sep and head.strip() else text
+
+
+VERILATOR = "verilator"
+LINT_TIMEOUT_S = 30
+
+
+def lint_command(toplevel: str) -> list[str]:
+    """Verilator lint of dut.v (flags checked against Verilator 5.053 --help).
+
+    DECLFILENAME: the file is always dut.v, never named after the module.
+    EOFNEWLINE: the editor may save without a final newline; not worth a warning.
+    """
+    return [
+        VERILATOR,
+        "--lint-only",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-EOFNEWLINE",
+        "-Wno-fatal",
+        "--quiet",
+        "--top-module",
+        toplevel,
+        "dut.v",
+    ]
+
+
+def run_lint(workdir: Path, toplevel: str) -> str:
+    """Verilator's messages about workdir/dut.v; empty if lint could not run.
+
+    Lint is advice only, so a missing or crashing Verilator must not fail the grade.
+    """
+    try:
+        proc = subprocess.run(
+            lint_command(toplevel),
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+            timeout=LINT_TIMEOUT_S,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return (proc.stderr + proc.stdout)[-20000:]
 
 
 def parse_results(xml_path: Path) -> list[dict]:
@@ -97,6 +140,7 @@ def grade(ex_dir: Path, source: Path, workdir: Path, simulator: str) -> dict:
         "tests": [],
         "log": "",
         "wave_file": None,
+        "lint_log": run_lint(workdir, meta["toplevel"]),
     }
 
     log_path = workdir / "build.log"
@@ -176,8 +220,10 @@ def main() -> int:
         args.out.write_text(text)
     else:
         # Ringkasan untuk terminal; log lengkap ada di JSON.
-        summary = {k: v for k, v in result.items() if k != "log"}
+        summary = {k: v for k, v in result.items() if k not in ("log", "lint_log")}
         print(json.dumps(summary, indent=2, ensure_ascii=False))
+        if result["lint_log"]:
+            print(result["lint_log"], file=sys.stderr)
     return 0 if result["status"] == "pass" else 1
 
 

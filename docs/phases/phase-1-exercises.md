@@ -12,7 +12,7 @@ Tujuan: pengganti HDLBits versi pribadi. Tulis Verilog di browser, klik Run, lih
 6. [x] **Autosave** kode per soal (debounce 1 detik) ke `ExerciseProgress.last_code`.
 7. [x] **WaveView**: iframe Surfer yang memuat `.fst` dari URL artefak. Tambahkan tombol unduh sebagai fallback.
 8. [x] **Tulis 19 soal lagi** sesuai tabel kurikulum di `CONTENT-FORMAT.md` (total 20). Setiap soal harus lolos `make check-content`. Untuk soal "jebakan umum", starter berisi kode yang salah dan user diminta memperbaikinya.
-9. **Verilator lint pada Run** (opsional tapi bagus): sebelum simulasi, jalankan `verilator --lint-only -Wall` dan tampilkan warning (misalnya latch, width mismatch) sebagai anotasi di Monaco.
+9. [x] **Verilator lint pada Run** (opsional tapi bagus): sebelum simulasi, jalankan `verilator --lint-only -Wall` dan tampilkan warning (misalnya latch, width mismatch) sebagai anotasi di Monaco.
 
 ## Kriteria selesai
 

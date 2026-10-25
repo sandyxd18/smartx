@@ -5,6 +5,8 @@ Aturan untuk setiap soal:
   1. exercise.yaml valid dan semua file yang disebut ada.
   2. solution.v LULUS semua test.
   3. starter.v TIDAK lulus (kalau lulus, soalnya tidak menguji apa-apa).
+  4. solution.v bersih dari peringatan `verilator --lint-only -Wall` (solusi resmi
+     adalah contoh yang ditiru pengguna).
 
 Contoh:
     python tools/grader/check_content.py              # semua soal
@@ -48,6 +50,9 @@ def check_one(ex_dir: Path) -> list[str]:
         if sol["status"] != "pass":
             failed = [t["name"] for t in sol["tests"] if not t["passed"]]
             problems.append(f"solution.v tidak lulus (status={sol['status']}, gagal={failed})")
+        lint = [ln for ln in sol["lint_log"].splitlines() if ln.startswith("%")]
+        if lint:
+            problems.append("solution.v punya peringatan Verilator: " + " | ".join(lint))
         start = grade(ex_dir, ex_dir / meta["files"]["starter"], Path(tmp) / "start", "icarus")
         if start["status"] == "pass":
             problems.append("starter.v lulus semua test; testbench terlalu lemah")

@@ -32,12 +32,17 @@ export function CodeEditor({ value, onChange, onRun, diagnostics, language }: Co
       diagnostics.map((d) => {
         // Icarus sometimes reports the line after the last one (e.g. a missing endmodule).
         const line = Math.min(Math.max(d.line, 1), lastLine);
+        const maxColumn = model.getLineMaxColumn(line);
+        // Verilator points at a column: underline the word there, not the whole line.
+        const column = d.column ? Math.min(d.column, maxColumn) : null;
+        const word = column ? model.getWordAtPosition({ lineNumber: line, column }) : null;
         return {
           startLineNumber: line,
           endLineNumber: line,
-          startColumn: 1,
-          endColumn: model.getLineMaxColumn(line),
+          startColumn: word?.startColumn ?? column ?? 1,
+          endColumn: word?.endColumn ?? (column ? Math.min(column + 1, maxColumn) : maxColumn),
           message: d.message,
+          code: d.code ?? undefined,
           severity:
             d.severity === "warning" ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
         };

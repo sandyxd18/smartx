@@ -246,6 +246,10 @@ export interface components {
             severity: "error" | "warning";
             /** Message */
             message: string;
+            /** Column */
+            column?: number | null;
+            /** Code */
+            code?: string | null;
         };
         /** DockerStatus */
         DockerStatus: {
@@ -396,6 +400,11 @@ export interface components {
              * @default []
              */
             diagnostics: components["schemas"]["Diagnostic"][];
+            /**
+             * Lint
+             * @default []
+             */
+            lint: components["schemas"]["Diagnostic"][];
             /**
              * Log
              * @default

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.content.models import ExerciseId
 from app.jobs.context import JobContext, JobInputError
 from app.jobs.runner import ContainerSpec, JobClass
+from app.jobs.verilator_lint import parse_lint
 
 JOB_CLASS = JobClass.light
 # grade.py: 0 = all tests passed, 1 = a test failed or the code did not compile.
@@ -52,6 +53,8 @@ class Diagnostic(BaseModel):
     line: int
     severity: Literal["error", "warning"]
     message: str
+    column: int | None = None  # 1-based; Icarus gives none
+    code: str | None = None  # Verilator warning name, e.g. LATCH
 
 
 class GradeResult(BaseModel):
@@ -63,6 +66,9 @@ class GradeResult(BaseModel):
     tests: list[GradeTest] = []
     # Compiler messages about the user's code (only for compile_error).
     diagnostics: list[Diagnostic] = []
+    # Verilator lint warnings (advisory; empty for compile_error, where Icarus already
+    # points at the broken lines).
+    lint: list[Diagnostic] = []
     log: str = ""
     wave_file: str | None = None  # relative to the run folder
     wave_url: str | None = None
@@ -138,6 +144,7 @@ def collect(run_dir: Path) -> dict[str, Any]:
             "simulator": data.get("simulator"),
             "tests": data.get("tests", []),
             "diagnostics": parse_diagnostics(log) if status == "compile_error" else [],
+            "lint": [] if status == "compile_error" else parse_lint(data.get("lint_log") or ""),
             "log": log,
             "wave_file": wave,
             "wave_url": f"/api/runs/{run_dir.name}/files/{wave}" if wave else None,

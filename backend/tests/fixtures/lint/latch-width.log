@@ -1,0 +1,8 @@
+%Warning-LATCH: dut.v:10:5: Latch inferred for signal 'y' (not all control paths of combinational always assign a value)
+                          : ... Suggest use of always_latch for intentional latches
+   10 |     always @(*) begin
+      |     ^~~~~~
+                ... For warning description see https://verilator.org/warn/LATCH?v=5.053
+                ... Use "/* verilator lint_off LATCH */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: /work/build/dut.v:9:27: Operator ASSIGN expects 2 bits on the Assign RHS, but Assign RHS's VARREF 'a' generates 4 bits.
+                               : ... note: In instance 'bad'

@@ -159,8 +159,12 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
   }
 
   const { detail } = load;
-  const diagnostics =
-    run?.grade?.status === "compile_error" ? run.grade.diagnostics : NO_DIAGNOSTICS;
+  // Icarus errors when the code does not compile, otherwise Verilator's lint warnings.
+  const diagnostics = !run?.grade
+    ? NO_DIAGNOSTICS
+    : run.grade.status === "compile_error"
+      ? run.grade.diagnostics
+      : run.grade.lint;
 
   return (
     // Side by side on wide screens; stacked (statement first) on narrow ones.
@@ -494,19 +498,40 @@ function TestsTab({ grade }: { grade: GradeResult | null }) {
     );
   }
   return (
-    <ul aria-label="Hasil test" className="space-y-2">
-      {grade.tests.map((t) => (
-        <li key={t.name} className="flex gap-2">
-          <span className={t.passed ? "text-green-600" : "text-red-600"} aria-hidden>
-            {t.passed ? "✓" : "✗"}
-          </span>
-          <div>
-            <div className="font-mono text-xs">{t.name}</div>
-            {t.message && <div className="text-xs text-red-700">{t.message}</div>}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <ul aria-label="Hasil test" className="space-y-2">
+        {grade.tests.map((t) => (
+          <li key={t.name} className="flex gap-2">
+            <span className={t.passed ? "text-green-600" : "text-red-600"} aria-hidden>
+              {t.passed ? "✓" : "✗"}
+            </span>
+            <div>
+              <div className="font-mono text-xs">{t.name}</div>
+              {t.message && <div className="text-xs text-red-700">{t.message}</div>}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {grade.lint.length > 0 && <LintList lint={grade.lint} />}
+    </div>
+  );
+}
+
+function LintList({ lint }: { lint: GradeResult["lint"] }) {
+  return (
+    <div className="border-t border-slate-100 pt-2">
+      <p className="text-xs font-medium text-amber-800">
+        Peringatan Verilator ({lint.length}). Tidak memengaruhi hasil test, tapi sering menandakan
+        bug.
+      </p>
+      <ul aria-label="Peringatan Verilator" className="mt-1 space-y-1 font-mono text-xs">
+        {lint.map((d) => (
+          <li key={`${d.line}-${d.column}-${d.message}`} className="text-amber-800">
+            Baris {d.line}: {d.message}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

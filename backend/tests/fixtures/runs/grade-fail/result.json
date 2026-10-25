@@ -23,5 +23,6 @@
     }
   ],
   "log": "     0.00ns INFO     cocotb   Running tests\n(log dipersingkat untuk fixture)\n",
-  "wave_file": "/work/build/sim_build/counter4.fst"
+  "wave_file": "/work/build/sim_build/counter4.fst",
+  "lint_log": "%Warning-UNUSEDSIGNAL: dut.v:2:23: Signal is not used: 'clk'\n                                 : ... note: In instance 'counter4'\n    2 |     input  wire       clk,\n      |                       ^~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.053\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: dut.v:3:23: Signal is not used: 'rst'\n                                 : ... note: In instance 'counter4'\n    3 |     input  wire       rst,\n      |                       ^~~\n%Warning-UNUSEDSIGNAL: dut.v:4:23: Signal is not used: 'en'\n                                 : ... note: In instance 'counter4'\n    4 |     input  wire       en,\n      |                       ^~\n%Warning-UNDRIVEN: dut.v:5:23: Signal is not driven: 'q'\n                             : ... note: In instance 'counter4'\n    5 |     output reg  [3:0] q\n      |                       ^\n                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.053\n                   ... Use \"/* verilator lint_off UNDRIVEN */\" and lint_on around source to disable this message.\n"
 }
