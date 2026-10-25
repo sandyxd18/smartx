@@ -10,7 +10,9 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.config import Settings
+from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
+from app.jobs.context import JobContext
 from app.jobs.events import EventHub
 from app.jobs.fake_runner import FakeJob, FakeRunner
 from app.jobs.kinds import KINDS
@@ -21,10 +23,13 @@ from app.models import Run, RunStatus
 FIXTURES = Path(__file__).parent / "fixtures" / "runs"
 
 
-def make_kind(job_class: JobClass, collect: Any = None) -> SimpleNamespace:
+def make_kind(
+    job_class: JobClass, collect: Any = None, ok_exit_codes: frozenset[int] = frozenset({0})
+) -> SimpleNamespace:
     return SimpleNamespace(
         JOB_CLASS=job_class,
-        prepare=lambda run_dir, params: ContainerSpec(command=["true"], job_class=job_class),
+        OK_EXIT_CODES=ok_exit_codes,
+        prepare=lambda run_dir, params, ctx: ContainerSpec(command=["true"], job_class=job_class),
         collect=collect or (lambda run_dir: {"ok": True}),
     )
 
@@ -50,7 +55,12 @@ def make_queue(
     settings = settings.model_copy(update=overrides)
     events = EventHub()
     queue = JobQueue(
-        runner=runner, settings=settings, engine=engine, events=events, kinds=TEST_KINDS
+        runner=runner,
+        settings=settings,
+        engine=engine,
+        events=events,
+        context=JobContext(settings=settings, catalog=ExerciseCatalog(settings.data_dir / "none")),
+        kinds=TEST_KINDS,
     )
     return queue, events
 

@@ -82,12 +82,12 @@ Status run: `queued → running → succeeded | failed | cancelled | timeout`.
 | `asic` | ASIC_IMAGE | heavy | file + `config.yaml` + PDK | GDS, metrics, laporan, PNG layout |
 | `tt_harden` | ASIC_IMAGE | heavy | repo TT hasil generator | GDS TT, warning |
 
-Setiap jenis job adalah satu modul di `backend/app/jobs/kinds/` dengan dua fungsi: `prepare(run_dir, params) -> ContainerSpec` dan `collect(run_dir) -> dict`. Ini membuat jenis job baru mudah ditambah dan mudah dites tanpa Docker (test unit untuk `prepare` dan `collect` memakai folder fixture).
+Setiap jenis job adalah satu modul di `backend/app/jobs/kinds/` dengan `JOB_CLASS`, `OK_EXIT_CODES`, model `Params`, serta dua fungsi: `prepare(run_dir, params, ctx) -> ContainerSpec` dan `collect(run_dir) -> dict`. `ctx` (`JobContext`) memberi akses ke settings dan katalog soal. Ini membuat jenis job baru mudah ditambah dan mudah dites tanpa Docker (test unit untuk `prepare` dan `collect` memakai folder fixture).
 
 ## Docker runner
 
 - Pakai Python `docker` SDK lewat `/var/run/docker.sock` yang di-mount ke container backend.
-- Setiap job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, mount `data/runs/<id>` sebagai `/work` (rw) dan `content/` sebagai `/content` (ro).
+- Setiap job: `docker run --rm --network none --user <uid>:<gid> --memory <limit> --cpus <n> --pids-limit 512`, mount `data/runs/<id>` sebagai `/work` (rw). Mount lain diminta lewat `ContainerSpec`: `tools/` di `/tools` (ro), subfolder run yang di-mount ulang read-only, dan `content/` di `/content` (ro). Job yang menjalankan kode user **tidak boleh** me-mount `content/`, karena di sana ada `solution.v`; file soal yang dibutuhkan disalin ke folder run.
 - Path folder run harus berupa path di **host**, karena container job dibuat oleh daemon host. Simpan `SMARTX_DATA_DIR` host di config dan terjemahkan path.
 - Log stdout/stderr dibaca streaming dan ditulis ke `run.log` serta diteruskan ke SSE.
 - Timeout per kelas (`JOB_LIGHT_TIMEOUT_S`, `JOB_HEAVY_TIMEOUT_S`). Saat timeout atau cancel: `container.kill()`, status `timeout`/`cancelled`.

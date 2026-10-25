@@ -5,9 +5,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.jobs.context import JobContext
 from app.jobs.runner import ContainerSpec, JobClass
 
 JOB_CLASS = JobClass.light
+OK_EXIT_CODES = frozenset({0})
 
 
 class Params(BaseModel):
@@ -17,7 +19,7 @@ class Params(BaseModel):
     sleep_s: int = Field(default=0, ge=0, le=600)
 
 
-def prepare(run_dir: Path, params: dict[str, Any]) -> ContainerSpec:
+def prepare(run_dir: Path, params: dict[str, Any], ctx: JobContext) -> ContainerSpec:
     p = Params.model_validate(params)
     if p.sleep_s:
         # sleep_s is a validated int, so building a shell string is safe here.

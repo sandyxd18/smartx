@@ -12,6 +12,7 @@ from docker.errors import APIError, NotFound
 
 from app.config import Settings
 from app.jobs.runner import ContainerSpec, JobClass, JobHandle, JobRunner, LineSplitter
+from app.paths import safe_join
 
 RUN_LABEL = "smartx.run_id"
 
@@ -84,9 +85,17 @@ class DockerRunner(JobRunner):
             image, memory, cpus = s.toolchain_image, s.job_light_memory, s.job_light_cpus
 
         volumes = {host_path(run_dir, s.data_dir, s.host_data_dir): {"bind": "/work", "mode": "rw"}}
+        for subdir, target in spec.readonly_subdirs.items():
+            source = safe_join(run_dir, subdir)
+            if not source.is_dir():
+                raise RuntimeError(f"folder {subdir} tidak ada di folder run")
+            volumes[host_path(source, s.data_dir, s.host_data_dir)] = {"bind": target, "mode": "ro"}
         if spec.mount_content:
             content = host_path(s.content_dir, s.content_dir, s.host_content_dir)
             volumes[content] = {"bind": "/content", "mode": "ro"}
+        if spec.mount_tools:
+            tools = host_path(s.tools_dir, s.tools_dir, s.host_tools_dir)
+            volumes[tools] = {"bind": "/tools", "mode": "ro"}
 
         return {
             "image": image,

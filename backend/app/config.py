@@ -42,12 +42,14 @@ class Settings(BaseSettings):
     content_dir: Path = Field(default=Path("content"), validation_alias="SMARTX_CONTENT_DIR")
     # Re-read exercise.yaml files when they change (cheap stat check on each access).
     content_auto_reload: bool = Field(default=True, validation_alias="SMARTX_CONTENT_RELOAD")
+    tools_dir: Path = Field(default=Path("tools"), validation_alias="SMARTX_TOOLS_DIR")
     # When the backend itself runs in a container, job containers are created by the host
     # daemon, so bind mounts need host paths. Empty = backend runs on the host.
     host_data_dir: str = Field(default="", validation_alias="SMARTX_HOST_DATA_DIR")
     host_content_dir: str = Field(default="", validation_alias="SMARTX_HOST_CONTENT_DIR")
+    host_tools_dir: str = Field(default="", validation_alias="SMARTX_HOST_TOOLS_DIR")
 
-    @field_validator("data_dir", "content_dir")
+    @field_validator("data_dir", "content_dir", "tools_dir")
     @classmethod
     def _resolve_repo_path(cls, value: Path) -> Path:
         # Relative paths in .env are relative to the repo root, not the cwd.

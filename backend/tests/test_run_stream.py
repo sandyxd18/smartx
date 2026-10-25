@@ -7,7 +7,9 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.config import Settings
+from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
+from app.jobs.context import JobContext
 from app.jobs.events import Event, EventHub
 from app.jobs.fake_runner import FakeJob, FakeRunner
 from app.jobs.queue import JobQueue
@@ -28,7 +30,10 @@ def setup(
 ) -> tuple[JobQueue, EventHub, Settings]:
     settings = settings.model_copy(update=overrides)
     events = EventHub()
-    queue = JobQueue(runner=runner, settings=settings, engine=engine, events=events)
+    context = JobContext(settings=settings, catalog=ExerciseCatalog(settings.data_dir / "none"))
+    queue = JobQueue(
+        runner=runner, settings=settings, engine=engine, events=events, context=context
+    )
     return queue, events, settings
 
 

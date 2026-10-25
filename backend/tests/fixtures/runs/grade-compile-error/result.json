@@ -1,0 +1,8 @@
+{
+  "exercise": "counter-4bit",
+  "simulator": "icarus",
+  "status": "compile_error",
+  "tests": [],
+  "log": "/work/build/dut.v:4: syntax error\n/work/build/dut.v:5: Syntax in assignment statement l-value.\n/work/build/dut.v:6: syntax error\n/work/build/sim_build/cocotb_iverilog_dump.v:1: error: Malformed statement\n/work/build/sim_build/cocotb_iverilog_dump.v:2: syntax error\n/work/build/sim_build/cocotb_iverilog_dump.v:3: error: Malformed statement\n",
+  "wave_file": null
+}

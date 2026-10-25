@@ -6,8 +6,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.health import get_docker_probe
-from app.config import Settings
+from app.config import REPO_ROOT, Settings
+from app.content import ExerciseCatalog
 from app.docker_probe import DockerStatus
+from app.jobs.context import JobContext
 from app.jobs.fake_runner import FakeRunner
 from app.main import create_app
 
@@ -24,6 +26,17 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def settings(tmp_path: Path) -> Settings:
     # _env_file=None: tests must not depend on the developer's .env.
     return Settings(_env_file=None, data_dir=tmp_path / "data")
+
+
+@pytest.fixture
+def catalog() -> ExerciseCatalog:
+    """The real content/exercises (counter-4bit is always there)."""
+    return ExerciseCatalog(REPO_ROOT / "content" / "exercises", auto_reload=False)
+
+
+@pytest.fixture
+def job_context(settings: Settings, catalog: ExerciseCatalog) -> JobContext:
+    return JobContext(settings=settings, catalog=catalog)
 
 
 @pytest.fixture

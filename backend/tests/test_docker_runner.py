@@ -91,7 +91,9 @@ async def test_start_applies_all_limits(settings: Settings, client: FakeClient) 
     runner = make_runner(settings, client)
     rd = run_dir(settings)
 
-    handle = await runner.start("r1", rd, ContainerSpec(command=["yosys", "-V"]))
+    handle = await runner.start(
+        "r1", rd, ContainerSpec(command=["yosys", "-V"], mount_content=True)
+    )
 
     kw = client.containers.run_kwargs
     assert kw["image"] == "smartx/toolchain:local"
@@ -145,12 +147,42 @@ async def test_host_paths_are_used_for_mounts(settings: Settings, client: FakeCl
     )
     runner = make_runner(settings, client)
 
-    await runner.start("r1", run_dir(settings), ContainerSpec(command=["true"]))
+    await runner.start("r1", run_dir(settings), ContainerSpec(command=["true"], mount_content=True))
 
     assert client.containers.run_kwargs["volumes"] == {
         "C:/smartx/data/runs/r1": {"bind": "/work", "mode": "rw"},
         "C:/smartx/content": {"bind": "/content", "mode": "ro"},
     }
+
+
+async def test_tools_and_readonly_subdirs(settings: Settings, client: FakeClient) -> None:
+    settings = settings.model_copy(
+        update={"host_data_dir": "C:/smartx/data", "host_tools_dir": "C:/smartx/tools"}
+    )
+    runner = make_runner(settings, client)
+    rd = run_dir(settings)
+    (rd / "exercise").mkdir()
+    spec = ContainerSpec(
+        command=["true"], mount_tools=True, readonly_subdirs={"exercise": "/exercise"}
+    )
+
+    await runner.start("r1", rd, spec)
+
+    assert client.containers.run_kwargs["volumes"] == {
+        "C:/smartx/data/runs/r1": {"bind": "/work", "mode": "rw"},
+        "C:/smartx/data/runs/r1/exercise": {"bind": "/exercise", "mode": "ro"},
+        "C:/smartx/tools": {"bind": "/tools", "mode": "ro"},
+    }
+
+
+@pytest.mark.parametrize("subdir", ["missing", "../other", "/etc"])
+async def test_readonly_subdir_must_exist_inside_run(
+    settings: Settings, client: FakeClient, subdir: str
+) -> None:
+    runner = make_runner(settings, client)
+    spec = ContainerSpec(command=["true"], readonly_subdirs={subdir: "/x"})
+    with pytest.raises((RuntimeError, ValueError)):
+        await runner.start("r1", run_dir(settings), spec)
 
 
 def test_host_path_rejects_paths_outside_root(tmp_path: Path) -> None:

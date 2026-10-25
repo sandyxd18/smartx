@@ -14,9 +14,10 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.config import Settings
+from app.jobs.context import JobContext, JobInputError
 from app.jobs.events import EventHub
 from app.jobs.kinds import KINDS, JobKind
-from app.jobs.runner import JobClass, JobHandle, JobRunner
+from app.jobs.runner import ContainerSpec, JobClass, JobHandle, JobRunner
 from app.models import Run, RunStatus, utcnow
 
 log = logging.getLogger(__name__)
@@ -55,9 +56,11 @@ class JobQueue:
         settings: Settings,
         engine: Engine,
         events: EventHub,
+        context: JobContext,
         kinds: Mapping[str, JobKind] = KINDS,
     ) -> None:
         self._runner = runner
+        self._context = context
         self._settings = settings
         self._engine = engine
         self._events = events
@@ -139,9 +142,11 @@ class JobQueue:
             run_dir = self.run_dir(run_id)
             run_dir.mkdir(parents=True, exist_ok=True)
             try:
-                spec = kind.prepare(run_dir, run.params)
+                spec = kind.prepare(run_dir, run.params, self._context)
             except ValidationError as exc:
                 return _Outcome(RunStatus.failed, error=f"Parameter tidak valid: {exc}")
+            except JobInputError as exc:
+                return _Outcome(RunStatus.failed, error=str(exc))
 
             self._update(run_id, status=RunStatus.running, started_at=utcnow())
             self._events.publish(run_id, {"type": "status", "status": RunStatus.running.value})
@@ -158,17 +163,23 @@ class JobQueue:
                 },
             )
             try:
-                return await self._supervise(run_id, run_dir, kind, handle, active)
+                return await self._supervise(run_id, run_dir, kind, spec, handle, active)
             finally:
                 await self._runner.cleanup(handle)
 
     async def _supervise(
-        self, run_id: str, run_dir: Path, kind: JobKind, handle: JobHandle, active: _Active
+        self,
+        run_id: str,
+        run_dir: Path,
+        kind: JobKind,
+        spec: ContainerSpec,
+        handle: JobHandle,
+        active: _Active,
     ) -> _Outcome:
         if active.cancel_requested:  # cancel arrived while the container was starting
             await self._runner.kill(handle)
 
-        timeout = self._timeouts[kind.JOB_CLASS]
+        timeout = spec.timeout_s or self._timeouts[kind.JOB_CLASS]
         pump = asyncio.create_task(self._pump_logs(run_id, run_dir, handle))
         timed_out = False
         exit_code: int | None = None
@@ -192,7 +203,7 @@ class JobQueue:
             result = kind.collect(run_dir)
         except Exception as exc:
             return _Outcome(RunStatus.failed, exit_code, f"Gagal membaca hasil run: {exc}")
-        if exit_code != 0:
+        if exit_code not in kind.OK_EXIT_CODES:
             return _Outcome(
                 RunStatus.failed, exit_code, f"Proses keluar dengan kode {exit_code}.", result
             )

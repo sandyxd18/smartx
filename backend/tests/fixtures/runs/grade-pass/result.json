@@ -1,0 +1,27 @@
+{
+  "exercise": "counter-4bit",
+  "simulator": "icarus",
+  "status": "pass",
+  "tests": [
+    {
+      "name": "reset_sets_zero",
+      "passed": true,
+      "message": "",
+      "sim_time_ns": 0.0
+    },
+    {
+      "name": "counts_and_wraps",
+      "passed": true,
+      "message": "",
+      "sim_time_ns": 0.0
+    },
+    {
+      "name": "random_stimulus",
+      "passed": true,
+      "message": "",
+      "sim_time_ns": 0.0
+    }
+  ],
+  "log": "     0.00ns INFO     cocotb   Running tests\n(log dipersingkat untuk fixture)\n",
+  "wave_file": "/work/build/sim_build/counter4.fst"
+}

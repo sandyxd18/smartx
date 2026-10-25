@@ -8,6 +8,7 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import docker
 import pytest
@@ -15,7 +16,9 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.config import REPO_ROOT, Settings
+from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
+from app.jobs.context import JobContext
 from app.jobs.docker_runner import RUN_LABEL, DockerRunner
 from app.jobs.events import EventHub
 from app.jobs.kinds import KINDS
@@ -38,7 +41,10 @@ KINDS_UNDER_TEST = {
     **KINDS,
     "sandbox": SimpleNamespace(
         JOB_CLASS=JobClass.light,
-        prepare=lambda run_dir, params: ContainerSpec(command=["sh", "-c", SANDBOX_SCRIPT]),
+        OK_EXIT_CODES=frozenset({0}),
+        prepare=lambda run_dir, params, ctx: ContainerSpec(
+            command=["sh", "-c", SANDBOX_SCRIPT], mount_content=True
+        ),
         collect=lambda run_dir: {},
     ),
 }
@@ -67,11 +73,15 @@ def make_queue(settings: Settings, engine: Engine) -> JobQueue:
         settings=settings,
         engine=engine,
         events=EventHub(),
+        context=JobContext(
+            settings=settings,
+            catalog=ExerciseCatalog(settings.content_dir / "exercises", auto_reload=False),
+        ),
         kinds=KINDS_UNDER_TEST,
     )
 
 
-def new_run(engine: Engine, kind: str, params: dict[str, int] | None = None) -> str:
+def new_run(engine: Engine, kind: str, params: dict[str, Any] | None = None) -> str:
     with Session(engine) as s:
         run = Run(kind=kind, params=params or {})
         s.add(run)
@@ -146,3 +156,68 @@ async def test_timeout_kills_long_job(docker_settings: Settings, engine: Engine)
 
     assert get_run(engine, run_id).status == RunStatus.timeout
     assert containers_for(run_id) == []
+
+
+COUNTER = REPO_ROOT / "content" / "exercises" / "counter-4bit"
+
+PEEK_AT_SOLUTION = """module counter4(input clk, input rst, input en, output reg [3:0] q);
+  integer fd;
+  initial begin
+    fd = $fopen("/content/exercises/counter-4bit/solution.v", "r");
+    $display("PEEK fd=%0d", fd);
+  end
+endmodule
+"""
+
+
+async def grade_code(settings: Settings, engine: Engine, code: str) -> Run:
+    queue = make_queue(settings, engine)
+    run_id = new_run(engine, "grade", {"exercise_id": "counter-4bit", "code": code})
+    async with asyncio.timeout(120):
+        await queue.submit(run_id)
+    return get_run(engine, run_id)
+
+
+async def test_grade_solution_passes_with_waveform(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    run = await grade_code(docker_settings, engine, (COUNTER / "solution.v").read_text())
+
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.result is not None
+    assert run.result["status"] == "pass"
+    assert len(run.result["tests"]) == 3
+    wave = docker_settings.runs_dir / run.id / run.result["wave_file"]
+    assert wave.is_file() and wave.stat().st_size > 0
+
+
+async def test_grade_starter_fails(docker_settings: Settings, engine: Engine) -> None:
+    run = await grade_code(docker_settings, engine, (COUNTER / "starter.v").read_text())
+
+    assert run.status == RunStatus.succeeded, run.error
+    assert run.exit_code == 1
+    assert run.result is not None and run.result["status"] == "fail"
+
+
+async def test_grade_compile_error_has_line_numbers(
+    docker_settings: Settings, engine: Engine
+) -> None:
+    code = "module counter4(input clk, output q);\n  assign q = ;\nendmodule\n"
+    run = await grade_code(docker_settings, engine, code)
+
+    assert run.result is not None and run.result["status"] == "compile_error"
+    diagnostics = run.result["diagnostics"]
+    assert diagnostics, run.result["log"]
+    # Icarus may report several messages for the same line.
+    assert {d["line"] for d in diagnostics} == {2}
+    assert all(d["severity"] == "error" for d in diagnostics)
+
+
+async def test_grade_cannot_read_solution(docker_settings: Settings, engine: Engine) -> None:
+    run = await grade_code(docker_settings, engine, PEEK_AT_SOLUTION)
+
+    assert run.result is not None
+    assert "PEEK fd=0" in run.result["log"]  # $fopen failed: content/ is not mounted
+    solution = (COUNTER / "solution.v").read_text()
+    assert "q <= q + 4'd1" in solution  # the marker below really is in the solution
+    assert "q <= q + 4'd1" not in run.result["log"]

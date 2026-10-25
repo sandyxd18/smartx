@@ -11,6 +11,7 @@ from app.api import health, runs
 from app.config import Settings, get_settings
 from app.content import ExerciseCatalog
 from app.db import init_db, make_engine
+from app.jobs.context import JobContext
 from app.jobs.docker_runner import DockerRunner
 from app.jobs.events import EventHub
 from app.jobs.queue import JobQueue
@@ -46,7 +47,13 @@ def create_app(settings: Settings | None = None, runner: JobRunner | None = None
         log.info("loaded %d exercise(s)", len(catalog.all()))
 
         events = EventHub()
-        queue = JobQueue(runner=runner, settings=settings, engine=engine, events=events)
+        queue = JobQueue(
+            runner=runner,
+            settings=settings,
+            engine=engine,
+            events=events,
+            context=JobContext(settings=settings, catalog=catalog),
+        )
         app.state.catalog = catalog
         app.state.engine = engine
         app.state.events = events

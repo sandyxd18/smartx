@@ -15,12 +15,21 @@ class JobClass(StrEnum):
 
 @dataclass(frozen=True)
 class ContainerSpec:
-    """What a job kind wants to run. Image and limits come from the job class."""
+    """What a job kind wants to run. Image and limits come from the job class.
+
+    The run folder is always mounted read-write at /work. Everything else is opt-in:
+    content/ holds solution files, so jobs that run user code must not mount it.
+    """
 
     command: list[str]
     job_class: JobClass = JobClass.light
     env: dict[str, str] = field(default_factory=dict)
-    mount_content: bool = True
+    mount_content: bool = False  # content/ at /content (ro)
+    mount_tools: bool = False  # tools/ at /tools (ro), e.g. the grader
+    # Subfolders of the run folder to mount again read-only: {"exercise": "/exercise"}.
+    readonly_subdirs: dict[str, str] = field(default_factory=dict)
+    # Overrides the job class timeout (JOB_*_TIMEOUT_S) when set.
+    timeout_s: float | None = None
 
 
 @dataclass

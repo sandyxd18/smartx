@@ -22,6 +22,8 @@ services:
       SMARTX_CONTENT_DIR: /content
       SMARTX_HOST_DATA_DIR: ${SMARTX_HOST_DIR:?jalankan lewat 'make dev'}/data
       SMARTX_HOST_CONTENT_DIR: ${SMARTX_HOST_DIR}/content
+      SMARTX_TOOLS_DIR: /tools
+      SMARTX_HOST_TOOLS_DIR: ${SMARTX_HOST_DIR}/tools
       # File change events do not cross Docker Desktop bind mounts from Windows.
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
@@ -29,6 +31,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./backend:/app
       - ./content:/content:ro
+      - ./tools:/tools:ro
       - ./data:/data
     # Not published: only the frontend proxy talks to the backend.
     healthcheck:

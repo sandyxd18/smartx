@@ -15,3 +15,5 @@ frontend/public/surfer/
 .ruff_cache/
 # Run-folder fixtures for collect() tests are committed.
 !backend/tests/fixtures/**/*.log
+!backend/tests/fixtures/**/*.fst
+!backend/tests/fixtures/**/sim_build/
