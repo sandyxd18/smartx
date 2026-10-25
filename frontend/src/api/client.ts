@@ -39,3 +39,4 @@ export type SimResult = components["schemas"]["SimResult"];
 export type ProjectRunSummary = components["schemas"]["ProjectRunSummary"];
 export type RunComparison = components["schemas"]["RunComparison"];
 export type Snippet = components["schemas"]["Snippet"];
+export type Lesson = components["schemas"]["LessonRead"];

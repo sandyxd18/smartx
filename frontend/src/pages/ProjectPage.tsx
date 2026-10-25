@@ -12,6 +12,7 @@ import { CodeEditor } from "../components/CodeEditor";
 import { ConfigEditor } from "../components/ConfigEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { FileTree } from "../components/FileTree";
+import { LessonsPanel } from "../components/LessonsPanel";
 import { RunPanel, type RunTab } from "../components/RunPanel";
 import { SaveIndicator } from "../components/SaveIndicator";
 import { languageForPath } from "../editor/languages";
@@ -83,6 +84,7 @@ function ProjectView({ projectId }: { projectId: number }) {
   const lint = useProjectRun(projectId, settle);
   const sim = useProjectRun(projectId, settle);
   const [runTab, setRunTab] = useState<RunTab>("problems");
+  const [showLessons, setShowLessons] = useState(false);
   // A simulation that did not compile is explained in Problems; switch there once.
   const [shownCompileError, setShownCompileError] = useState<string | null>(
     null,
@@ -340,13 +342,21 @@ function ProjectView({ projectId }: { projectId: number }) {
           <SaveIndicator status={autosave.status} />
           <button
             type="button"
+            aria-pressed={showLessons}
+            onClick={() => setShowLessons((shown) => !shown)}
+            className="ml-auto rounded-md border border-slate-300 px-3 py-1.5 text-sm aria-pressed:bg-slate-100"
+          >
+            Materi
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setRunTab("problems");
               void lint.start("lint");
             }}
             disabled={lint.running}
             title="verilator --lint-only -Wall atas file sumber di smartx.yaml"
-            className="ml-auto rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium disabled:opacity-50"
+            className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium disabled:opacity-50"
           >
             Lint
           </button>
@@ -432,6 +442,8 @@ function ProjectView({ projectId }: { projectId: number }) {
             </p>
           )}
         </div>
+
+        {showLessons && <LessonsPanel step={2} />}
       </div>
 
       <RunPanel

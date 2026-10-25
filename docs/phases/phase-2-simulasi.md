@@ -11,11 +11,11 @@ Tujuan: lingkungan kerja proyek bebas (sandbox) dengan banyak file, testbench se
 5. [x] **Riwayat run**: daftar run per proyek (waktu, jenis, status, durasi, ringkasan test). Klik untuk membuka hasil lama.
 6. [x] **Bandingkan dua run**: test mana yang berubah status. (Diff waveform tidak perlu.)
 7. [x] **Template testbench**: snippet cocotb untuk clock/reset, driver valid-ready, scoreboard sederhana, dan coverage dengan `cocotb-coverage` (opsional).
-8. **Materi singkat** di `content/lessons/02-*.md`: cara menulis model referensi, test acak dengan seed, membaca waveform untuk debugging. Tampilkan di sidebar workspace.
+8. [x] **Materi singkat** di `content/lessons/02-*.md`: cara menulis model referensi, test acak dengan seed, membaca waveform untuk debugging. Tampilkan di sidebar workspace.
 
 ## Kriteria selesai
 
 - [x] Membuat proyek sandbox berisi FIFO sinkron + testbench cocotb dengan scoreboard, menjalankannya di Icarus dan Verilator, keduanya hijau.
 - [x] Warning lint muncul di editor pada baris yang tepat.
 - [x] Riwayat menyimpan minimal 50 run terakhir per proyek; hasil lama bisa dibuka beserta waveform-nya.
-- [ ] Perbedaan Icarus vs Verilator (mis. X-propagation) dijelaskan di materi.
+- [x] Perbedaan Icarus vs Verilator (mis. X-propagation) dijelaskan di materi.

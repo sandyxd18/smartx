@@ -60,7 +60,11 @@ const CONTENT: Record<string, string> = {
 };
 
 function file(path: string) {
-  return { path, content: CONTENT[path] ?? "", updated_at: "2026-10-25T10:00:00Z" };
+  return {
+    path,
+    content: CONTENT[path] ?? "",
+    updated_at: "2026-10-25T10:00:00Z",
+  };
 }
 
 /** A tiny in-memory backend; `log` records "METHOD path" in request order. */
@@ -92,7 +96,11 @@ function renderProject(extra: Parameters<typeof mockFetch>[0] = {}) {
       ]),
     ),
   );
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/workspace/1"] })} />);
+  render(
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: ["/workspace/1"] })}
+    />,
+  );
   return {
     fetch,
     log,
@@ -112,17 +120,29 @@ describe("ProjectPage", () => {
   it("shows the project and its file tree", async () => {
     renderProject();
 
-    expect(await screen.findByRole("heading", { name: "FIFO" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "counter.v" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "FIFO" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "counter.v" }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Pilih file/)).toBeInTheDocument();
   });
 
   it("explains a missing project", async () => {
-    mockFetch({ [`GET ${BASE}`]: () => Response.json({ detail: "x" }, { status: 404 }) });
+    mockFetch({
+      [`GET ${BASE}`]: () => Response.json({ detail: "x" }, { status: 404 }),
+    });
     render(
-      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/workspace/1"] })} />,
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: ["/workspace/1"],
+        })}
+      />,
     );
-    expect(await screen.findByText("Proyek tidak ditemukan.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Proyek tidak ditemukan."),
+    ).toBeInTheDocument();
   });
 
   it("opens a file with the right language and saves edits", async () => {
@@ -134,9 +154,13 @@ describe("ProjectPage", () => {
 
     await userEvent.type(editor, "// x");
 
-    await waitFor(() => expect(saved["src/counter.v"]).toBe(`${CONTENT["src/counter.v"]}// x`), {
-      timeout: 3000,
-    });
+    await waitFor(
+      () =>
+        expect(saved["src/counter.v"]).toBe(`${CONTENT["src/counter.v"]}// x`),
+      {
+        timeout: 3000,
+      },
+    );
     expect(await screen.findByText("Tersimpan")).toBeInTheDocument();
   });
 
@@ -149,7 +173,9 @@ describe("ProjectPage", () => {
     const next = await openFile("test_counter.py");
 
     expect(next).toHaveAttribute("data-language", "python");
-    await waitFor(() => expect(next).toHaveValue(CONTENT["test/test_counter.py"]));
+    await waitFor(() =>
+      expect(next).toHaveValue(CONTENT["test/test_counter.py"]),
+    );
     expect(saved["src/counter.v"]).toBe(`${CONTENT["src/counter.v"]}!`);
     expect(log.indexOf(`PUT ${BASE}/files/src/counter.v`)).toBeLessThan(
       log.indexOf(`GET ${BASE}/files/test/test_counter.py`),
@@ -163,7 +189,11 @@ describe("ProjectPage", () => {
         body = await req.json();
         env.setEntries([...ENTRIES, { path: "src/fifo.v", kind: "file" }]);
         return Response.json(
-          { path: "src/fifo.v", content: "", updated_at: "2026-10-25T10:00:00Z" },
+          {
+            path: "src/fifo.v",
+            content: "",
+            updated_at: "2026-10-25T10:00:00Z",
+          },
           { status: 201 },
         );
       },
@@ -176,28 +206,42 @@ describe("ProjectPage", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "▾ src" }));
     await userEvent.click(screen.getByRole("button", { name: "File baru" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Nama file baru" }), "fifo.v{Enter}");
-
-    await waitFor(() => expect(body).toEqual({ path: "src/fifo.v", content: "" }));
-    expect(await screen.findByRole("button", { name: "fifo.v" })).toHaveAttribute(
-      "aria-current",
-      "true",
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Nama file baru" }),
+      "fifo.v{Enter}",
     );
+
+    await waitFor(() =>
+      expect(body).toEqual({ path: "src/fifo.v", content: "" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "fifo.v" }),
+    ).toHaveAttribute("aria-current", "true");
     expect(await screen.findByLabelText("Editor kode")).toHaveValue("");
   });
 
   it("shows why a name was refused and keeps the input", async () => {
     renderProject({
       [`POST ${BASE}/files`]: () =>
-        Response.json({ detail: "File 'src/counter.v' sudah ada." }, { status: 409 }),
+        Response.json(
+          { detail: "File 'src/counter.v' sudah ada." },
+          { status: 409 },
+        ),
     });
 
     await userEvent.click(await screen.findByRole("button", { name: "▾ src" }));
     await userEvent.click(screen.getByRole("button", { name: "File baru" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Nama file baru" }), "counter.v{Enter}");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Nama file baru" }),
+      "counter.v{Enter}",
+    );
 
-    expect(await screen.findByText("File 'src/counter.v' sudah ada.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Nama file baru" })).toBeInTheDocument();
+    expect(
+      await screen.findByText("File 'src/counter.v' sudah ada."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Nama file baru" }),
+    ).toBeInTheDocument();
   });
 
   it("deletes the open file without saving it again afterwards", async () => {
@@ -211,10 +255,14 @@ describe("ProjectPage", () => {
     const editor = await openFile("counter.v");
     await userEvent.type(editor, "!");
 
-    await userEvent.click(screen.getByRole("button", { name: "Hapus src/counter.v" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Hapus src/counter.v" }),
+    );
 
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "counter.v" })).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole("button", { name: "counter.v" }),
+      ).not.toBeInTheDocument(),
     );
     expect(screen.queryByLabelText("Editor kode")).not.toBeInTheDocument();
     // Past the 1-second autosave delay: a pending edit must not recreate the file.
@@ -237,23 +285,33 @@ describe("ProjectPage", () => {
         return detail(renamed);
       },
       [`PUT ${BASE}/files/rtl/counter.v`]: async (req: Request) => {
-        env.saved["rtl/counter.v"] = ((await req.json()) as { content: string }).content;
+        env.saved["rtl/counter.v"] = (
+          (await req.json()) as { content: string }
+        ).content;
         return file("src/counter.v");
       },
     });
     const editor = await openFile("counter.v");
 
-    await userEvent.click(screen.getByRole("button", { name: "Ganti nama src" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Ganti nama src" }),
+    );
     const input = screen.getByRole("textbox", { name: "Nama baru" });
     await userEvent.clear(input);
     await userEvent.type(input, "rtl{Enter}");
 
-    await waitFor(() => expect(body).toEqual({ from_path: "src", to_path: "rtl" }));
+    await waitFor(() =>
+      expect(body).toEqual({ from_path: "src", to_path: "rtl" }),
+    );
     await screen.findByRole("button", { name: "▾ rtl" });
     await userEvent.type(editor, "?");
-    await waitFor(() => expect(env.saved["rtl/counter.v"]).toBe(`${CONTENT["src/counter.v"]}?`), {
-      timeout: 3000,
-    });
+    await waitFor(
+      () =>
+        expect(env.saved["rtl/counter.v"]).toBe(`${CONTENT["src/counter.v"]}?`),
+      {
+        timeout: 3000,
+      },
+    );
   });
 
   describe("smartx.yaml", () => {
@@ -276,10 +334,14 @@ describe("ProjectPage", () => {
     it("opens as a form, offering the project's Python files as tests", async () => {
       renderProject({ [`POST ${BASE}/config/check`]: () => configRead() });
 
-      await userEvent.click(await screen.findByRole("button", { name: "smartx.yaml" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "smartx.yaml" }),
+      );
 
       expect(await screen.findByLabelText("Modul top")).toHaveValue("counter");
-      expect(screen.getByRole("checkbox", { name: "test/test_counter.py" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "test/test_counter.py" }),
+      ).toBeChecked();
     });
 
     it("saves a pending form change before another file opens", async () => {
@@ -288,14 +350,20 @@ describe("ProjectPage", () => {
         [`PUT ${BASE}/config`]: async (req: Request) =>
           configRead({ config: (await req.json()) as ProjectConfig }),
       });
-      await userEvent.click(await screen.findByRole("button", { name: "smartx.yaml" }));
-      await userEvent.click(await screen.findByRole("radio", { name: "Verilator" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "smartx.yaml" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("radio", { name: "Verilator" }),
+      );
 
       await openFile("counter.v");
 
       const put = env.log.indexOf(`PUT ${BASE}/config`);
       expect(put).toBeGreaterThan(-1);
-      expect(put).toBeLessThan(env.log.indexOf(`GET ${BASE}/files/src/counter.v`));
+      expect(put).toBeLessThan(
+        env.log.indexOf(`GET ${BASE}/files/src/counter.v`),
+      );
     });
   });
 
@@ -311,7 +379,8 @@ describe("ProjectPage", () => {
           end_col: 15,
           severity: "warning",
           code: "UNUSEDSIGNAL",
-          message: "Sinyal tidak dipakai (Verilator UNUSEDSIGNAL: Signal is not used: 'x')",
+          message:
+            "Sinyal tidak dipakai (Verilator UNUSEDSIGNAL: Signal is not used: 'x')",
         },
         {
           file: "test/test_counter.py",
@@ -345,15 +414,20 @@ describe("ProjectPage", () => {
       };
     }
 
-    function lintRoutes(final: Partial<ProjectRun> = { status: "succeeded", lint: LINT }) {
+    function lintRoutes(
+      final: Partial<ProjectRun> = { status: "succeeded", lint: LINT },
+    ) {
       return {
-        [`POST ${BASE}/runs`]: () => Response.json(projectRun(), { status: 201 }),
+        [`POST ${BASE}/runs`]: () =>
+          Response.json(projectRun(), { status: 201 }),
         [`GET ${BASE}/runs/r1`]: () => projectRun(final),
       };
     }
 
     async function lintToEnd(status = "succeeded") {
-      await userEvent.click(await screen.findByRole("button", { name: "Lint" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Lint" }),
+      );
       const source = await waitFor(() => FakeEventSource.last());
       expect(source.url).toBe("/api/runs/r1/events");
       source.emit("status", { status: "running" });
@@ -370,14 +444,21 @@ describe("ProjectPage", () => {
       expect(await screen.findByText("1 error, 1 warning")).toBeInTheDocument();
       const panel = screen.getByRole("tabpanel", { name: /^Problems/ });
       expect(within(panel).getByText("src/counter.v")).toBeInTheDocument();
-      expect(within(panel).getByText("test/test_counter.py")).toBeInTheDocument();
-      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
-        "warning 1: Sinyal tidak dipakai",
-      );
-      // Only the open file's problems are markers.
-      expect(screen.getByRole("list", { name: "Penanda editor" })).not.toHaveTextContent("syntax");
       expect(
-        await env.fetch.mock.calls.find(([r]) => r.method === "POST")![0].clone().json(),
+        within(panel).getByText("test/test_counter.py"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("list", { name: "Penanda editor" }),
+      ).toHaveTextContent("warning 1: Sinyal tidak dipakai");
+      // Only the open file's problems are markers.
+      expect(
+        screen.getByRole("list", { name: "Penanda editor" }),
+      ).not.toHaveTextContent("syntax");
+      expect(
+        await env.fetch.mock.calls
+          .find(([r]) => r.method === "POST")![0]
+          .clone()
+          .json(),
       ).toEqual({ kind: "lint" });
     });
 
@@ -386,17 +467,28 @@ describe("ProjectPage", () => {
       await screen.findByRole("heading", { name: "FIFO" });
 
       await lintToEnd();
-      await userEvent.click(await screen.findByRole("button", { name: /2:1 Verilator: syntax error/ }));
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: /2:1 Verilator: syntax error/,
+        }),
+      );
 
       const editor = await screen.findByLabelText("Editor kode");
-      await waitFor(() => expect(editor).toHaveValue(CONTENT["test/test_counter.py"]));
-      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
-        "error 2: Verilator: syntax error",
+      await waitFor(() =>
+        expect(editor).toHaveValue(CONTENT["test/test_counter.py"]),
       );
+      expect(
+        screen.getByRole("list", { name: "Penanda editor" }),
+      ).toHaveTextContent("error 2: Verilator: syntax error");
     });
 
     it("says so when there is nothing to fix", async () => {
-      renderProject(lintRoutes({ status: "succeeded", lint: { errors: 0, warnings: 0, diagnostics: [] } }));
+      renderProject(
+        lintRoutes({
+          status: "succeeded",
+          lint: { errors: 0, warnings: 0, diagnostics: [] },
+        }),
+      );
       await lintToEnd();
       expect(await screen.findByText("Tidak ada masalah.")).toBeInTheDocument();
     });
@@ -404,16 +496,30 @@ describe("ProjectPage", () => {
     it("explains a refused or failed lint", async () => {
       renderProject({
         [`POST ${BASE}/runs`]: () =>
-          Response.json({ detail: "smartx.yaml belum valid (baris 2): x" }, { status: 422 }),
+          Response.json(
+            { detail: "smartx.yaml belum valid (baris 2): x" },
+            { status: 422 },
+          ),
       });
-      await userEvent.click(await screen.findByRole("button", { name: "Lint" }));
-      expect(await screen.findByText("smartx.yaml belum valid (baris 2): x")).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Lint" }),
+      );
+      expect(
+        await screen.findByText("smartx.yaml belum valid (baris 2): x"),
+      ).toBeInTheDocument();
     });
 
     it("shows the error of a run that did not finish", async () => {
-      renderProject(lintRoutes({ status: "timeout", error: "Melebihi batas waktu 60 detik." }));
+      renderProject(
+        lintRoutes({
+          status: "timeout",
+          error: "Melebihi batas waktu 60 detik.",
+        }),
+      );
       await lintToEnd("timeout");
-      expect(await screen.findByText(/Melebihi batas waktu 60 detik/)).toBeInTheDocument();
+      expect(
+        await screen.findByText(/Melebihi batas waktu 60 detik/),
+      ).toBeInTheDocument();
     });
 
     it("saves pending edits before linting", async () => {
@@ -436,8 +542,20 @@ describe("ProjectPage", () => {
       simulator: "verilator",
       simulator_version: "Verilator 5.053",
       tests: [
-        { module: "test_counter", name: "counts", passed: true, message: "", sim_time_ns: 10 },
-        { module: "test_more", name: "wraps", passed: true, message: "", sim_time_ns: 20 },
+        {
+          module: "test_counter",
+          name: "counts",
+          passed: true,
+          message: "",
+          sim_time_ns: 10,
+        },
+        {
+          module: "test_more",
+          name: "wraps",
+          passed: true,
+          message: "",
+          sim_time_ns: 20,
+        },
       ],
       diagnostics: [],
       log: "cocotb selesai",
@@ -474,7 +592,9 @@ describe("ProjectPage", () => {
     }
 
     async function simulate() {
-      await userEvent.click(await screen.findByRole("button", { name: "Simulasi" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Simulasi" }),
+      );
       const source = await waitFor(() => FakeEventSource.last());
       expect(source.url).toBe("/api/runs/s1/events");
       source.emit("status", { status: "running" });
@@ -488,19 +608,26 @@ describe("ProjectPage", () => {
 
       const source = await simulate();
       await userEvent.click(screen.getByRole("tab", { name: "Log" }));
-      expect(screen.getByRole("tabpanel", { name: "Log" })).toHaveTextContent("building with verilator");
+      expect(screen.getByRole("tabpanel", { name: "Log" })).toHaveTextContent(
+        "building with verilator",
+      );
       source.emit("status", { status: "succeeded" });
 
       // The Log tab the user picked stays open.
       expect(screen.getByRole("tabpanel", { name: "Log" })).toBeInTheDocument();
       await userEvent.click(screen.getByRole("tab", { name: "Tests" }));
-      expect(await screen.findByText("Lulus semua test (2/2)")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Lulus semua test (2/2)"),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Verilator 5\.053/)).toBeInTheDocument();
       const tests = screen.getByRole("tabpanel", { name: "Tests" });
       expect(within(tests).getByText("test_counter")).toBeInTheDocument();
       expect(within(tests).getByText("test_more")).toBeInTheDocument();
       expect(
-        await env.fetch.mock.calls.find(([r]) => r.method === "POST")![0].clone().json(),
+        await env.fetch.mock.calls
+          .find(([r]) => r.method === "POST")![0]
+          .clone()
+          .json(),
       ).toEqual({ kind: "sim" });
 
       await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
@@ -515,8 +642,20 @@ describe("ProjectPage", () => {
         ...PASS,
         status: "fail",
         tests: [
-          { module: "test_counter", name: "counts", passed: false, message: "siklus 3: salah", sim_time_ns: 1 },
-          { module: "test_counter", name: "resets", passed: true, message: "", sim_time_ns: 1 },
+          {
+            module: "test_counter",
+            name: "counts",
+            passed: false,
+            message: "siklus 3: salah",
+            sim_time_ns: 1,
+          },
+          {
+            module: "test_counter",
+            name: "resets",
+            passed: true,
+            message: "",
+            sim_time_ns: 1,
+          },
         ],
       };
       renderProject(simRoutes({ status: "succeeded", sim: failing }));
@@ -524,7 +663,9 @@ describe("ProjectPage", () => {
       const source = await simulate();
       source.emit("status", { status: "succeeded" });
 
-      expect(await screen.findByText("1 dari 2 test gagal")).toBeInTheDocument();
+      expect(
+        await screen.findByText("1 dari 2 test gagal"),
+      ).toBeInTheDocument();
       expect(screen.getByText("siklus 3: salah")).toBeInTheDocument();
     });
 
@@ -553,19 +694,28 @@ describe("ProjectPage", () => {
       const source = await simulate();
       source.emit("status", { status: "succeeded" });
 
-      expect(await screen.findByText("Kode tidak bisa dikompilasi")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Kode tidak bisa dikompilasi"),
+      ).toBeInTheDocument();
       const problems = screen.getByRole("tabpanel", { name: /^Problems/ });
       expect(within(problems).getByText(/2 syntax error/)).toBeInTheDocument();
-      expect(screen.getByRole("list", { name: "Penanda editor" })).toHaveTextContent(
-        "error 2: syntax error",
-      );
+      expect(
+        screen.getByRole("list", { name: "Penanda editor" }),
+      ).toHaveTextContent("error 2: syntax error");
     });
 
     it("shows why a run did not finish", async () => {
-      renderProject(simRoutes({ status: "timeout", error: "Melebihi batas waktu 120 detik." }));
+      renderProject(
+        simRoutes({
+          status: "timeout",
+          error: "Melebihi batas waktu 120 detik.",
+        }),
+      );
       const source = await simulate();
       source.emit("status", { status: "timeout" });
-      expect(await screen.findByText(/Melebihi batas waktu 120 detik/)).toBeInTheDocument();
+      expect(
+        await screen.findByText(/Melebihi batas waktu 120 detik/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -612,7 +762,13 @@ describe("ProjectPage", () => {
           simulator: "verilator",
           simulator_version: "Verilator 5.053",
           tests: [
-            { module: "test_fifo", name: "fills", passed: false, message: "baca ke-2 salah", sim_time_ns: 1 },
+            {
+              module: "test_fifo",
+              name: "fills",
+              passed: false,
+              message: "baca ke-2 salah",
+              sim_time_ns: 1,
+            },
           ],
           diagnostics: [],
           log: "",
@@ -629,7 +785,9 @@ describe("ProjectPage", () => {
         "GET /surfer/SURFER_VERSION": () => new Response("v0.7.0"),
       });
 
-      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Riwayat" }),
+      );
 
       const list = await screen.findByRole("list", { name: "Riwayat run" });
       const rows = within(list).getAllByRole("listitem");
@@ -643,7 +801,10 @@ describe("ProjectPage", () => {
       await userEvent.click(within(rows[0]!).getByRole("button"));
 
       expect(await screen.findByText("baca ke-2 salah")).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: "Tests" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: "Tests" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       await userEvent.click(screen.getByRole("tab", { name: "Waveform" }));
       expect(screen.getByRole("link", { name: /Unduh/ })).toHaveAttribute(
         "href",
@@ -654,15 +815,42 @@ describe("ProjectPage", () => {
     it("compares two simulations", async () => {
       const history: ProjectRunSummary[] = [
         HISTORY[0]!,
-        { ...HISTORY[0]!, id: "s1", created_at: "2026-10-25T10:00:00Z", summary: "3/3 test lulus" },
+        {
+          ...HISTORY[0]!,
+          id: "s1",
+          created_at: "2026-10-25T10:00:00Z",
+          summary: "3/3 test lulus",
+        },
         HISTORY[1]!,
       ];
       const comparison: RunComparison = {
-        before: { id: "s1", created_at: "2026-10-25T10:00:00Z", summary: "3/3 test lulus", simulator: "verilator" },
-        after: { id: "s2", created_at: "2026-10-25T10:05:00Z", summary: "1 dari 3 test gagal", simulator: "verilator" },
+        before: {
+          id: "s1",
+          created_at: "2026-10-25T10:00:00Z",
+          summary: "3/3 test lulus",
+          simulator: "verilator",
+        },
+        after: {
+          id: "s2",
+          created_at: "2026-10-25T10:05:00Z",
+          summary: "1 dari 3 test gagal",
+          simulator: "verilator",
+        },
         tests: [
-          { module: "test_fifo", name: "fills", before: "passed", after: "failed", change: "broken" },
-          { module: "test_fifo", name: "reset", before: "passed", after: "passed", change: "same" },
+          {
+            module: "test_fifo",
+            name: "fills",
+            before: "passed",
+            after: "failed",
+            change: "broken",
+          },
+          {
+            module: "test_fifo",
+            name: "reset",
+            before: "passed",
+            after: "passed",
+            change: "same",
+          },
         ],
         counts: { broken: 1, fixed: 0, added: 0, removed: 0, same: 1 },
       };
@@ -674,33 +862,105 @@ describe("ProjectPage", () => {
           return comparison;
         },
       });
-      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Riwayat" }),
+      );
       const list = await screen.findByRole("list", { name: "Riwayat run" });
 
       // Only finished simulations can be picked.
       expect(within(list).getAllByRole("checkbox")).toHaveLength(2);
       const compare = screen.getByRole("button", { name: "Bandingkan" });
       expect(compare).toBeDisabled();
-      for (const box of within(list).getAllByRole("checkbox")) await userEvent.click(box);
+      for (const box of within(list).getAllByRole("checkbox"))
+        await userEvent.click(box);
       await userEvent.click(compare);
 
       expect(asked).toBe("?a=s2&b=s1");
-      const result = await screen.findByRole("region", { name: "Perbandingan run" });
+      const result = await screen.findByRole("region", {
+        name: "Perbandingan run",
+      });
       expect(within(result).getByText("Rusak: 1")).toBeInTheDocument();
       const rows = within(result).getAllByRole("listitem");
       expect(rows[0]).toHaveTextContent("Rusak");
       expect(rows[0]).toHaveTextContent("test_fifo.fills");
       expect(rows[0]).toHaveTextContent("lulus → gagal");
-      expect(within(result).getByText("1 test tidak berubah")).toBeInTheDocument();
+      expect(
+        within(result).getByText("1 test tidak berubah"),
+      ).toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("button", { name: "← Kembali ke riwayat" }));
-      expect(await screen.findByRole("list", { name: "Riwayat run" })).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: "← Kembali ke riwayat" }),
+      );
+      expect(
+        await screen.findByRole("list", { name: "Riwayat run" }),
+      ).toBeInTheDocument();
     });
 
     it("says when there is no history yet", async () => {
       renderProject({ [`GET ${BASE}/runs`]: () => [] });
-      await userEvent.click(await screen.findByRole("tab", { name: "Riwayat" }));
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Riwayat" }),
+      );
       expect(await screen.findByText(/Belum ada run/)).toBeInTheDocument();
+    });
+  });
+
+  describe("materi", () => {
+    const LESSONS = [
+      {
+        id: "02-a",
+        title: "Menulis model referensi",
+        step: 2,
+        order: 10,
+        body: "# Menulis model referensi\n\nModel sederhana.\n",
+      },
+      {
+        id: "02-b",
+        title: "Icarus vs Verilator",
+        step: 2,
+        order: 40,
+        body: "# Icarus vs Verilator\n\nIcarus 4-state, Verilator 2-state.\n",
+      },
+    ];
+
+    it("opens step 2 lessons in a sidebar", async () => {
+      let asked = "";
+      renderProject({
+        "GET /api/lessons": (req: Request) => {
+          asked = new URL(req.url).search;
+          return LESSONS;
+        },
+      });
+
+      const toggle = await screen.findByRole("button", { name: "Materi" });
+      expect(toggle).toHaveAttribute("aria-pressed", "false");
+      await userEvent.click(toggle);
+
+      const panel = await screen.findByRole("complementary", {
+        name: "Materi",
+      });
+      expect(asked).toBe("?step=2");
+      await userEvent.click(
+        await within(panel).findByRole("button", {
+          name: "Icarus vs Verilator",
+        }),
+      );
+      expect(
+        within(panel).getByRole("heading", { name: "Icarus vs Verilator" }),
+      ).toBeInTheDocument();
+      expect(within(panel).getByText(/Verilator 2-state/)).toBeInTheDocument();
+
+      await userEvent.click(
+        within(panel).getByRole("button", { name: "← Daftar materi" }),
+      );
+      expect(
+        within(panel).getByRole("button", { name: "Menulis model referensi" }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(toggle);
+      expect(
+        screen.queryByRole("complementary", { name: "Materi" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -729,17 +989,24 @@ describe("ProjectPage", () => {
         "import cocotb\nfrom collections import deque\n\n\nclass Scoreboard:\n    pass\n",
       );
       await waitFor(
-        () => expect(env.saved["test/test_counter.py"]).toContain("class Scoreboard"),
+        () =>
+          expect(env.saved["test/test_counter.py"]).toContain(
+            "class Scoreboard",
+          ),
         { timeout: 3000 },
       );
       // The menu goes back to its prompt, ready for the next snippet.
-      expect(screen.getByRole("combobox", { name: "Sisipkan snippet" })).toHaveValue("");
+      expect(
+        screen.getByRole("combobox", { name: "Sisipkan snippet" }),
+      ).toHaveValue("");
     });
 
     it("is only offered for Python files", async () => {
       renderProject({ "GET /api/snippets": () => SNIPPETS });
       await openFile("counter.v");
-      expect(screen.queryByRole("combobox", { name: "Sisipkan snippet" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("combobox", { name: "Sisipkan snippet" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

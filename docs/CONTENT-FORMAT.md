@@ -125,6 +125,21 @@ snippets:
 
 Menu "Sisipkan snippet" menaruh import yang belum ada di bagian import file dan body di akhir file. Snippet ikut aturan testbench di atas: input diubah di sisi turun clock, dan sinyal dibaca setelah `ReadOnly()`. Semua snippet harus bisa digabung menjadi satu testbench. Test Docker `test_snippets_make_a_working_testbench` menggabungkan semuanya untuk menguji register valid/ready (`backend/tests/fixtures/projects/pipe_reg`): hasilnya harus lulus di Icarus dan Verilator, dan harus gagal untuk register yang membuang data.
 
+## Materi singkat: `content/lessons/NN-slug.md` (Fase 2)
+
+```markdown
+---
+title: Icarus vs Verilator
+step: 2          # langkah belajar 1–6 (SPEC); 2 = simulasi & verifikasi
+order: 40        # urutan dalam satu langkah
+---
+
+# Icarus vs Verilator
+...
+```
+
+`NN` adalah langkah belajar (misalnya `02-`). Isinya Markdown biasa (tabel dan blok kode didukung) dan tampil di sidebar "Materi" halaman proyek. Klaim tentang perilaku tool sebaiknya diukur dulu di image toolchain dan disebut versinya, bukan ditulis dari ingatan.
+
 ## Proyek terpandu: `content/projects/<id>/` (Fase 4)
 
 ```

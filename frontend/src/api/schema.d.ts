@@ -486,6 +486,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lessons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Lessons
+         * @description Lessons in reading order, optionally only those of one learning step.
+         */
+        get: operations["list_lessons_api_lessons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -782,6 +802,19 @@ export interface components {
             hints: string[];
             /** Total */
             total: number;
+        };
+        /** LessonRead */
+        LessonRead: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Step */
+            step: number;
+            /** Order */
+            order: number;
+            /** Body */
+            body: string;
         };
         /**
          * LintResult
@@ -2231,6 +2264,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectRunRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lessons_api_lessons_get: {
+        parameters: {
+            query?: {
+                step?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonRead"][];
                 };
             };
             /** @description Validation Error */
