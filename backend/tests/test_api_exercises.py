@@ -257,3 +257,37 @@ class TestTypedRuns:
     def test_non_grade_run_is_not_found(self, client: TestClient) -> None:
         echo = client.post("/api/runs", json={"kind": "echo", "params": {}}).json()
         assert client.get(f"/api/exercises/ex-a/runs/{echo['id']}").status_code == 404
+
+
+class TestSaveCode:
+    def test_saves_without_counting_an_attempt(self, client: TestClient) -> None:
+        r = client.put("/api/exercises/ex-a/code", json={"code": "// draft\n"})
+        assert r.status_code == 204
+
+        detail = client.get("/api/exercises/ex-a").json()
+        assert detail["code"] == "// draft\n"
+        assert detail["attempts"] == 0
+        assert detail["status"] == "not_started"
+        assert detail["solution_available"] is False
+        assert client.get("/api/exercises").json()[0]["status"] == "not_started"
+
+    def test_keeps_status_and_attempts_after_runs(self, client: TestClient) -> None:
+        submit(client)
+        client.put("/api/exercises/ex-a/code", json={"code": "// later draft\n"})
+
+        detail = client.get("/api/exercises/ex-a").json()
+        assert detail["code"] == "// later draft\n"
+        assert detail["attempts"] == 1
+        assert detail["status"] == "attempted"
+
+    def test_empty_code_is_saved(self, client: TestClient) -> None:
+        client.put("/api/exercises/ex-a/code", json={"code": ""})
+        assert client.get("/api/exercises/ex-a").json()["code"] == ""
+
+    def test_unknown_exercise(self, client: TestClient) -> None:
+        r = client.put("/api/exercises/nope/code", json={"code": "x"})
+        assert r.status_code == 404
+
+    def test_rejects_huge_code(self, client: TestClient) -> None:
+        r = client.put("/api/exercises/ex-a/code", json={"code": "x" * 200_001})
+        assert r.status_code == 422

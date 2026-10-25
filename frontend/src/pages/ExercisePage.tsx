@@ -12,6 +12,7 @@ import { CodeEditor } from "../components/CodeEditor";
 import type { EditorDiagnostic } from "../components/codeEditorTypes";
 import { Markdown } from "../components/Markdown";
 import { LEVEL_LABELS, STATUS_LABELS } from "../content/labels";
+import { type SaveFn, type SaveStatus, useAutosave } from "../hooks/useAutosave";
 import { useRunEvents } from "../hooks/useRunEvents";
 
 type LoadState =
@@ -39,6 +40,28 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("tests");
   const events = useRunEvents(pendingRunId);
+
+  const saveDraft = useCallback<SaveFn>(
+    async (value, { keepalive }) => {
+      const { response } = await api.PUT("/api/exercises/{exercise_id}/code", {
+        params: { path: { exercise_id: exerciseId } },
+        body: { code: value },
+        keepalive,
+      });
+      if (!response.ok) throw new Error(httpErrorMessage(response.status));
+    },
+    [exerciseId],
+  );
+  const autosave = useAutosave(saveDraft);
+
+  /** Every user edit goes through here (typing, reset); loading the page does not. */
+  const editCode = useCallback(
+    (value: string) => {
+      setCode(value);
+      autosave.schedule(value);
+    },
+    [autosave],
+  );
 
   /** Load the exercise; the first load also fills the editor and the last result. */
   const fetchDetail = useCallback(
@@ -155,9 +178,10 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
             Run
           </button>
           <span className="text-xs text-slate-500">Ctrl+Enter</span>
+          <SaveIndicator status={autosave.status} />
           <button
             type="button"
-            onClick={() => setCode(detail.starter)}
+            onClick={() => editCode(detail.starter)}
             className="ml-auto rounded-md border border-slate-300 px-3 py-1.5 text-sm"
           >
             Reset ke starter
@@ -169,7 +193,7 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
           {code !== null && (
             <CodeEditor
               value={code}
-              onChange={setCode}
+              onChange={editCode}
               onRun={(current) => void startRun(current)}
               diagnostics={diagnostics}
               language={detail.language}
@@ -189,6 +213,24 @@ function ExerciseView({ exerciseId }: { exerciseId: string }) {
       </div>
     </div>
   );
+}
+
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  switch (status) {
+    case "pending":
+    case "saving":
+      return <span className="text-xs text-slate-500">Menyimpan…</span>;
+    case "saved":
+      return <span className="text-xs text-slate-500">Tersimpan</span>;
+    case "error":
+      return (
+        <span className="text-xs text-red-700">
+          Gagal menyimpan. Dicoba lagi saat Anda mengetik.
+        </span>
+      );
+    default:
+      return null;
+  }
 }
 
 function BackLink() {

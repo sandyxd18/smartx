@@ -24,6 +24,14 @@ def record_submission(session: Session, exercise_id: str, code: str) -> Exercise
     return progress
 
 
+def save_code(session: Session, exercise_id: str, code: str) -> None:
+    """Autosave from the editor: keep the draft, but it is not an attempt."""
+    progress = load_progress(session, exercise_id)
+    progress.last_code = code
+    session.add(progress)
+    session.commit()
+
+
 def record_run_result(engine: Engine, run_id: str) -> None:
     """Mark the exercise solved when a grade run passed. Called by the queue when a run ends."""
     with Session(engine) as session:

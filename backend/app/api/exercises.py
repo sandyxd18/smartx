@@ -16,6 +16,7 @@ from app.progress import (
     latest_grade_run,
     load_progress,
     record_submission,
+    save_code,
     solution_unlocked,
 )
 
@@ -65,6 +66,10 @@ class ExerciseDetail(ExerciseSummary):
 
 
 class ExerciseRunCreate(BaseModel):
+    code: str = Field(max_length=MAX_CODE_CHARS)
+
+
+class ExerciseCodeSave(BaseModel):
     code: str = Field(max_length=MAX_CODE_CHARS)
 
 
@@ -172,6 +177,15 @@ def get_exercise_run(
     if run is None or run.kind != GRADE_KIND or run.params.get("exercise_id") != exercise_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Run tidak ditemukan.")
     return _exercise_run(run)
+
+
+@router.put("/{exercise_id}/code", status_code=status.HTTP_204_NO_CONTENT)
+def save_exercise_code(
+    exercise_id: str, body: ExerciseCodeSave, session: SessionDep, catalog: CatalogDep
+) -> None:
+    """Autosave of the editor. Does not count as an attempt."""
+    _get_exercise(catalog, exercise_id)
+    save_code(session, exercise_id, body.code)
 
 
 @router.post("/{exercise_id}/hints/next")

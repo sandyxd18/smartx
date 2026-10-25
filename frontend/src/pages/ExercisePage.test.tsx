@@ -1,7 +1,7 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExerciseDetail, ExerciseRun, GradeResult } from "../api/client";
 import { routes } from "../routes";
 import { FakeEventSource } from "../test/fakeEventSource";
@@ -288,5 +288,79 @@ describe("ExercisePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Lihat solusi" }));
 
     expect(await screen.findByText(/resmi/)).toBeInTheDocument();
+  });
+});
+
+describe("ExercisePage autosave", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function puts(fetch: ReturnType<typeof mockFetch>) {
+    return fetch.mock.calls.map(([r]) => r).filter((r) => r.method === "PUT");
+  }
+
+  it("saves the draft 1 second after typing stops", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const fetch = renderPage({
+      [`GET ${BASE}`]: () => detail(),
+      [`PUT ${BASE}/code`]: () => new Response(null, { status: 204 }),
+    });
+    await user.type(await editor(), "// wip");
+    expect(puts(fetch)).toHaveLength(0);
+    expect(screen.getByText("Menyimpan…")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(puts(fetch)).toHaveLength(1);
+    expect(await puts(fetch)[0]!.json()).toEqual({ code: `${STARTER}// wip` });
+    expect(await screen.findByText("Tersimpan")).toBeInTheDocument();
+  });
+
+  it("does not save just because the page was opened", async () => {
+    const fetch = renderPage({ [`GET ${BASE}`]: () => detail() });
+    await editor();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    expect(puts(fetch)).toHaveLength(0);
+  });
+
+  it("saves after a reset to the starter", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const fetch = renderPage({
+      [`GET ${BASE}`]: () => detail({ code: "// old\n" }),
+      [`PUT ${BASE}/code`]: () => new Response(null, { status: 204 }),
+    });
+    await editor();
+
+    await user.click(screen.getByRole("button", { name: "Reset ke starter" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(await puts(fetch)[0]!.json()).toEqual({ code: STARTER });
+  });
+
+  it("tells the user when saving fails", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage({
+      [`GET ${BASE}`]: () => detail(),
+      [`PUT ${BASE}/code`]: () => new Response("proxy error", { status: 502 }),
+    });
+    await user.type(await editor(), "x");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(await screen.findByText(/Gagal menyimpan/)).toBeInTheDocument();
   });
 });

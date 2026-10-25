@@ -174,6 +174,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exercises/{exercise_id}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Exercise Code
+         * @description Autosave of the editor. Does not count as an attempt.
+         */
+        put: operations["save_exercise_code_api_exercises__exercise_id__code_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/exercises/{exercise_id}/hints/next": {
         parameters: {
             query?: never;
@@ -235,6 +255,11 @@ export interface components {
             server_version?: string | null;
             /** Error */
             error?: string | null;
+        };
+        /** ExerciseCodeSave */
+        ExerciseCodeSave: {
+            /** Code */
+            code: string;
         };
         /** ExerciseDetail */
         ExerciseDetail: {
@@ -788,6 +813,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ExerciseRunRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_exercise_code_api_exercises__exercise_id__code_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExerciseCodeSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -131,3 +131,9 @@ Tanggal yang sudah teruji ditulis di `.env.example`, jadi clone baru memakai ver
 - Penanda error memakai `diagnostics` dari grader sebagai `setModelMarkers`; nomor baris di luar jangkauan dijepit ke baris terakhir. Penanda tetap ada sampai Run berikutnya.
 - Di layar sempit (< `lg`), soal ditampilkan di atas editor; di layar lebar, keduanya berdampingan.
 - Diukur di browser (backend di host, data terpisah): waktu dari klik Run sampai hasil tampil 1,2–1,7 detik untuk `counter-4bit`.
+
+## D25. Autosave kode (Fase 1 task 6)
+- `PUT /api/exercises/{id}/code` (204) menyimpan `last_code` saja. Tidak menghitung percobaan, tidak mengubah status, dan tidak membuka solusi; yang dihitung sebagai percobaan hanya Run.
+- `useAutosave` menyimpan 1 detik setelah ketikan terakhir. Penyimpanan dijalankan berurutan (promise chain), jadi draf lama tidak bisa mendarat setelah draf baru. Hanya editan user (mengetik, reset ke starter) yang memicu penyimpanan; memuat halaman tidak.
+- Perubahan yang belum tersimpan di-flush saat `pagehide`, saat `visibilitychange` menjadi hidden, dan saat komponen unmount (pindah halaman di dalam aplikasi), memakai `fetch` dengan `keepalive: true` supaya request tetap terkirim walaupun halaman ditutup atau di-refresh. Diuji di browser: mengetik lalu langsung reload (sebelum jeda 1 detik) tetap menyimpan kode, dengan tepat satu PUT.
+- Kalau penyimpanan gagal, ditampilkan "Gagal menyimpan"; ketikan berikutnya mencoba lagi dengan teks terbaru. Belum ada retry otomatis tanpa ketikan.
