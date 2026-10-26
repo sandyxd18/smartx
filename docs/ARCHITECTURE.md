@@ -10,7 +10,7 @@ Backend (FastAPI, Python)  ── SQLite (data/smartx.db)
   │  Docker API (socket)
   ▼
 Job container (single use, one per run)
-  ├─ light image: smartx/toolchain  (iverilog, verilator, yosys, nextpnr, cocotb)
+  ├─ light image: smartx/toolchain  (iverilog, verilator, yosys, nextpnr, nextpnr-mistral, cocotb)
   └─ heavy image: ASIC_IMAGE         (LibreLane + PDK)
         │
         ▼

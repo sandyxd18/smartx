@@ -42,7 +42,7 @@ toolchain: .env ## Build image toolchain (light)
 
 .PHONY: tool-versions
 tool-versions: ## Cetak versi tool di dalam image toolchain
-	docker run --rm $(TOOLCHAIN_IMAGE) bash -lc 'yosys -V; iverilog -V 2>&1 | head -1; verilator --version; g++ --version | head -1; nextpnr-himbaechel --version 2>&1 | head -1; python -c "import cocotb;print(\"cocotb\",cocotb.__version__)"'
+	docker run --rm $(TOOLCHAIN_IMAGE) bash -lc 'yosys -V; iverilog -V 2>&1 | head -1; verilator --version; g++ --version | head -1; nextpnr-himbaechel --version 2>&1 | head -1; nextpnr-mistral --version 2>&1 | head -1; python -c "import cocotb;print(\"cocotb\",cocotb.__version__)"'
 
 .PHONY: check-content
 check-content: ## Uji semua soal (solution lulus, starter gagal) di dalam image toolchain

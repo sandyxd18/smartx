@@ -171,20 +171,20 @@ uart-tx/
 ```yaml
 id: tang-nano-9k                 # = file name
 name: Sipeed Tang Nano 9K
-family: gowin                    # gowin | ice40
+family: gowin                    # gowin | ice40 | cyclonev
 device: GW1NR-LV9QN88PC6/I5
-synth: synth_gowin               # Yosys synthesis command: synth_gowin | synth_ice40
+synth: synth_gowin               # Yosys synthesis command: synth_gowin | synth_ice40 | synth_intel_alm
 nextpnr:
   binary: nextpnr-himbaechel
   args: [--device, GW1NR-LV9QN88PC6/I5, --vopt, family=GW1N-9C, --vopt, "cst={constraints}", --write, "{pnr}"]
-pnr_file: pnr.json               # what nextpnr writes for the packer
+pnr_file: pnr.json               # what nextpnr writes for the packer (only with pack)
 pack:
   binary: gowin_pack
   args: [-d, GW1N-9C, -o, "{bitstream}", "{pnr}"]
 bitstream_file: bitstream.fs
 flash: {binary: openFPGALoader, args: [-b, tangnano9k]}
 clock: {port: clk, pin: "52", freq_mhz: 27}    # freq_mhz = default --freq target
-constraints: {format: cst, template: tang-nano-9k.cst}   # cst | pcf, a file in the same folder
+constraints: {format: cst, template: tang-nano-9k.cst}   # cst | pcf | qsf, a file in the same folder
 resources:                       # report rows: label -> nextpnr resource types summed into it
   LUT: [LUT4]
   FF: [DFF]
@@ -195,5 +195,8 @@ resources:                       # report rows: label -> nextpnr resource types 
 Rules:
 
 - Tool arguments may use the placeholders `{constraints}` (the project's constraint file), `{pnr}` (`pnr_file`), and `{bitstream}` (`bitstream_file`). nextpnr arguments must use `{constraints}` and `{pnr}`; packer arguments must use `{pnr}` and `{bitstream}`. The job adds `--json`, `--freq`, `--report`, and `-l` itself.
+- `pack` and `pnr_file` are optional, but come together. Without them nextpnr writes the bitstream itself (nextpnr-mistral: `--rbf "{bitstream}"`), its arguments must use `{constraints}` and `{bitstream}`, and the build has two stages, Synthesize and Place & Route. The DE1-SoC profile (`de1-soc.yaml`) is the example.
+- `synth_intel_alm` has no `-json` option, so the job follows it with `write_json`; `synth_gowin` and `synth_ice40` keep `-json`, which also leaves out features their nextpnr lacks.
+- QSF templates hold `set_location_assignment PIN_<pin> -to <port>` lines; `clock.pin` is written the same way (`PIN_AF14`).
 - The constraint template holds every useful board pin with consistent port names (`clk`, `rst_n`, `btn`, `led[0]`…). Ports the design does not use are ignored by nextpnr, so the template need not be trimmed. The template must pin `clock.port` to `clock.pin`.
 - The exact nextpnr and packer arguments must be checked against the pinned OSS CAD Suite version. The Docker test `test_board_profile_builds_blinky` builds `backend/tests/fixtures/boards/<id>/blinky.v` with nothing but the profile and its template, and every profile must have that fixture.

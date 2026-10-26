@@ -35,8 +35,8 @@ One user, on a local network. No login, no multi-tenancy. The app runs on a lapt
 - Run history per project, with a comparison of two runs.
 
 ### F3. FPGA (step 3)
-- Pick a target board (board profile). Default: Tang Nano 9K; additional: iCE40 (iCEBreaker/UPduino).
-- Constraint editor (`.cst` for Gowin, `.pcf` for iCE40) with a template per board.
+- Pick a target board (board profile). Tang Nano 9K (Gowin) and Terasic DE1-SoC (Cyclone V); iCE40 (iCEBreaker/UPduino) later.
+- Constraint editor (`.cst` for Gowin, `.qsf` for Cyclone V, `.pcf` for iCE40) with a template per board.
 - Actions: Synthesize (Yosys), Place & Route (nextpnr), Pack (bitstream).
 - Reports: resource utilization (LUT, FF, BRAM), Fmax per clock, important warnings (latch, multi-driven, unused signals).
 - The bitstream can be downloaded. Flashing is done with a helper script on the host (`smartx-flash`), because USB access from a container is unreliable.

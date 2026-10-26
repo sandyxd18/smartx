@@ -78,3 +78,12 @@ The script's own messages are in Indonesian, like the rest of the SmartX user in
 | Board | openFPGALoader arguments | Bitstream |
 |---|---|---|
 | Sipeed Tang Nano 9K (`tang-nano-9k`) | `-b tangnano9k` | `.fs` |
+| Terasic DE1-SoC (`de1-soc`) | `-b de1Soc` | `.rbf` |
+
+### DE1-SoC
+
+The DE1-SoC is programmed through its on-board USB-Blaster II (the "USB BLASTER" port, not the "USB UART" one). Things to know, none of them tried on a board yet:
+
+- **Probe firmware.** openFPGALoader has a `--probe-firmware` option for the USB-Blaster II (see `openFPGALoader --help`). The firmware file comes with a Quartus installation and cannot be shipped with SmartX. If openFPGALoader does not find the board, pass that file on: `python tools/flash/smartx-flash --project 3 -- --probe-firmware <path to the firmware file>`. On a lab computer where Quartus has already talked to the board since it was plugged in, the firmware may already be loaded.
+- **Use SRAM.** Load without `--flash`. Writing the board's configuration flash has not been checked for the DE1-SoC.
+- **The bitstream is experimental.** It comes from nextpnr-mistral, whose Cyclone V support is experimental (DECISIONS D46). If loading succeeds but the design does not run, try the `fpga-de1-soc-blinky` example first, and note what happened.

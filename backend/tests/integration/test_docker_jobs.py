@@ -19,7 +19,13 @@ from sqlmodel import Session
 
 from app.config import REPO_ROOT, Settings
 from app.content import ExerciseCatalog
-from app.content.boards import BoardProfile, load_boards, nextpnr_command, pack_command
+from app.content.boards import (
+    BoardProfile,
+    load_boards,
+    nextpnr_command,
+    pack_command,
+    synth_commands,
+)
 from app.db import init_db, make_engine
 from app.jobs.context import JobContext
 from app.jobs.docker_runner import RUN_LABEL, DockerRunner
@@ -54,7 +60,7 @@ def prepare_board_check(run_dir: Path, params: dict[str, Any], ctx: object) -> C
     board = profile.board
     (run_dir / "blinky.v").write_bytes((BOARD_FIXTURES / board.id / "blinky.v").read_bytes())
     (run_dir / "board.cst").write_text(profile.constraints_template, encoding="utf-8")
-    synth = f"read_verilog blinky.v; {board.synth} -top blinky -json netlist.json"
+    synth = "; ".join(["read_verilog blinky.v", *synth_commands(board, "blinky", "netlist.json")])
     steps = [
         ["yosys", "-q", "-l", "yosys.log", "-p", synth],
         nextpnr_command(
@@ -65,8 +71,9 @@ def prepare_board_check(run_dir: Path, params: dict[str, Any], ctx: object) -> C
             report="report.json",
             log="nextpnr.log",
         ),
-        pack_command(board),
     ]
+    if (pack := pack_command(board)) is not None:
+        steps.append(pack)
     return ContainerSpec(command=["sh", "-c", " && ".join(shlex.join(s) for s in steps)])
 
 
@@ -625,11 +632,12 @@ async def test_lesson_code_builds_for_the_board(docker_settings: Settings, engin
     assert result["warnings"] == []
 
 
-FPGA_TEMPLATES = ["fpga-blinky", "fpga-counter-led", "fpga-button"]
+FPGA_TEMPLATES = ["fpga-blinky", "fpga-counter-led", "fpga-button", "fpga-de1-soc-blinky"]
 # One plausible mistake per example; its testbench must catch it.
 TEMPLATE_MUTANTS = {
     "fpga-blinky": ("src/blinky.v", "HALF_PERIOD[W-1:0] - 1'b1", "HALF_PERIOD[W-1:0]"),
     "fpga-counter-led": ("src/counter_led.v", "if (!run) begin", "if (1'b0) begin"),
+    "fpga-de1-soc-blinky": ("src/de1_blinky.v", "on ^ SW[0]", "on"),
     "fpga-button": (
         "src/button_counter.v",
         "debounce #(.CYCLES(DEBOUNCE_CYCLES)) u_db (.clk(clk), .noisy(btn_sync), .clean(pressed));",
@@ -702,6 +710,9 @@ async def test_fpga_template_builds_cleanly(
     assert result["timing_met"] is True
     assert result["warnings"] == []
     [clock] = result["clocks"]
-    assert clock["name"] == "clk" and clock["target_mhz"] == 27
+    board = BOARDS[run.params["board"]].board
+    # Named after the top port, also through Cyclone V's clock buffers.
+    assert clock["name"] == board.clock.port
+    assert clock["target_mhz"] == board.clock.freq_mhz
     script = (docker_settings.runs_dir / run.id / "build" / "synth.ys").read_text("utf-8")
     assert "chparam -set" in script and "-set HALF_PERIOD 4 " not in script

@@ -713,7 +713,7 @@ class TestFpgaRuns:
 
         assert {
             "severity": "warning",
-            "message": "Board 'papan-x' tidak dikenal (yang tersedia: tang-nano-9k).",
+            "message": "Board 'papan-x' tidak dikenal (yang tersedia: de1-soc, tang-nano-9k).",
             "line": 5,
         } in problems
 

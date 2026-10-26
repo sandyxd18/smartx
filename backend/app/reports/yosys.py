@@ -16,6 +16,11 @@ WarningKind = Literal[
 ]
 
 
+# Input buffer cells the synthesizers insert at top-level inputs: type -> (in, out).
+# Measured: synth_gowin (IBUF) and synth_intel_alm (MISTRAL_IB).
+INPUT_BUFFERS = {"IBUF": ("I", "O"), "MISTRAL_IB": ("PAD", "O")}
+
+
 class SynthWarning(BaseModel):
     kind: WarningKind
     signal: str | None = None  # as written in the source: "q", "led[0]"
@@ -159,7 +164,7 @@ def parse_yosys_log(log: str, sources: dict[str, str], root: str) -> list[SynthW
 def unused_inputs(netlist: dict[str, Any], top: str) -> list[str]:
     """Top-level inputs (or bits of them) that drive nothing after synthesis.
 
-    Input buffers (Gowin IBUF) are looked through: an input that only feeds its own
+    Input buffers (INPUT_BUFFERS) are looked through: an input that only feeds its own
     buffer, whose output feeds nothing, is unused. Names containing "unused" are
     intentional and skipped, as in lint.
     """
@@ -171,9 +176,10 @@ def unused_inputs(netlist: dict[str, Any], top: str) -> list[str]:
     for cell in module.get("cells", {}).values():
         directions = cell.get("port_directions", {})
         connections = cell.get("connections", {})
-        if cell.get("type") == "IBUF":
-            for bit in connections.get("I", []):
-                buffers[bit] = connections.get("O", [])
+        if cell.get("type") in INPUT_BUFFERS:
+            pad, out = INPUT_BUFFERS[cell["type"]]
+            for bit in connections.get(pad, []):
+                buffers[bit] = connections.get(out, [])
             continue
         for port, bits in connections.items():
             if directions.get(port) == "input":

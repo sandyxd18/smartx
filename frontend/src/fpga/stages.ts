@@ -17,14 +17,18 @@ export const STAGES = [
   { id: "pack", title: "Pack" },
 ] as const;
 
-// build.py marks each stage in the run log: "==> Pack" and "<== Pack: ok (2.73 s)".
+// build.py starts the run log with "stages: Synthesize | Place & Route", then marks each
+// stage: "==> Pack" and "<== Pack: ok (2.73 s)". Boards without a packer have no Pack.
+const PLAN = "stages: ";
 const END = /^<== (.+): (ok|failed) \(([\d.]+) s\)$/;
 
 /** Stage progress read from the log lines streamed while a build runs. */
 export function liveStages(lines: string[]): StageView[] {
   const started = new Set<string>();
   const ended = new Map<string, { status: StageStatus; seconds: number }>();
+  let planned: string[] | null = null;
   for (const line of lines) {
+    if (line.startsWith(PLAN)) planned = line.slice(PLAN.length).trim().split(" | ");
     if (line.startsWith("==> ")) started.add(line.slice(4).trim());
     const [, title, status, seconds] = END.exec(line.trim()) ?? [];
     if (title && status && seconds) {
@@ -34,7 +38,13 @@ export function liveStages(lines: string[]): StageView[] {
       });
     }
   }
-  return STAGES.map(({ id, title }) => {
+  const stages = planned
+    ? planned.map(
+        (title) =>
+          STAGES.find((s) => s.title === title) ?? { id: title, title },
+      )
+    : STAGES;
+  return stages.map(({ id, title }) => {
     const done = ended.get(title);
     return {
       id,

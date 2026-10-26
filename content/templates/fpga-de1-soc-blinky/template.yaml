@@ -1,0 +1,3 @@
+title: DE1-SoC blinky dan saklar
+description: LEDR0 berkedip sekali per detik dan LEDR1-LEDR9 mengikuti saklar SW1-SW9. Uji pertama untuk DE1-SoC (Cyclone V) di lab.
+order: 40

@@ -9,7 +9,8 @@ dan kode keluar tiap tahap, lalu berhenti di tahap pertama yang gagal:
                 {"id": "pnr", ...}, {"id": "pack", ...}],
      "versions": {"yosys": ["yosys", "-V"], ...}}
 
-Keluaran tiap tahap diteruskan ke stdout (log run), diawali baris "==> <judul>".
+Log run diawali baris "stages: Synthesize | Place & Route | ...". Keluaran tiap tahap
+diteruskan ke stdout (log run), diawali baris "==> <judul>".
 Hasil ditulis sebagai JSON ke --out.
 
 Kode keluar: 0 = semua tahap berhasil, 1 = ada tahap yang gagal,
@@ -71,6 +72,9 @@ def run_stage(stage: dict, workdir: Path) -> dict:
 
 def build(spec: dict, workdir: Path) -> dict:
     workdir.mkdir(parents=True, exist_ok=True)
+    # Daftar tahap lebih dulu, supaya UI tahu tahap mana yang akan berjalan
+    # (board tanpa packer, seperti DE1-SoC, tidak punya tahap Pack).
+    print("stages: " + " | ".join(stage["title"] for stage in spec["stages"]), flush=True)
     stages = []
     failed = False
     for stage in spec["stages"]:

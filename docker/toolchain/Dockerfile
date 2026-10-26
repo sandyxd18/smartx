@@ -5,6 +5,29 @@
 #
 # Image ASIC (LibreLane + PDK) TIDAK dibangun di sini; lihat docs/phases/phase-5-asic.md.
 
+# nextpnr-mistral (Cyclone V, for the DE1-SoC) is not part of OSS CAD Suite, so it is
+# built here from pinned commits: nextpnr matches the nextpnr in the pinned OSS CAD Suite
+# (0.11.1-79-g22c5adf4), Mistral is the nextpnr-latest branch the nextpnr README names.
+FROM ubuntu:24.04 AS mistral
+ARG NEXTPNR_COMMIT=22c5adf423ecb602dfc1250d10f740ccfff0786a
+ARG MISTRAL_COMMIT=6a97d3e7e89d9830018904f184d4780b7bdae204
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake git ca-certificates python3 python3-dev \
+        libboost-dev libboost-filesystem-dev libboost-thread-dev \
+        libboost-program-options-dev libboost-iostreams-dev \
+        libeigen3-dev liblzma-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/Ravenslofty/mistral /opt/mistral \
+    && git -C /opt/mistral checkout "$MISTRAL_COMMIT" \
+    && git clone https://github.com/YosysHQ/nextpnr /opt/nextpnr \
+    && git -C /opt/nextpnr checkout "$NEXTPNR_COMMIT" \
+    && git -C /opt/nextpnr submodule update --init --recursive
+RUN cmake -S /opt/nextpnr -B /opt/nextpnr/build -DARCH=mistral -DMISTRAL_ROOT=/opt/mistral \
+        -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /opt/nextpnr/build -j"$(nproc)" \
+    && strip /opt/nextpnr/build/nextpnr-mistral
+
 FROM ubuntu:24.04
 
 ARG OSS_CAD_SUITE_DATE
@@ -37,6 +60,12 @@ RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tm
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ liblz4-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# nextpnr-mistral from the stage above, with the Boost libraries it links against.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libboost-program-options1.83.0 libboost-thread1.83.0 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=mistral /opt/nextpnr/build/nextpnr-mistral /usr/local/bin/nextpnr-mistral
 
 # Job berjalan sebagai user non-root; uid disesuaikan saat 'docker run --user'.
 # ubuntu:24.04 sudah punya user 'ubuntu' dengan UID 1000; hapus dulu.

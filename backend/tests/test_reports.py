@@ -198,3 +198,57 @@ def test_hierarchical_clock_net_is_named_after_the_top_port() -> None:
     paths = {"critical_paths": [{"from": "posedge u_db.clk", "to": "posedge u_db.clk"}]}
     [path] = critical_paths(paths, ROOT, ports)
     assert (path.from_clock, path.to_clock) == ("posedge clk", "posedge clk")
+
+
+def test_cyclone_v_buffers() -> None:
+    """Shape measured with synth_intel_alm + nextpnr-mistral: the clock passes
+    MISTRAL_IB (PAD -> O) and MISTRAL_CLKBUF (A -> Q)."""
+    netlist = {
+        "modules": {
+            "blinky": {
+                "ports": {
+                    "CLOCK_50": {"direction": "input", "bits": [2]},
+                    "SW": {"direction": "input", "bits": [4, 5]},
+                    "LEDR": {"direction": "output", "bits": [3]},
+                },
+                "cells": {
+                    "ib": {
+                        "type": "MISTRAL_IB",
+                        "port_directions": {"PAD": "input", "O": "output"},
+                        "connections": {"PAD": [2], "O": [13]},
+                    },
+                    "clkbuf": {
+                        "type": "MISTRAL_CLKBUF",
+                        "port_directions": {"A": "input", "Q": "output"},
+                        "connections": {"A": [13], "Q": [14]},
+                    },
+                    "sw0": {
+                        "type": "MISTRAL_IB",
+                        "port_directions": {"PAD": "input", "O": "output"},
+                        "connections": {"PAD": [4], "O": [20]},
+                    },
+                    "sw1": {
+                        "type": "MISTRAL_IB",
+                        "port_directions": {"PAD": "input", "O": "output"},
+                        "connections": {"PAD": [5], "O": [21]},
+                    },
+                    "ff": {
+                        "type": "MISTRAL_FF",
+                        "port_directions": {"CLK": "input", "DATAIN": "input", "Q": "output"},
+                        "connections": {"CLK": [14], "DATAIN": [20], "Q": [3]},
+                    },
+                },
+                "netnames": {
+                    "CLOCK_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": {"bits": [14]},
+                },
+            }
+        }
+    }
+    ports = input_ports(netlist, "blinky")
+    assert ports == {"CLOCK_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q": "CLOCK_50"}
+    # SW[1] only feeds its own input buffer.
+    assert unused_inputs(netlist, "blinky") == ["SW[1]"]
+
+
+def test_cyclone_v_clock_name_without_a_netlist() -> None:
+    assert clock_name("CLOCK_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q") == "CLOCK_50"

@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.reports.yosys import INPUT_BUFFERS
+
 
 class ResourceUse(BaseModel):
     label: str  # LUT, FF, BRAM, IO (from the board profile)
@@ -46,11 +48,14 @@ class CriticalPath(BaseModel):
 
 
 _SOURCE = re.compile(r"^(?P<path>/\S+?):(?P<line>\d+)(?:\.\d+(?:-\d+\.\d+)?)?$")
-_CLOCK_NET = re.compile(r"^(?P<port>[A-Za-z_][A-Za-z0-9_]*?)(?:_IBUF_I_O|\$SB_IO_IN.*)$")
+_CLOCK_NET = re.compile(
+    r"^(?P<port>[A-Za-z_][A-Za-z0-9_]*?)(?:_IBUF_I_O|\$SB_IO_IN.*|_MISTRAL_IB_PAD.*)$"
+)
 
 
 def clock_name(net: str) -> str:
-    """The port a clock net comes from: clk_IBUF_I_O (Gowin), clk$SB_IO_IN_$glb_clk (iCE40)."""
+    """The port a clock net comes from: clk_IBUF_I_O (Gowin), clk$SB_IO_IN_$glb_clk (iCE40),
+    CLOCK_50_MISTRAL_IB_PAD_O_MISTRAL_CLKBUF_A_Q (Cyclone V)."""
     match = _CLOCK_NET.match(net)
     return match["port"] if match else net
 
@@ -77,12 +82,18 @@ def utilization(report: dict[str, Any], rows: dict[str, list[str]]) -> list[Reso
     return result
 
 
+# Buffers a clock passes on its way from the pin: the input buffers, then Cyclone V's
+# global clock buffer.
+BUFFERS = {**INPUT_BUFFERS, "MISTRAL_CLKBUF": ("A", "Q")}
+
+
 def input_ports(netlist: dict[str, Any], top: str) -> dict[str, str]:
     """Net name -> the top-level input port it carries, from the Yosys netlist.
 
     In a hierarchical design nextpnr may name the clock after a submodule's net
-    (`u_db.clk`). That net is the output of the port's input buffer (Gowin IBUF), so
-    it is traced back: net bits -> IBUF output -> IBUF input -> port.
+    (`u_db.clk`). That net is the output of the port's input buffer (Gowin IBUF), or
+    on Cyclone V of a clock buffer after it, so it is traced back through the buffers
+    to the port.
     """
     module = netlist.get("modules", {}).get(top, {})
     port_of = {
@@ -90,12 +101,16 @@ def input_ports(netlist: dict[str, Any], top: str) -> dict[str, str]:
         for name, port in module.get("ports", {}).items()
         if port.get("direction") == "input"
     }
-    for cell in module.get("cells", {}).values():
-        if cell.get("type") == "IBUF":
-            connections = cell.get("connections", {})
-            port = port_of.get(tuple(connections.get("I", [])))
+    buffers = [
+        (c.get("connections", {}), BUFFERS[c["type"]])
+        for c in module.get("cells", {}).values()
+        if c.get("type") in BUFFERS
+    ]
+    for _ in range(len(buffers)):  # each pass follows one more buffer
+        for connections, (pad, out) in buffers:
+            port = port_of.get(tuple(connections.get(pad, [])))
             if port is not None:
-                port_of.setdefault(tuple(connections.get("O", [])), port)
+                port_of.setdefault(tuple(connections.get(out, [])), port)
     found = {}
     for net, info in module.get("netnames", {}).items():
         port = port_of.get(tuple(info.get("bits", [])))

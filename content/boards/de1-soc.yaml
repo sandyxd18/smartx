@@ -1,0 +1,22 @@
+# Terasic DE1-SoC (Intel Cyclone V SE 5CSEMA5F31C6). Place & route and the bitstream
+# come from nextpnr-mistral, built into the toolchain image from pinned commits (D46).
+# The device name has no trailing "N": nextpnr-mistral rejects 5CSEMA5F31C6N.
+id: de1-soc
+name: Terasic DE1-SoC
+family: cyclonev
+device: 5CSEMA5F31C6
+synth: synth_intel_alm
+nextpnr:
+  binary: nextpnr-mistral
+  args: [--device, 5CSEMA5F31C6, --qsf, "{constraints}", --rbf, "{bitstream}"]
+bitstream_file: bitstream.rbf
+flash:
+  binary: openFPGALoader
+  args: [-b, de1Soc]
+clock: {port: CLOCK_50, pin: PIN_AF14, freq_mhz: 50}
+constraints: {format: qsf, template: de1-soc.qsf}
+resources:
+  LUT: [MISTRAL_COMB]
+  FF: [MISTRAL_FF]
+  BRAM: [MISTRAL_M10K]
+  IO: [MISTRAL_IO]

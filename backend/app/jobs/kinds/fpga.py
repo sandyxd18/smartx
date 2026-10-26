@@ -13,7 +13,13 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.content.boards import Board, load_boards, nextpnr_command, pack_command
+from app.content.boards import (
+    Board,
+    load_boards,
+    nextpnr_command,
+    pack_command,
+    synth_commands,
+)
 from app.jobs.artifacts import file_url
 from app.jobs.context import JobContext, JobInputError
 from app.jobs.diagnostics import ProjectDiagnostic, parse_compile_log
@@ -128,7 +134,7 @@ def synth_script(p: Params, board: Board) -> str:
         sets = [f"-set {name} {_token('parameter', name, v)}" for name, v in p.parameters.items()]
         lines.append(f"chparam {' '.join(sets)} {p.top}")
     lines += [
-        f"{board.synth} -top {p.top} -json {NETLIST_FILE}",
+        *synth_commands(board, p.top, NETLIST_FILE),
         f"tee -q -o {STAT_FILE} stat",
         f"tee -q -o {STAT_JSON_FILE} stat -json",
     ]
@@ -168,10 +174,12 @@ def prepare(run_dir: Path, params: dict[str, Any], ctx: JobContext) -> Container
             },
             # A design that misses timing still gets a bitstream; the report says so.
             {"id": "pnr", "title": "Place & Route", "command": [*pnr, "-q", "--timing-allow-fail"]},
-            {"id": "pack", "title": "Pack", "command": pack_command(board)},
         ],
         "versions": {"yosys": ["yosys", "-V"], "nextpnr": [board.nextpnr.binary, "--version"]},
     }
+    pack = pack_command(board)
+    if pack is not None:  # without a packer, nextpnr already wrote the bitstream
+        spec["stages"].append({"id": "pack", "title": "Pack", "command": pack})
     (run_dir / SPEC_FILE).write_text(json.dumps(spec, indent=2), encoding="utf-8", newline="\n")
     return ContainerSpec(
         command=[

@@ -8,6 +8,8 @@ Confirm which board the owner has (see `DECISIONS.md` D08). Finish one board com
 
 Confirmed on 2026-10-25: the owner has no board yet. Start with the Tang Nano 9K up to the bitstream; iCE40 moves to task 8 (D38).
 
+Updated on 2026-10-26: the owner will borrow a Terasic DE1-SoC (Cyclone V) from a lab, so task 8 becomes the DE1-SoC, through nextpnr-mistral (D46). iCE40 is postponed to after this phase.
+
 ## Tasks
 
 1. [x] **Board profile** in `content/boards/` (format in `CONTENT-FORMAT.md`) and a constraint template. First board: Tang Nano 9K (Gowin, `nextpnr-himbaechel` + `gowin_pack`). The second board (iCE40) is task 8.
@@ -24,7 +26,9 @@ Confirmed on 2026-10-25: the owner has no board yet. Start with the Tang Nano 9K
 5. [x] **Flashing helper** `tools/flash/smartx-flash`: a host script that downloads the bitstream of the latest run from the backend (or takes a local path) and calls `openFPGALoader` according to the board profile. Document installing `openFPGALoader` and the udev rules in a README.
 6. [x] **Lessons** `content/lessons/03-*.md`: code that does not synthesize, the 2-flop synchronizer, debounce, reading the timing report, why simulation passes but the FPGA fails.
 7. [x] **Example FPGA projects**: blinky, counter on the LEDs, button with debounce.
-8. [ ] **Second board: iCE40** (`nextpnr-ice40` + `icepack`), once the Tang Nano 9K is complete: profile, `.pcf` template, blinky fixture, and example projects.
+8. [x] **Second board: DE1-SoC** (Cyclone V 5CSEMA5F31C6, `synth_intel_alm` + `nextpnr-mistral` writing an `.rbf`): nextpnr-mistral in the toolchain image, profile, `.qsf` template, blinky fixture, and an example project.
+
+Postponed (not part of this phase's done criteria): **iCE40** (`nextpnr-ice40` + `icepack`), profile, `.pcf` template, blinky fixture, and example projects.
 
 ## Done criteria
 

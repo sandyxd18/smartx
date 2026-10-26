@@ -48,3 +48,14 @@ describe("resultStages", () => {
     expect(stages[2]?.seconds).toBe(2.73);
   });
 });
+
+describe("liveStages with a stage plan", () => {
+  it("shows only the stages the build announced", () => {
+    // A board without a packer (DE1-SoC): nextpnr writes the bitstream.
+    const lines = ["stages: Synthesize | Place & Route", "==> Synthesize"];
+    expect(status(liveStages(lines))).toEqual([
+      ["Synthesize", "running", null],
+      ["Place & Route", "pending", null],
+    ]);
+  });
+});

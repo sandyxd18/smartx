@@ -1,0 +1,37 @@
+# Constraint DE1-SoC: nama port di modul top -> pin FPGA (format Quartus .qsf).
+# Pin diambil dari tabel pin clock, push-button, saklar, dan LED di DE1-SoC User Manual
+# (Terasic, rev. H, 9 Januari 2022).
+# Port yang tidak ada di desain boleh dibiarkan; yang dipakai wajib terpasang.
+
+# Clock 50 MHz.
+set_location_assignment PIN_AF14 -to CLOCK_50
+
+# Tombol KEY0-KEY3: 0 saat ditekan, sudah di-debounce di board.
+set_location_assignment PIN_AA14 -to KEY[0]
+set_location_assignment PIN_AA15 -to KEY[1]
+set_location_assignment PIN_W15 -to KEY[2]
+set_location_assignment PIN_Y16 -to KEY[3]
+
+# Saklar SW0-SW9: 1 saat digeser ke atas.
+set_location_assignment PIN_AB12 -to SW[0]
+set_location_assignment PIN_AC12 -to SW[1]
+set_location_assignment PIN_AF9 -to SW[2]
+set_location_assignment PIN_AF10 -to SW[3]
+set_location_assignment PIN_AD11 -to SW[4]
+set_location_assignment PIN_AD12 -to SW[5]
+set_location_assignment PIN_AE11 -to SW[6]
+set_location_assignment PIN_AC9 -to SW[7]
+set_location_assignment PIN_AD10 -to SW[8]
+set_location_assignment PIN_AE12 -to SW[9]
+
+# LED merah LEDR0-LEDR9: menyala saat diberi 1.
+set_location_assignment PIN_V16 -to LEDR[0]
+set_location_assignment PIN_W16 -to LEDR[1]
+set_location_assignment PIN_V17 -to LEDR[2]
+set_location_assignment PIN_V18 -to LEDR[3]
+set_location_assignment PIN_W17 -to LEDR[4]
+set_location_assignment PIN_W19 -to LEDR[5]
+set_location_assignment PIN_Y19 -to LEDR[6]
+set_location_assignment PIN_W20 -to LEDR[7]
+set_location_assignment PIN_W21 -to LEDR[8]
+set_location_assignment PIN_Y21 -to LEDR[9]

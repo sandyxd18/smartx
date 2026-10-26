@@ -24,6 +24,8 @@ _PLACEHOLDER = re.compile(r"\{([^{}]*)\}")
 # How the constraint languages pin a port: IO_LOC "led[0]" 10; / set_io led[0] 11
 _CST_PIN = re.compile(r'^\s*IO_LOC\s+"([^"]+)"\s+(\S+?)\s*;', re.MULTILINE)
 _PCF_PIN = re.compile(r"^\s*set_io\s+(?:-\S+\s+)*(\S+)\s+(\S+)", re.MULTILINE)
+# Quartus: set_location_assignment PIN_AF14 -to CLOCK_50   (pin first, then the port)
+_QSF_PIN = re.compile(r"^\s*set_location_assignment\s+(\S+)\s+-to\s+(\S+)", re.MULTILINE)
 
 
 class BoardError(ValueError):
@@ -48,7 +50,7 @@ class Clock(BaseModel):
 class Constraints(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    format: Literal["cst", "pcf"]
+    format: Literal["cst", "pcf", "qsf"]
     template: FileName
 
 
@@ -59,13 +61,15 @@ class Board(BaseModel):
 
     id: BoardId
     name: str = Field(min_length=1)
-    family: Literal["gowin", "ice40"]
+    family: Literal["gowin", "ice40", "cyclonev"]
     device: str = Field(min_length=1)
-    synth: Literal["synth_gowin", "synth_ice40"]  # Yosys synthesis command
+    synth: Literal["synth_gowin", "synth_ice40", "synth_intel_alm"]  # Yosys synthesis command
     nextpnr: Tool
-    pnr_file: FileName  # what nextpnr writes for the packer ({pnr})
-    pack: Tool
-    bitstream_file: FileName  # what the packer writes ({bitstream})
+    # With a packer, nextpnr writes pnr_file ({pnr}) and the packer the bitstream. Without
+    # one (nextpnr-mistral), nextpnr writes the bitstream itself.
+    pnr_file: FileName | None = None
+    pack: Tool | None = None
+    bitstream_file: FileName  # {bitstream}
     flash: Tool
     clock: Clock
     constraints: Constraints
@@ -83,11 +87,27 @@ def _fill(args: list[str], values: dict[str, str]) -> list[str]:
     return [_PLACEHOLDER.sub(lambda m: values[m.group(1)], arg) for arg in args]
 
 
+def synth_commands(board: Board, top: str, netlist: str) -> list[str]:
+    """Yosys commands that synthesize `top` and write the netlist nextpnr reads."""
+    if board.synth == "synth_intel_alm":  # has no -json option
+        return [f"synth_intel_alm -top {top}", f"write_json {netlist}"]
+    # synth_gowin/synth_ice40 -json also leave out features their nextpnr lacks.
+    return [f"{board.synth} -top {top} -json {netlist}"]
+
+
+def _values(board: Board, constraints: str = "") -> dict[str, str]:
+    return {
+        "constraints": constraints,
+        "pnr": board.pnr_file or "",
+        "bitstream": board.bitstream_file,
+    }
+
+
 def nextpnr_command(
     board: Board, *, netlist: str, constraints: str, freq_mhz: float, report: str, log: str
 ) -> list[str]:
     """nextpnr call for a synthesized netlist. File names are relative to the run folder."""
-    values = {"constraints": constraints, "pnr": board.pnr_file, "bitstream": board.bitstream_file}
+    values = _values(board, constraints)
     return [
         board.nextpnr.binary,
         "--json",
@@ -102,13 +122,17 @@ def nextpnr_command(
     ]
 
 
-def pack_command(board: Board) -> list[str]:
-    values = {"constraints": "", "pnr": board.pnr_file, "bitstream": board.bitstream_file}
-    return [board.pack.binary, *_fill(board.pack.args, values)]
+def pack_command(board: Board) -> list[str] | None:
+    """The packer call, or None when nextpnr writes the bitstream itself."""
+    if board.pack is None:
+        return None
+    return [board.pack.binary, *_fill(board.pack.args, _values(board))]
 
 
 def constraint_pins(fmt: str, text: str) -> dict[str, str]:
     """Port -> pin pairs pinned by a constraint file (comments are skipped by the regexes)."""
+    if fmt == "qsf":
+        return {port: pin for pin, port in _QSF_PIN.findall(text)}
     pattern = _CST_PIN if fmt == "cst" else _PCF_PIN
     return {port: pin for port, pin in pattern.findall(text)}
 
@@ -116,11 +140,14 @@ def constraint_pins(fmt: str, text: str) -> dict[str, str]:
 def _check(board: Board, stem: str, template: str) -> None:
     if board.id != stem:
         raise BoardError(f"id '{board.id}' harus sama dengan nama file")
-    for tool, needed in (
-        (board.nextpnr, {"constraints", "pnr"}),
-        (board.pack, {"pnr", "bitstream"}),
-        (board.flash, set()),
-    ):
+    if (board.pack is None) != (board.pnr_file is None):
+        raise BoardError("pack dan pnr_file harus diisi bersama, atau tidak sama sekali")
+    tools: list[tuple[Tool, set[str]]] = [(board.flash, set())]
+    if board.pack is not None:
+        tools += [(board.nextpnr, {"constraints", "pnr"}), (board.pack, {"pnr", "bitstream"})]
+    else:
+        tools += [(board.nextpnr, {"constraints", "bitstream"})]
+    for tool, needed in tools:
         used = {name for arg in tool.args for name in _PLACEHOLDER.findall(arg)}
         if unknown := used - PLACEHOLDERS:
             raise BoardError(f"{tool.binary}: placeholder tidak dikenal {sorted(unknown)}")

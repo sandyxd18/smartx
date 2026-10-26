@@ -1,0 +1,14 @@
+# Konfigurasi proyek SmartX (lihat docs/CONTENT-FORMAT.md, bagian Proyek workspace).
+top: de1_blinky
+sources:
+  - src/**/*.v
+tests:
+  - test/test_de1_blinky.py
+simulator: icarus
+parameters:
+  HALF_PERIOD: 4            # simulasi: berganti tiap 4 siklus supaya test singkat
+fpga:
+  board: de1-soc
+  constraints: constraints/de1-soc.qsf
+  parameters:
+    HALF_PERIOD: 25000000   # board: 0,5 detik pada clock 50 MHz
